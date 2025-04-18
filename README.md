@@ -1,73 +1,55 @@
-# Welcome to your Lovable project
 
-## Project info
+# Mindful Investing Companion
 
-**URL**: https://lovable.dev/projects/6881c893-ab0f-4a31-b976-fe7d63801669
+A web-based stock analysis app designed to empower individual investors with data-driven insights and psychological tools for rational decision-making.
 
-## How can I edit this code?
+## Project Overview
 
-There are several ways of editing your application.
+The Mindful Investing Companion helps users focus on stock fundamentals, filter market noise, and simulate trades. The app is inspired by platforms like Qualtrim.com that use data visualization to drive investment decisions.
 
-**Use Lovable**
+## Key Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/6881c893-ab0f-4a31-b976-fe7d63801669) and start prompting.
+- **Insights Page**: Interactive D3.js charts for financial metrics (Price, Revenue, EBITDA)
+- **Focus Mode**: Filter news and press releases to reduce market noise
+- **Portfolios**: Track trades and monitor performance
+- **Earnings Calendar**: Track upcoming earnings reports and conference calls
+- **Decision Dashboard**: Monitor decision quality metrics and track your progress
+- **Badges**: Earn rewards for developing good investing habits
 
-Changes made via Lovable will be committed automatically to this repo.
+## Tech Stack
 
-**Use your preferred IDE**
+- React.js with TypeScript
+- Tailwind CSS for styling
+- D3.js for interactive charts
+- shadcn/ui component library
+- React Router for navigation
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Database Schema
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+The app is designed to work with the following database tables:
 
-Follow these steps:
+- **stocks**: Cache financial data like price, revenue, EBITDA
+- **news**: Store news and press releases for sentiment analysis
+- **portfolios**: Store user trade entries (ticker, shares, price)
+- **trade_decisions**: Store Decision Coach outcomes (ticker, buy/sell, score)
+- **badges**: Store user rewards (badge name, date earned)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Getting Started
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. Clone the repository
+2. Install dependencies with `npm install`
+3. Start the development server with `npm run dev`
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Future Development
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+This is an iterative project that will be built step-by-step. Future enhancements include:
 
-**Edit a file directly in GitHub**
+- Integration with financial APIs (Financial Modeling Prep, NewsAPI)
+- AI-powered bias detection using Gemini/OpenAI
+- Stripe integration for subscription management
+- Enhanced data visualization and charting tools
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Subscription Model
 
-**Use GitHub Codespaces**
+In the future, the app will offer a 14-day free trial followed by a $10/month subscription for full access to all features.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/6881c893-ab0f-4a31-b976-fe7d63801669) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
