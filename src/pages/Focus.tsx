@@ -33,7 +33,7 @@ const mockNews = [
     sentiment: 'positive',
     relevance: 'high',
     ticker: 'MSFT',
-    content: 'Microsoft Corporation reported a 25% increase in cloud revenue for the quarter, as demand for Azure services continued to grow among enterprise customers. The company's overall revenue rose 18% year-over-year.',
+    content: 'Microsoft Corporation reported a 25% increase in cloud revenue for the quarter, as demand for Azure services continued to grow among enterprise customers. The company\'s overall revenue rose 18% year-over-year.',
     url: '#'
   },
   {
@@ -79,7 +79,7 @@ const mockNews = [
     ticker: 'GOOGL',
     content: 'Google has introduced several new AI-powered features for its search engine, designed to provide more relevant and contextual results. The company says the updates represent the most significant changes to search in years.',
     url: '#'
-  },
+  }
 ];
 
 const Focus = () => {
