@@ -1,7 +1,8 @@
 
-import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
+import { createRoot } from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
 
-// Create root and render the App
+// In development mode, render the App directly
+// In production with Next.js, _app.tsx will handle this
 createRoot(document.getElementById("root")!).render(<App />);
