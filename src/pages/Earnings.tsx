@@ -221,7 +221,7 @@ const Earnings = () => {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <UICalendar
-                  mode="single"
+                  mode="month"
                   selected={date}
                   onSelect={setDate}
                   initialFocus
