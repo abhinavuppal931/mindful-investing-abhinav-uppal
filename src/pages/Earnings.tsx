@@ -167,7 +167,7 @@ const mockTranscripts = [
 ];
 
 const Earnings = () => {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTranscript, setSelectedTranscript] = useState<typeof mockTranscripts[0] | null>(null);
   
@@ -221,9 +221,9 @@ const Earnings = () => {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <UICalendar
-                  mode="month"
+                  mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={(selectedDate) => selectedDate && setDate(selectedDate)}
                   initialFocus
                 />
               </PopoverContent>
