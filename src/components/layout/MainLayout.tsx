@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { 
   BarChart3, 
   LineChart, 
@@ -40,7 +40,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     <div className="min-h-screen flex flex-col">
       {/* Mobile Header */}
       <header className="lg:hidden bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-        <Link to="/" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center space-x-2">
           <BrainCircuit className="h-6 w-6 text-mindful-600" />
           <span className="font-bold text-xl">Mindful Investing</span>
         </Link>
@@ -54,7 +54,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40" onClick={toggleMenu}>
           <div className="w-64 bg-white h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b border-gray-200">
-              <Link to="/" className="flex items-center space-x-2" onClick={toggleMenu}>
+              <Link href="/" className="flex items-center space-x-2" onClick={toggleMenu}>
                 <BrainCircuit className="h-6 w-6 text-mindful-600" />
                 <span className="font-bold text-xl">Mindful Investing</span>
               </Link>
@@ -63,7 +63,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               {navItems.map((item) => (
                 <Link
                   key={item.name}
-                  to={item.href}
+                  href={item.href}
                   className="flex items-center p-3 text-gray-700 hover:bg-mindful-50 space-x-3"
                   onClick={toggleMenu}
                 >
@@ -80,7 +80,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         {/* Desktop Sidebar */}
         <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200">
           <div className="p-4 border-b border-gray-200">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <BrainCircuit className="h-6 w-6 text-mindful-600" />
               <span className="font-bold text-xl">Mindful Investing</span>
             </Link>
@@ -89,7 +89,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {navItems.map((item) => (
               <Link
                 key={item.name}
-                to={item.href}
+                href={item.href}
                 className={cn(
                   "flex items-center p-3 rounded-md space-x-3 text-gray-700",
                   "hover:bg-mindful-50 hover:text-mindful-700 transition-colors duration-200"

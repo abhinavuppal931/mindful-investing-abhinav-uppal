@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StockCard from '@/components/cards/StockCard';
 import StockDetail from '@/components/insights/StockDetail';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import Link from 'next/link';
 
 // Mock data
 const stocksList = [

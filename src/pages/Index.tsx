@@ -1,4 +1,3 @@
-
 import React from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -13,9 +12,8 @@ import {
   TrendingUp,
   ArrowRight
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
-// Mock data
 const popularStocks = [
   { ticker: 'AAPL', companyName: 'Apple Inc.', price: 189.84, change: 2.34, changePercent: 1.25 },
   { ticker: 'MSFT', companyName: 'Microsoft Corporation', price: 410.34, change: 3.56, changePercent: 0.87 },
@@ -38,13 +36,13 @@ const Index = () => {
             </p>
             <div className="flex flex-wrap gap-4">
               <Button size="lg" asChild className="bg-white text-mindful-700 hover:bg-gray-100">
-                <Link to="/insights">
+                <Link href="/insights">
                   Explore Insights
                   <BarChart3 className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="bg-transparent border-white text-white hover:bg-white/10">
-                <Link to="/focus">
+                <Link href="/focus">
                   Enter Focus Mode
                   <BrainCircuit className="ml-2 h-5 w-5" />
                 </Link>
@@ -100,7 +98,7 @@ const Index = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Popular Stocks</h2>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/insights" className="flex items-center">
+              <Link href="/insights" className="flex items-center">
                 View All
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
@@ -126,22 +124,22 @@ const Index = () => {
         <section>
           <h2 className="text-2xl font-bold mb-6">Quick Navigation</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link to="/insights" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
+            <Link href="/insights" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
               <BarChart3 className="h-8 w-8 text-mindful-600 mb-2" />
               <span className="font-medium">Insights</span>
             </Link>
             
-            <Link to="/focus" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
+            <Link href="/focus" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
               <BrainCircuit className="h-8 w-8 text-mindful-600 mb-2" />
               <span className="font-medium">Focus Mode</span>
             </Link>
             
-            <Link to="/portfolios" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
+            <Link href="/portfolios" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
               <Briefcase className="h-8 w-8 text-mindful-600 mb-2" />
               <span className="font-medium">Portfolios</span>
             </Link>
             
-            <Link to="/dashboard" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
+            <Link href="/dashboard" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
               <LineChart className="h-8 w-8 text-mindful-600 mb-2" />
               <span className="font-medium">Decision Dashboard</span>
             </Link>
