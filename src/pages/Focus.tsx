@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,7 +83,7 @@ const mockNews = [
 
 const Focus = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [tickerFilter, setTickerFilter] = useState('');
+  const [tickerFilter, setTickerFilter] = useState('all');
   const [showHighRelevanceOnly, setShowHighRelevanceOnly] = useState(false);
   const [sentimentFilter, setSentimentFilter] = useState('all');
   
@@ -95,7 +96,7 @@ const Focus = () => {
     }
     
     // Ticker filter
-    if (tickerFilter && item.ticker !== tickerFilter) {
+    if (tickerFilter !== 'all' && item.ticker !== tickerFilter) {
       return false;
     }
     
@@ -215,7 +216,7 @@ const Focus = () => {
                           variant="link" 
                           onClick={() => {
                             setSearchQuery('');
-                            setTickerFilter('');
+                            setTickerFilter('all');
                             setShowHighRelevanceOnly(false);
                             setSentimentFilter('all');
                           }}
@@ -336,7 +337,7 @@ const Focus = () => {
                         <SelectValue placeholder="All Stocks" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Stocks</SelectItem>
+                        <SelectItem value="all">All Stocks</SelectItem>
                         <SelectItem value="AAPL">AAPL</SelectItem>
                         <SelectItem value="MSFT">MSFT</SelectItem>
                         <SelectItem value="GOOGL">GOOGL</SelectItem>
@@ -369,7 +370,7 @@ const Focus = () => {
                     className="w-full mt-2"
                     onClick={() => {
                       setSearchQuery('');
-                      setTickerFilter('');
+                      setTickerFilter('all');
                       setShowHighRelevanceOnly(false);
                       setSentimentFilter('all');
                     }}
