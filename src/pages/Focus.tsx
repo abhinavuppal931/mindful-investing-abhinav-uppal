@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +31,7 @@ const mockNews = [
     sentiment: 'positive',
     relevance: 'high',
     ticker: 'MSFT',
-    content: 'Microsoft Corporation reported a 25% increase in cloud revenue for the quarter, as demand for Azure services continued to grow among enterprise customers. The company's overall revenue rose 18% year-over-year.',
+    content: 'Microsoft Corporation reported a 25% increase in cloud revenue for the quarter, as demand for Azure services continued to grow among enterprise customers. The company\'s overall revenue rose 18% year-over-year.',
     url: '#'
   },
   {
