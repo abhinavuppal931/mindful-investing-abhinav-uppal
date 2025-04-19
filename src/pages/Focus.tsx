@@ -78,7 +78,7 @@ const mockNews = [
     ticker: 'GOOGL',
     content: 'Google has introduced several new AI-powered features for its search engine, designed to provide more relevant and contextual results. The company says the updates represent the most significant changes to search in years.',
     url: '#'
-  },
+  }
 ];
 
 const Focus = () => {
