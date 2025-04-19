@@ -8,7 +8,6 @@ export default function Document() {
       <body>
         <Main />
         <NextScript />
-        <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
       </body>
     </Html>
   )
