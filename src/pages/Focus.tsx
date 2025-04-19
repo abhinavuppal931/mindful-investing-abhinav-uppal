@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { BrainCircuit, Calendar, ArrowUpRight, Filter, Info, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 // Mock news data
 const mockNews = [
@@ -86,6 +87,7 @@ const Focus = () => {
   const [tickerFilter, setTickerFilter] = useState('');
   const [showHighRelevanceOnly, setShowHighRelevanceOnly] = useState(false);
   const [sentimentFilter, setSentimentFilter] = useState('all');
+  const { toast } = useToast();
   
   // Filter news based on current filters
   const filteredNews = mockNews.filter(item => {
@@ -113,6 +115,23 @@ const Focus = () => {
     return true;
   });
 
+  const handleFocusToggle = (checked: boolean) => {
+    setShowHighRelevanceOnly(checked);
+    if (checked) {
+      toast({
+        title: "Focus Mode Activated",
+        description: "Showing only high relevance news items",
+        duration: 3000,
+      });
+    } else {
+      toast({
+        title: "Focus Mode Deactivated",
+        description: "Showing all news items",
+        duration: 3000,
+      });
+    }
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -131,7 +150,7 @@ const Focus = () => {
             <Switch 
               id="high-relevance" 
               checked={showHighRelevanceOnly}
-              onCheckedChange={setShowHighRelevanceOnly}
+              onCheckedChange={handleFocusToggle}
             />
             <Label htmlFor="high-relevance">Show High Relevance Only</Label>
           </div>
@@ -147,7 +166,7 @@ const Focus = () => {
                 className="mb-4"
               />
               
-              <Tabs defaultValue="all">
+              <Tabs defaultValue="all" onValueChange={(value) => setSentimentFilter(value)}>
                 <div className="flex justify-between items-center mb-4">
                   <TabsList>
                     <TabsTrigger value="all">All News</TabsTrigger>
