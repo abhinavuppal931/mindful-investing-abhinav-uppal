@@ -1,4 +1,4 @@
 
-import Home from './home';
+import Index from './Index';
 
-export default Home;
+export default Index;

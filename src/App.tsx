@@ -6,13 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient();
 
-// Add proper typing for the props
-interface AppProps {
-  Component: React.ComponentType<any>;
-  pageProps: any;
-}
-
-const App = ({ Component, pageProps }: AppProps) => (
+const App = ({ Component, pageProps }) => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
