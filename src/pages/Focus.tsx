@@ -32,7 +32,7 @@ const mockNews = [
     sentiment: 'positive',
     relevance: 'high',
     ticker: 'MSFT',
-    content: 'Microsoft Corporation reported a 25% increase in cloud revenue for the quarter, as demand for Azure services continued to grow among enterprise customers. The company\'s overall revenue rose 18% year-over-year.',
+    content: 'Microsoft Corporation reported a 25% increase in cloud revenue for the quarter, as demand for Azure services continued to grow among enterprise customers. The company's overall revenue rose 18% year-over-year.',
     url: '#'
   },
   {
@@ -78,12 +78,12 @@ const mockNews = [
     ticker: 'GOOGL',
     content: 'Google has introduced several new AI-powered features for its search engine, designed to provide more relevant and contextual results. The company says the updates represent the most significant changes to search in years.',
     url: '#'
-  }
+  },
 ];
 
 const Focus = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [tickerFilter, setTickerFilter] = useState('all');
+  const [tickerFilter, setTickerFilter] = useState('');
   const [showHighRelevanceOnly, setShowHighRelevanceOnly] = useState(false);
   const [sentimentFilter, setSentimentFilter] = useState('all');
   
@@ -96,7 +96,7 @@ const Focus = () => {
     }
     
     // Ticker filter
-    if (tickerFilter !== 'all' && item.ticker !== tickerFilter) {
+    if (tickerFilter && item.ticker !== tickerFilter) {
       return false;
     }
     
@@ -216,7 +216,7 @@ const Focus = () => {
                           variant="link" 
                           onClick={() => {
                             setSearchQuery('');
-                            setTickerFilter('all');
+                            setTickerFilter('');
                             setShowHighRelevanceOnly(false);
                             setSentimentFilter('all');
                           }}
@@ -337,7 +337,7 @@ const Focus = () => {
                         <SelectValue placeholder="All Stocks" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Stocks</SelectItem>
+                        <SelectItem value="">All Stocks</SelectItem>
                         <SelectItem value="AAPL">AAPL</SelectItem>
                         <SelectItem value="MSFT">MSFT</SelectItem>
                         <SelectItem value="GOOGL">GOOGL</SelectItem>
@@ -370,7 +370,7 @@ const Focus = () => {
                     className="w-full mt-2"
                     onClick={() => {
                       setSearchQuery('');
-                      setTickerFilter('all');
+                      setTickerFilter('');
                       setShowHighRelevanceOnly(false);
                       setSentimentFilter('all');
                     }}
