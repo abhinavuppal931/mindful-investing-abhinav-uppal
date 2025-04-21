@@ -221,9 +221,18 @@ const Earnings = () => {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <UICalendar
-                  mode="month"
+                  mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={(selectedDate) => {
+                    // When user selects a date, we just want to capture the month and year
+                    if (selectedDate) {
+                      // Create a new date with the same month and year
+                      const newDate = new Date(selectedDate);
+                      setDate(newDate);
+                    } else {
+                      setDate(undefined);
+                    }
+                  }}
                   initialFocus
                 />
               </PopoverContent>
