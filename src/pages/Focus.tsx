@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -336,7 +337,7 @@ const Focus = () => {
                         <SelectValue placeholder="All Stocks" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Stocks</SelectItem>
+                        <SelectItem value="all-stocks">All Stocks</SelectItem>
                         <SelectItem value="AAPL">AAPL</SelectItem>
                         <SelectItem value="MSFT">MSFT</SelectItem>
                         <SelectItem value="GOOGL">GOOGL</SelectItem>
