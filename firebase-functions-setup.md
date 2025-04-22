@@ -1,4 +1,3 @@
-
 # Firebase Functions Setup for Mindful Investing Companion
 
 This document provides instructions for setting up Firebase Functions for the Mindful Investing Companion application.
@@ -44,7 +43,7 @@ STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
 
 4. **Create Functions:**
 
-Replace the content of `src/index.ts` in your functions directory with the functions code from the project documentation.
+Replace the content of `functions/index.ts` in your functions directory with the functions code from the project documentation.
 
 5. **Test Locally:**
 
