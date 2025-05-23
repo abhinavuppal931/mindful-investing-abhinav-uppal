@@ -1,33 +1,78 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StockCard from '@/components/cards/StockCard';
 import StockDetail from '@/components/insights/StockDetail';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { getStockQuote } from '@/lib/api/stockService';
+import { StockQuote } from '@/lib/api/types';
 
-// Mock data
-const stocksList = [
-  { ticker: 'AAPL', companyName: 'Apple Inc.', price: 189.84, change: 2.34, changePercent: 1.25 },
-  { ticker: 'MSFT', companyName: 'Microsoft Corporation', price: 410.34, change: 3.56, changePercent: 0.87 },
-  { ticker: 'GOOGL', companyName: 'Alphabet Inc.', price: 156.57, change: -0.42, changePercent: -0.27 },
-  { ticker: 'AMZN', companyName: 'Amazon.com, Inc.', price: 178.22, change: 1.78, changePercent: 1.01 },
-  { ticker: 'META', companyName: 'Meta Platforms, Inc.', price: 474.33, change: 5.21, changePercent: 1.11 },
-  { ticker: 'TSLA', companyName: 'Tesla, Inc.', price: 176.75, change: -3.25, changePercent: -1.80 },
-  { ticker: 'NVDA', companyName: 'NVIDIA Corporation', price: 840.87, change: 12.34, changePercent: 1.49 },
-  { ticker: 'BRK.B', companyName: 'Berkshire Hathaway Inc.', price: 408.67, change: 0.78, changePercent: 0.19 },
-];
+// Default stock symbols to display
+const DEFAULT_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'BRK.B'];
+
+interface StockData {
+  ticker: string;
+  companyName: string;
+  price: string;
+  change: string;
+  changePercent: string;
+  loading?: boolean;
+}
 
 const Insights = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStock, setSelectedStock] = useState<typeof stocksList[0] | null>(null);
+  const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
+  const [stocks, setStocks] = useState<StockData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredStocks = stocksList.filter(stock => 
+  useEffect(() => {
+    const fetchStocks = async () => {
+      setLoading(true);
+      try {
+        const stockData = await Promise.all(
+          DEFAULT_SYMBOLS.map(async (symbol) => {
+            try {
+              const quote = await getStockQuote(symbol);
+              return {
+                ticker: quote.symbol,
+                companyName: quote.name,
+                price: quote.price,
+                change: quote.change,
+                changePercent: quote.changesPercentage,
+                loading: false
+              };
+            } catch (error) {
+              console.error(`Error fetching data for ${symbol}:`, error);
+              return null;
+            }
+          })
+        );
+        // Filter out null values and ensure all required fields are present
+        setStocks(stockData.filter((stock): stock is StockData => {
+          return stock !== null && 
+            'ticker' in stock && 
+            'companyName' in stock && 
+            'price' in stock && 
+            'change' in stock && 
+            'changePercent' in stock;
+        }));
+      } catch (error) {
+        console.error('Error fetching stock data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStocks();
+  }, []);
+
+  const filteredStocks = stocks.filter(stock => 
     stock.ticker.toLowerCase().includes(searchQuery.toLowerCase()) || 
     stock.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleStockSelect = (stock: typeof stocksList[0]) => {
+  const handleStockSelect = (stock: StockData) => {
     setSelectedStock(stock);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -63,22 +108,36 @@ const Insights = () => {
           />
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {filteredStocks.map((stock) => (
-            <StockCard
-              key={stock.ticker}
-              ticker={stock.ticker}
-              companyName={stock.companyName}
-              price={stock.price}
-              change={stock.change}
-              changePercent={stock.changePercent}
-              onClick={() => handleStockSelect(stock)}
-            />
-          ))}
-          
-          {filteredStocks.length === 0 && (
-            <div className="col-span-full py-12 text-center">
-              <p className="text-gray-500">No stocks found matching "{searchQuery}"</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6">
+          {loading ? (
+            // Loading skeleton
+            Array.from({ length: 8 }).map((_, index) => (
+              <StockCard
+                key={index}
+                ticker=""
+                companyName=""
+                price="0"
+                change="0"
+                changePercent="0"
+                loading={true}
+                onClick={() => {}}
+              />
+            ))
+          ) : filteredStocks.length > 0 ? (
+            filteredStocks.map((stock) => (
+              <StockCard
+                key={stock.ticker}
+                ticker={stock.ticker}
+                companyName={stock.companyName}
+                price={stock.price}
+                change={stock.change}
+                changePercent={stock.changePercent}
+                onClick={() => handleStockSelect(stock)}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8 text-gray-500">
+              No stocks found matching your search.
             </div>
           )}
         </div>
