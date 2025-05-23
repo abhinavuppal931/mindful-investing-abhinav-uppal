@@ -2,13 +2,15 @@
 import React from 'react';
 import { ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { parseStringNumber } from '@/lib/api/stockService';
 
 interface StockCardProps {
   ticker: string;
   companyName: string;
-  price: number;
-  change: number;
-  changePercent: number;
+  price: string | number;
+  change: string | number;
+  changePercent: string | number;
+  loading?: boolean;
   onClick?: () => void;
 }
 
@@ -18,9 +20,13 @@ const StockCard: React.FC<StockCardProps> = ({
   price,
   change,
   changePercent,
+  loading = false,
   onClick
 }) => {
-  const isPositive = change >= 0;
+  const numericPrice = typeof price === 'string' ? parseStringNumber(price) : price;
+  const numericChange = typeof change === 'string' ? parseStringNumber(change) : change;
+  const numericChangePercent = typeof changePercent === 'string' ? parseStringNumber(changePercent) : changePercent;
+  const isPositive = numericChange >= 0;
 
   return (
     <div className="stock-card group">
@@ -40,17 +46,26 @@ const StockCard: React.FC<StockCardProps> = ({
       </div>
       
       <div className="mt-4">
-        <div className="text-2xl font-bold">${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-        <div className={`flex items-center mt-1 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-          {isPositive ? (
-            <ArrowUpRight className="h-4 w-4 mr-1" />
-          ) : (
-            <ArrowDownRight className="h-4 w-4 mr-1" />
-          )}
-          <span className="text-sm font-medium">
-            {isPositive ? '+' : ''}{change.toFixed(2)} ({isPositive ? '+' : ''}{changePercent.toFixed(2)}%)
-          </span>
-        </div>
+        {loading ? (
+          <div className="animate-pulse">
+            <div className="h-8 w-24 bg-gray-200 rounded mb-2"></div>
+            <div className="h-4 w-20 bg-gray-200 rounded"></div>
+          </div>
+        ) : (
+          <>
+            <div className="text-2xl font-bold">${numericPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className={`flex items-center mt-1 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+              {isPositive ? (
+                <ArrowUpRight className="h-4 w-4 mr-1" />
+              ) : (
+                <ArrowDownRight className="h-4 w-4 mr-1" />
+              )}
+              <span className="text-sm font-medium">
+                {isPositive ? '+' : ''}{numericChange.toFixed(2)} ({isPositive ? '+' : ''}{numericChangePercent.toFixed(2)}%)
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
