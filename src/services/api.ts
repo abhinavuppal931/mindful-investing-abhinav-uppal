@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Get the Firebase Functions URL - update this with your actual Firebase project URL
-const FUNCTIONS_BASE_URL = process.env.NODE_ENV === 'development' 
+const FUNCTIONS_BASE_URL = import.meta.env.DEV 
   ? 'http://localhost:5001/your-project-id/us-central1/api'
   : 'https://us-central1-your-project-id.cloudfunctions.net/api';
 
