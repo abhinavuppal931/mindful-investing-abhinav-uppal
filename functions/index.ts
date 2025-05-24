@@ -1,4 +1,5 @@
 
+
 import * as functions from 'firebase-functions';
 import * as express from 'express';
 import * as cors from 'cors';
@@ -8,15 +9,22 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const app = express();
 app.use(cors({ origin: true }));
 
+// Get Firebase config
+const config = functions.config();
+
 // Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const genAI = new GoogleGenerativeAI(config.gemini?.api_key || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
 // Financial Modeling Prep API endpoints
 app.get('/api/fmp/quote/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
-    const apiKey = process.env.FMP_API_KEY;
+    const apiKey = config.fmp?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'FMP API key not configured' });
+    }
     
     const response = await axios.get(
       `https://financialmodelingprep.com/api/v3/quote/${symbol}?apikey=${apiKey}`
@@ -32,7 +40,11 @@ app.get('/api/fmp/financials/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
     const { period = 'annual', statement = 'income' } = req.query;
-    const apiKey = process.env.FMP_API_KEY;
+    const apiKey = config.fmp?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'FMP API key not configured' });
+    }
     
     let endpoint = '';
     switch (statement) {
@@ -62,7 +74,11 @@ app.get('/api/fmp/financials/:symbol', async (req, res) => {
 app.get('/api/fmp/metrics/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
-    const apiKey = process.env.FMP_API_KEY;
+    const apiKey = config.fmp?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'FMP API key not configured' });
+    }
     
     const response = await axios.get(
       `https://financialmodelingprep.com/api/v3/key-metrics/${symbol}?period=annual&apikey=${apiKey}`
@@ -79,7 +95,11 @@ app.get('/api/finnhub/news/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
     const { from, to } = req.query;
-    const apiKey = process.env.FINNHUB_API_KEY;
+    const apiKey = config.finnhub?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Finnhub API key not configured' });
+    }
     
     const response = await axios.get(
       `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${apiKey}`
@@ -94,7 +114,11 @@ app.get('/api/finnhub/news/:symbol', async (req, res) => {
 app.get('/api/finnhub/market-news', async (req, res) => {
   try {
     const { category = 'general' } = req.query;
-    const apiKey = process.env.FINNHUB_API_KEY;
+    const apiKey = config.finnhub?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Finnhub API key not configured' });
+    }
     
     const response = await axios.get(
       `https://finnhub.io/api/v1/news?category=${category}&token=${apiKey}`
@@ -109,7 +133,11 @@ app.get('/api/finnhub/market-news', async (req, res) => {
 app.get('/api/finnhub/earnings', async (req, res) => {
   try {
     const { from, to } = req.query;
-    const apiKey = process.env.FINNHUB_API_KEY;
+    const apiKey = config.finnhub?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Finnhub API key not configured' });
+    }
     
     const response = await axios.get(
       `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${apiKey}`
@@ -125,6 +153,11 @@ app.get('/api/finnhub/earnings', async (req, res) => {
 app.post('/api/gemini/company-analysis', async (req, res) => {
   try {
     const { symbol, financialData, newsData } = req.body;
+    const apiKey = config.gemini?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Gemini API key not configured' });
+    }
     
     const prompt = `Analyze ${symbol} based on this financial and news data:
     
@@ -174,6 +207,11 @@ app.post('/api/gemini/company-analysis', async (req, res) => {
 app.post('/api/gemini/news-scoring', async (req, res) => {
   try {
     const { articles } = req.body;
+    const apiKey = config.gemini?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Gemini API key not configured' });
+    }
     
     const scoredArticles = [];
     
@@ -233,6 +271,11 @@ app.post('/api/gemini/news-scoring', async (req, res) => {
 app.post('/api/gemini/bias-detection', async (req, res) => {
   try {
     const { ticker, action, shares, price, emotionalState, questions } = req.body;
+    const apiKey = config.gemini?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Gemini API key not configured' });
+    }
     
     const prompt = `Analyze potential trading biases for this planned trade:
     
@@ -291,3 +334,4 @@ app.get('/api/health', (req, res) => {
 
 // Export the Express app as a Firebase Function
 export const api = functions.https.onRequest(app);
+

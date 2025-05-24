@@ -1,10 +1,9 @@
-
 import axios from 'axios';
 
-// Get the Firebase Functions URL - update this with your actual Firebase project URL
+// Get the Firebase Functions URL - updated with your Firebase project ID
 const FUNCTIONS_BASE_URL = import.meta.env.DEV 
-  ? 'http://localhost:5001/your-project-id/us-central1/api'
-  : 'https://us-central1-your-project-id.cloudfunctions.net/api';
+  ? 'http://localhost:5001/mindfulinvestingcompanion/us-central1/api'
+  : 'https://us-central1-mindfulinvestingcompanion.cloudfunctions.net/api';
 
 // Create axios instance with base configuration
 const api = axios.create({

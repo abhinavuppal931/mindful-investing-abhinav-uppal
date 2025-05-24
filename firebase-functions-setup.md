@@ -1,4 +1,5 @@
 
+
 # Firebase Functions Setup for Mindful Investing Companion
 
 This document provides instructions for setting up Firebase Functions for the Mindful Investing Companion application.
@@ -7,7 +8,7 @@ This document provides instructions for setting up Firebase Functions for the Mi
 
 - Node.js (v14 or higher)
 - Firebase CLI (`npm install -g firebase-tools`)
-- Firebase account and project
+- Firebase account and project (mindfulinvestingcompanion)
 
 ## Setup Instructions
 
@@ -20,7 +21,10 @@ firebase login
 firebase init functions
 ```
 
-Choose TypeScript when prompted and follow the setup instructions.
+When prompted:
+- Select "Use an existing project" and choose "mindfulinvestingcompanion"
+- Choose TypeScript when prompted
+- Follow the setup instructions
 
 2. **Install required dependencies in the functions directory:**
 
@@ -31,12 +35,17 @@ npm install axios cors express @google/generative-ai
 
 3. **Create environment variables:**
 
-Create a `.env` file in the `functions` directory with the following variables:
+Set environment variables using Firebase CLI:
 
-```
-FMP_API_KEY=your-financial-modeling-prep-api-key
-FINNHUB_API_KEY=your-finnhub-api-key
-GEMINI_API_KEY=your-gemini-api-key
+```bash
+# Set Financial Modeling Prep API Key
+firebase functions:config:set fmp.api_key="your-financial-modeling-prep-api-key"
+
+# Set Finnhub API Key  
+firebase functions:config:set finnhub.api_key="your-finnhub-api-key"
+
+# Set Gemini API Key
+firebase functions:config:set gemini.api_key="your-gemini-api-key"
 ```
 
 4. **Create Functions:**
@@ -79,20 +88,7 @@ Once deployed, your functions will be available at:
 
 ## Frontend Integration
 
-1. Copy the Firebase configuration from your Firebase project settings
-2. Create a `.env` file in your React project root with the following variables:
-
-```
-VITE_FIREBASE_API_KEY=your-api-key
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
-VITE_FIREBASE_APP_ID=your-app-id
-VITE_FIREBASE_MEASUREMENT_ID=your-measurement-id
-```
-
-3. Use the services in `src/services/api.ts` to call your Firebase functions from your React components.
+The React project is already configured to work with your Firebase project (mindfulinvestingcompanion).
 
 ## Required API Keys
 
@@ -110,8 +106,20 @@ You'll need to obtain the following API keys:
    - Get from: https://makersuite.google.com/app/apikey
    - Used for: AI analysis, news scoring, bias detection
 
+## API Key Setup Commands
+
+Once you have your API keys, run these commands in your Firebase functions directory:
+
+```bash
+# Replace YOUR_ACTUAL_KEY with your real API keys
+firebase functions:config:set fmp.api_key="YOUR_FMP_API_KEY"
+firebase functions:config:set finnhub.api_key="YOUR_FINNHUB_API_KEY" 
+firebase functions:config:set gemini.api_key="YOUR_GEMINI_API_KEY"
+```
+
 ## Troubleshooting
 
 - If you encounter CORS issues, make sure your functions have the proper CORS headers.
-- If environment variables aren't working, verify they're set correctly in the Firebase Functions environment.
+- If environment variables aren't working, verify they're set correctly using `firebase functions:config:get`.
 - For local development, uncomment the emulator connection lines in `src/lib/firebase.ts`.
+
