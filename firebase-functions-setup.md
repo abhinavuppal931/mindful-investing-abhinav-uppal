@@ -1,5 +1,4 @@
 
-
 # Firebase Functions Setup for Mindful Investing Companion
 
 This document provides instructions for setting up Firebase Functions for the Mindful Investing Companion application.
@@ -33,22 +32,20 @@ cd functions
 npm install axios cors express @google/generative-ai
 ```
 
-3. **Create environment variables:**
-
-Set environment variables using Firebase CLI:
+3. **Set environment variables with your API keys:**
 
 ```bash
 # Set Financial Modeling Prep API Key
-firebase functions:config:set fmp.api_key="your-financial-modeling-prep-api-key"
+firebase functions:config:set fmp.api_key="yBGrmBVvX7YMdlvYyV9lCsoW37LVphzN"
 
 # Set Finnhub API Key  
-firebase functions:config:set finnhub.api_key="your-finnhub-api-key"
+firebase functions:config:set finnhub.api_key="d05f6dpr01qoigru810gd05f6dpr01qoigru8110"
 
 # Set Gemini API Key
-firebase functions:config:set gemini.api_key="your-gemini-api-key"
+firebase functions:config:set gemini.api_key="AIzaSyDjYcoJDcohVvbbpiIcgZ1L6144pEvHGxo"
 ```
 
-4. **Create Functions:**
+4. **Copy Functions Code:**
 
 Replace the content of `functions/index.ts` in your functions directory with the functions code from this project.
 
@@ -67,11 +64,13 @@ firebase deploy --only functions
 ## API Endpoints
 
 Once deployed, your functions will be available at:
+`https://us-central1-mindfulinvestingcompanion.cloudfunctions.net/api`
 
 ### Financial Modeling Prep (FMP) Endpoints:
 - `GET /api/fmp/quote/:symbol` - Get stock quote/price data
 - `GET /api/fmp/financials/:symbol` - Get financial statements (income, balance, cash flow)
 - `GET /api/fmp/metrics/:symbol` - Get key financial metrics
+- `GET /api/fmp/profile/:symbol` - Get company profile
 
 ### Finnhub Endpoints:
 - `GET /api/finnhub/news/:symbol` - Get company-specific news
@@ -88,33 +87,24 @@ Once deployed, your functions will be available at:
 
 ## Frontend Integration
 
-The React project is already configured to work with your Firebase project (mindfulinvestingcompanion).
+Update your `src/services/api.ts` to use the deployed functions URL:
+```typescript
+const FUNCTIONS_BASE_URL = 'https://us-central1-mindfulinvestingcompanion.cloudfunctions.net';
+```
 
-## Required API Keys
+## Testing Commands
 
-You'll need to obtain the following API keys:
-
-1. **Financial Modeling Prep API Key**
-   - Sign up at: https://financialmodelingprep.com/
-   - Used for: Stock prices, financial statements, key metrics
-
-2. **Finnhub API Key**
-   - Sign up at: https://finnhub.io/
-   - Used for: Company news, market news, earnings calendar
-
-3. **Google Gemini API Key**
-   - Get from: https://makersuite.google.com/app/apikey
-   - Used for: AI analysis, news scoring, bias detection
-
-## API Key Setup Commands
-
-Once you have your API keys, run these commands in your Firebase functions directory:
+After deployment, test your endpoints:
 
 ```bash
-# Replace YOUR_ACTUAL_KEY with your real API keys
-firebase functions:config:set fmp.api_key="YOUR_FMP_API_KEY"
-firebase functions:config:set finnhub.api_key="YOUR_FINNHUB_API_KEY" 
-firebase functions:config:set gemini.api_key="YOUR_GEMINI_API_KEY"
+# Test health check
+curl https://us-central1-mindfulinvestingcompanion.cloudfunctions.net/api/health
+
+# Test stock quote
+curl https://us-central1-mindfulinvestingcompanion.cloudfunctions.net/api/fmp/quote/AAPL
+
+# Test company news
+curl "https://us-central1-mindfulinvestingcompanion.cloudfunctions.net/api/finnhub/news/AAPL?from=2024-01-01&to=2024-12-31"
 ```
 
 ## Troubleshooting
@@ -122,4 +112,3 @@ firebase functions:config:set gemini.api_key="YOUR_GEMINI_API_KEY"
 - If you encounter CORS issues, make sure your functions have the proper CORS headers.
 - If environment variables aren't working, verify they're set correctly using `firebase functions:config:get`.
 - For local development, uncomment the emulator connection lines in `src/lib/firebase.ts`.
-

@@ -1,5 +1,4 @@
 
-
 import * as functions from 'firebase-functions';
 import * as express from 'express';
 import * as cors from 'cors';
@@ -33,6 +32,25 @@ app.get('/api/fmp/quote/:symbol', async (req, res) => {
   } catch (error) {
     console.error('FMP Quote error:', error);
     res.status(500).json({ error: 'Failed to fetch stock quote' });
+  }
+});
+
+app.get('/api/fmp/profile/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const apiKey = config.fmp?.api_key;
+    
+    if (!apiKey) {
+      return res.status(500).json({ error: 'FMP API key not configured' });
+    }
+    
+    const response = await axios.get(
+      `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${apiKey}`
+    );
+    res.json(response.data);
+  } catch (error) {
+    console.error('FMP Profile error:', error);
+    res.status(500).json({ error: 'Failed to fetch company profile' });
   }
 });
 
@@ -167,8 +185,8 @@ app.post('/api/gemini/company-analysis', async (req, res) => {
     Provide a comprehensive analysis including:
     1. Company Moat (competitive advantages)
     2. Investment Risks
-    3. Near-term Headwinds and Tailwinds
-    4. Long-term Headwinds and Tailwinds
+    3. Near-term Headwinds and Tailwinds (next 1-2 years)
+    4. Long-term Headwinds and Tailwinds (3-10 years)
     
     Format the response as JSON with the following structure:
     {
@@ -334,4 +352,3 @@ app.get('/api/health', (req, res) => {
 
 // Export the Express app as a Firebase Function
 export const api = functions.https.onRequest(app);
-

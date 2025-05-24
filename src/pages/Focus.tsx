@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,76 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { BrainCircuit, Calendar, ArrowUpRight, Filter, Info, ThumbsUp, ThumbsDown } from 'lucide-react';
-
-// Mock news data
-const mockNews = [
-  {
-    id: 1,
-    title: 'Apple Reports Record Q3 Earnings, Beats Expectations',
-    source: 'Financial Times',
-    date: '2025-04-15',
-    sentiment: 'positive',
-    relevance: 'high',
-    ticker: 'AAPL',
-    content: 'Apple Inc. reported record third-quarter earnings that exceeded analyst expectations, driven by strong iPhone sales and growth in services revenue. The company also announced a $90 billion share buyback program.',
-    url: '#'
-  },
-  {
-    id: 2,
-    title: 'Microsoft Cloud Revenue Surges 25% in Latest Quarter',
-    source: 'Bloomberg',
-    date: '2025-04-14',
-    sentiment: 'positive',
-    relevance: 'high',
-    ticker: 'MSFT',
-    content: 'Microsoft Corporation reported a 25% increase in cloud revenue for the quarter, as demand for Azure services continued to grow among enterprise customers. The company\'s overall revenue rose 18% year-over-year.',
-    url: '#'
-  },
-  {
-    id: 3,
-    title: 'Federal Reserve Signals Potential Rate Cut in September',
-    source: 'Wall Street Journal',
-    date: '2025-04-16',
-    sentiment: 'neutral',
-    relevance: 'medium',
-    ticker: '',
-    content: 'The Federal Reserve indicated that it may consider cutting interest rates in September, contingent on inflation continuing to move toward its 2% target. Markets reacted positively to the news.',
-    url: '#'
-  },
-  {
-    id: 4,
-    title: 'Tesla Faces Production Delays for New Model',
-    source: 'Reuters',
-    date: '2025-04-13',
-    sentiment: 'negative',
-    relevance: 'medium',
-    ticker: 'TSLA',
-    content: 'Tesla is experiencing production delays for its newest vehicle model due to supply chain constraints. The company has pushed back the release date by approximately three months.',
-    url: '#'
-  },
-  {
-    id: 5,
-    title: 'Amazon Opens 20 New Fulfillment Centers Worldwide',
-    source: 'CNBC',
-    date: '2025-04-12',
-    sentiment: 'positive',
-    relevance: 'medium',
-    ticker: 'AMZN',
-    content: 'Amazon.com announced the opening of 20 new fulfillment centers across North America, Europe, and Asia, creating approximately 40,000 new jobs. The expansion aims to reduce delivery times.',
-    url: '#'
-  },
-  {
-    id: 6,
-    title: 'Google Unveils New AI Features for Search',
-    source: 'The Verge',
-    date: '2025-04-11',
-    sentiment: 'positive',
-    relevance: 'high',
-    ticker: 'GOOGL',
-    content: 'Google has introduced several new AI-powered features for its search engine, designed to provide more relevant and contextual results. The company says the updates represent the most significant changes to search in years.',
-    url: '#'
-  }
-];
+import { useNews } from '@/hooks/useStockData';
 
 const Focus = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,8 +17,23 @@ const Focus = () => {
   const [showHighRelevanceOnly, setShowHighRelevanceOnly] = useState(false);
   const [sentimentFilter, setSentimentFilter] = useState('all');
   
+  const { news, loading, error } = useNews();
+
+  // Convert Finnhub news format to our expected format
+  const processedNews = news.map(item => ({
+    id: item.id || Math.random(),
+    title: item.headline,
+    source: item.source,
+    date: new Date(item.datetime * 1000).toISOString().split('T')[0],
+    sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative', // Mock sentiment for now
+    relevance: Math.random() > 0.5 ? 'high' : 'medium', // Mock relevance for now
+    ticker: '',
+    content: item.summary || item.headline,
+    url: item.url
+  }));
+  
   // Filter news based on current filters
-  const filteredNews = mockNews.filter(item => {
+  const filteredNews = processedNews.filter(item => {
     // Search query filter
     if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !item.content.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -96,7 +41,7 @@ const Focus = () => {
     }
     
     // Ticker filter
-    if (tickerFilter && item.ticker !== tickerFilter) {
+    if (tickerFilter && tickerFilter !== 'all-stocks' && item.ticker !== tickerFilter) {
       return false;
     }
     
@@ -112,6 +57,27 @@ const Focus = () => {
     
     return true;
   });
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-mindful-600"></div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h3 className="text-red-800 font-medium">Error loading news</h3>
+          <p className="text-red-600">{error}</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -157,51 +123,51 @@ const Focus = () => {
                   
                   <div className="flex items-center text-sm text-gray-500">
                     <Calendar className="h-4 w-4 mr-1" />
-                    <span>April 2025</span>
+                    <span>Latest Market News</span>
                   </div>
                 </div>
                 
                 <TabsContent value="all" className="mt-0">
                   <div className="space-y-4">
                     {filteredNews.length > 0 ? (
-                      filteredNews.map(news => (
-                        <Card key={news.id}>
+                      filteredNews.map(newsItem => (
+                        <Card key={newsItem.id}>
                           <CardHeader className="pb-2">
                             <div className="flex justify-between">
                               <div className="space-y-1">
-                                <CardTitle>{news.title}</CardTitle>
+                                <CardTitle className="text-lg">{newsItem.title}</CardTitle>
                                 <CardDescription>
-                                  {news.source} • {new Date(news.date).toLocaleDateString()}
+                                  {newsItem.source} • {new Date(newsItem.date).toLocaleDateString()}
                                 </CardDescription>
                               </div>
-                              {news.ticker && (
+                              {newsItem.ticker && (
                                 <Badge variant="outline" className="h-fit">
-                                  {news.ticker}
+                                  {newsItem.ticker}
                                 </Badge>
                               )}
                             </div>
                           </CardHeader>
                           <CardContent>
-                            <p>{news.content}</p>
+                            <p className="text-gray-700">{newsItem.content}</p>
                           </CardContent>
                           <CardFooter className="flex justify-between pt-2">
                             <div className="flex space-x-2">
-                              <Badge variant={news.sentiment === 'positive' ? 'default' : news.sentiment === 'negative' ? 'destructive' : 'secondary'}>
-                                {news.sentiment === 'positive' ? (
+                              <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'}>
+                                {newsItem.sentiment === 'positive' ? (
                                   <ThumbsUp className="h-3 w-3 mr-1" />
-                                ) : news.sentiment === 'negative' ? (
+                                ) : newsItem.sentiment === 'negative' ? (
                                   <ThumbsDown className="h-3 w-3 mr-1" />
                                 ) : (
                                   <Info className="h-3 w-3 mr-1" />
                                 )}
-                                {news.sentiment.charAt(0).toUpperCase() + news.sentiment.slice(1)}
+                                {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
                               </Badge>
                               <Badge variant="outline">
-                                {news.relevance.charAt(0).toUpperCase() + news.relevance.slice(1)} Relevance
+                                {newsItem.relevance.charAt(0).toUpperCase() + newsItem.relevance.slice(1)} Relevance
                               </Badge>
                             </div>
                             <Button variant="ghost" size="sm" className="text-xs" asChild>
-                              <a href={news.url} target="_blank" rel="noopener noreferrer">
+                              <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
                                 Read More
                                 <ArrowUpRight className="h-3 w-3 ml-1" />
                               </a>
@@ -230,25 +196,25 @@ const Focus = () => {
                 
                 <TabsContent value="positive" className="mt-0">
                   <div className="space-y-4">
-                    {filteredNews.filter(news => news.sentiment === 'positive').map(news => (
-                      <Card key={news.id}>
+                    {filteredNews.filter(newsItem => newsItem.sentiment === 'positive').map(newsItem => (
+                      <Card key={newsItem.id}>
                         <CardHeader className="pb-2">
                           <div className="flex justify-between">
                             <div className="space-y-1">
-                              <CardTitle>{news.title}</CardTitle>
+                              <CardTitle>{newsItem.title}</CardTitle>
                               <CardDescription>
-                                {news.source} • {new Date(news.date).toLocaleDateString()}
+                                {newsItem.source} • {new Date(newsItem.date).toLocaleDateString()}
                               </CardDescription>
                             </div>
-                            {news.ticker && (
+                            {newsItem.ticker && (
                               <Badge variant="outline" className="h-fit">
-                                {news.ticker}
+                                {newsItem.ticker}
                               </Badge>
                             )}
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <p>{news.content}</p>
+                          <p>{newsItem.content}</p>
                         </CardContent>
                         <CardFooter className="flex justify-between pt-2">
                           <div className="flex space-x-2">
@@ -257,11 +223,11 @@ const Focus = () => {
                               Positive
                             </Badge>
                             <Badge variant="outline">
-                              {news.relevance.charAt(0).toUpperCase() + news.relevance.slice(1)} Relevance
+                              {newsItem.relevance.charAt(0).toUpperCase() + newsItem.relevance.slice(1)} Relevance
                             </Badge>
                           </div>
                           <Button variant="ghost" size="sm" className="text-xs" asChild>
-                            <a href={news.url} target="_blank" rel="noopener noreferrer">
+                            <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
                               Read More
                               <ArrowUpRight className="h-3 w-3 ml-1" />
                             </a>
@@ -274,25 +240,25 @@ const Focus = () => {
                 
                 <TabsContent value="negative" className="mt-0">
                   <div className="space-y-4">
-                    {filteredNews.filter(news => news.sentiment === 'negative').map(news => (
-                      <Card key={news.id}>
+                    {filteredNews.filter(newsItem => newsItem.sentiment === 'negative').map(newsItem => (
+                      <Card key={newsItem.id}>
                         <CardHeader className="pb-2">
                           <div className="flex justify-between">
                             <div className="space-y-1">
-                              <CardTitle>{news.title}</CardTitle>
+                              <CardTitle>{newsItem.title}</CardTitle>
                               <CardDescription>
-                                {news.source} • {new Date(news.date).toLocaleDateString()}
+                                {newsItem.source} • {new Date(newsItem.date).toLocaleDateString()}
                               </CardDescription>
                             </div>
-                            {news.ticker && (
+                            {newsItem.ticker && (
                               <Badge variant="outline" className="h-fit">
-                                {news.ticker}
+                                {newsItem.ticker}
                               </Badge>
                             )}
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <p>{news.content}</p>
+                          <p>{newsItem.content}</p>
                         </CardContent>
                         <CardFooter className="flex justify-between pt-2">
                           <div className="flex space-x-2">
@@ -301,11 +267,11 @@ const Focus = () => {
                               Negative
                             </Badge>
                             <Badge variant="outline">
-                              {news.relevance.charAt(0).toUpperCase() + news.relevance.slice(1)} Relevance
+                              {newsItem.relevance.charAt(0).toUpperCase() + newsItem.relevance.slice(1)} Relevance
                             </Badge>
                           </div>
                           <Button variant="ghost" size="sm" className="text-xs" asChild>
-                            <a href={news.url} target="_blank" rel="noopener noreferrer">
+                            <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
                               Read More
                               <ArrowUpRight className="h-3 w-3 ml-1" />
                             </a>

@@ -1,149 +1,83 @@
+
 import axios from 'axios';
 
-// Get the Firebase Functions URL - updated with your Firebase project ID
-const FUNCTIONS_BASE_URL = import.meta.env.DEV 
-  ? 'http://localhost:5001/mindfulinvestingcompanion/us-central1/api'
-  : 'https://us-central1-mindfulinvestingcompanion.cloudfunctions.net/api';
+// Use the deployed Firebase Functions URL for production
+const FUNCTIONS_BASE_URL = 'https://us-central1-mindfulinvestingcompanion.cloudfunctions.net';
 
-// Create axios instance with base configuration
 const api = axios.create({
   baseURL: FUNCTIONS_BASE_URL,
   timeout: 30000,
 });
 
 // Financial Modeling Prep API calls
-export const getStockQuote = async (symbol: string) => {
-  try {
-    const response = await api.get(`/fmp/quote/${symbol}`);
+export const fmpAPI = {
+  getQuote: async (symbol: string) => {
+    const response = await api.get(`/api/fmp/quote/${symbol}`);
     return response.data;
-  } catch (error) {
-    console.error('Error fetching stock quote:', error);
-    throw error;
-  }
-};
+  },
 
-export const getFinancialStatements = async (
-  symbol: string, 
-  statement: 'income' | 'balance' | 'cash' = 'income',
-  period: 'annual' | 'quarter' = 'annual'
-) => {
-  try {
-    const response = await api.get(`/fmp/financials/${symbol}`, {
-      params: { statement, period }
-    });
+  getFinancials: async (symbol: string, period = 'annual', statement = 'income') => {
+    const response = await api.get(`/api/fmp/financials/${symbol}?period=${period}&statement=${statement}`);
     return response.data;
-  } catch (error) {
-    console.error('Error fetching financial statements:', error);
-    throw error;
-  }
-};
+  },
 
-export const getKeyMetrics = async (symbol: string) => {
-  try {
-    const response = await api.get(`/fmp/metrics/${symbol}`);
+  getMetrics: async (symbol: string) => {
+    const response = await api.get(`/api/fmp/metrics/${symbol}`);
     return response.data;
-  } catch (error) {
-    console.error('Error fetching key metrics:', error);
-    throw error;
+  },
+
+  getProfile: async (symbol: string) => {
+    const response = await api.get(`/api/fmp/profile/${symbol}`);
+    return response.data;
   }
 };
 
 // Finnhub API calls
-export const getCompanyNews = async (
-  symbol: string, 
-  from: string, 
-  to: string
-) => {
-  try {
-    const response = await api.get(`/finnhub/news/${symbol}`, {
-      params: { from, to }
-    });
+export const finnhubAPI = {
+  getCompanyNews: async (symbol: string, from: string, to: string) => {
+    const response = await api.get(`/api/finnhub/news/${symbol}?from=${from}&to=${to}`);
     return response.data;
-  } catch (error) {
-    console.error('Error fetching company news:', error);
-    throw error;
+  },
+
+  getMarketNews: async (category = 'general') => {
+    const response = await api.get(`/api/finnhub/market-news?category=${category}`);
+    return response.data;
+  },
+
+  getEarningsCalendar: async (from: string, to: string) => {
+    const response = await api.get(`/api/finnhub/earnings?from=${from}&to=${to}`);
+    return response.data;
   }
 };
 
-export const getMarketNews = async (category: string = 'general') => {
-  try {
-    const response = await api.get('/finnhub/market-news', {
-      params: { category }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching market news:', error);
-    throw error;
-  }
-};
-
-export const getEarningsCalendar = async (from: string, to: string) => {
-  try {
-    const response = await api.get('/finnhub/earnings', {
-      params: { from, to }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching earnings calendar:', error);
-    throw error;
-  }
-};
-
-// Gemini AI calls
-export const getCompanyAnalysis = async (
-  symbol: string, 
-  financialData: any, 
-  newsData: any
-) => {
-  try {
-    const response = await api.post('/gemini/company-analysis', {
+// Gemini AI API calls
+export const geminiAPI = {
+  analyzeCompany: async (symbol: string, financialData: any, newsData: any) => {
+    const response = await api.post('/api/gemini/company-analysis', {
       symbol,
       financialData,
       newsData
     });
     return response.data;
-  } catch (error) {
-    console.error('Error getting company analysis:', error);
-    throw error;
-  }
-};
+  },
 
-export const scoreNewsArticles = async (articles: any[]) => {
-  try {
-    const response = await api.post('/gemini/news-scoring', {
+  scoreNews: async (articles: any[]) => {
+    const response = await api.post('/api/gemini/news-scoring', {
       articles
     });
     return response.data;
-  } catch (error) {
-    console.error('Error scoring news articles:', error);
-    throw error;
-  }
-};
+  },
 
-export const detectTradingBias = async (tradeData: {
-  ticker: string;
-  action: 'buy' | 'sell';
-  shares: number;
-  price: number;
-  emotionalState: string;
-  questions: Record<string, boolean>;
-}) => {
-  try {
-    const response = await api.post('/gemini/bias-detection', tradeData);
+  detectBias: async (tradeData: any) => {
+    const response = await api.post('/api/gemini/bias-detection', tradeData);
     return response.data;
-  } catch (error) {
-    console.error('Error detecting trading bias:', error);
-    throw error;
   }
 };
 
 // Health check
-export const checkApiHealth = async () => {
-  try {
-    const response = await api.get('/health');
-    return response.data;
-  } catch (error) {
-    console.error('API health check failed:', error);
-    throw error;
-  }
+export const healthCheck = async () => {
+  const response = await api.get('/api/health');
+  return response.data;
 };
+
+export default api;

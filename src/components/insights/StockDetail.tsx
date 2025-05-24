@@ -1,41 +1,10 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import LineChart from '@/components/charts/LineChart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, BarChart3 } from 'lucide-react';
-
-// Mock data for demonstration
-const generateMockData = (days: number, startValue: number, volatility: number) => {
-  const data = [];
-  let currentValue = startValue;
-  const now = new Date();
-  
-  for (let i = days; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    
-    const change = (Math.random() - 0.5) * volatility;
-    currentValue = Math.max(0.1, currentValue + change);
-    
-    data.push({
-      date,
-      value: currentValue
-    });
-  }
-  
-  return data;
-};
-
-const priceData = generateMockData(365, 150, 5);
-const revenueData = generateMockData(20, 5000, 200).map(d => ({
-  ...d,
-  date: new Date(d.date.getFullYear(), d.date.getMonth(), 1) // Set to first day of month
-}));
-const ebitdaData = generateMockData(20, 1500, 100).map(d => ({
-  ...d,
-  date: new Date(d.date.getFullYear(), d.date.getMonth(), 1) // Set to first day of month
-}));
+import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, BarChart3, Building2 } from 'lucide-react';
+import { useStockData } from '@/hooks/useStockData';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 interface StockDetailProps {
   ticker: string;
@@ -43,24 +12,78 @@ interface StockDetailProps {
 }
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
-  const currentPrice = priceData[priceData.length - 1].value;
-  const previousPrice = priceData[priceData.length - 2].value;
-  const priceDiff = currentPrice - previousPrice;
-  const priceChangePct = (priceDiff / previousPrice) * 100;
+  const { quote, financials, profile, loading, error } = useStockData(ticker);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-mindful-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h3 className="text-red-800 font-medium">Error loading stock data</h3>
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
+
+  if (!quote) {
+    return (
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <p className="text-gray-600">No data available for {ticker}</p>
+      </div>
+    );
+  }
+
+  const isPositive = quote.change >= 0;
   
-  const isPositive = priceDiff >= 0;
+  // Prepare chart data
+  const revenueData = financials.map(f => ({
+    year: new Date(f.date).getFullYear(),
+    revenue: f.revenue / 1000000, // Convert to millions
+    netIncome: f.netIncome / 1000000,
+    freeCashFlow: f.freeCashFlow / 1000000,
+    ebitda: f.ebitda / 1000000
+  })).reverse();
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000000) {
+      return `$${(value / 1000000000).toFixed(1)}B`;
+    } else if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    } else {
+      return `$${value.toLocaleString()}`;
+    }
+  };
+
+  const formatNumber = (value: number) => {
+    if (value >= 1000000000) {
+      return `${(value / 1000000000).toFixed(1)}B`;
+    } else if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M`;
+    } else {
+      return value.toLocaleString();
+    }
+  };
   
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">{ticker}</h1>
-          <p className="text-xl text-gray-600">{companyName}</p>
+          <p className="text-xl text-gray-600">{profile?.companyName || companyName}</p>
+          {profile?.sector && (
+            <p className="text-sm text-gray-500">{profile.sector} • {profile.industry}</p>
+          )}
         </div>
         
         <div className="mt-4 md:mt-0 flex items-center">
           <span className="text-3xl font-bold mr-3">
-            ${currentPrice.toFixed(2)}
+            ${quote.price.toFixed(2)}
           </span>
           <div className={`flex items-center ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
             {isPositive ? (
@@ -69,13 +92,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               <ArrowDownRight className="h-5 w-5 mr-1" />
             )}
             <span className="text-lg font-medium">
-              {isPositive ? '+' : ''}{priceDiff.toFixed(2)} ({isPositive ? '+' : ''}{priceChangePct.toFixed(2)}%)
+              {isPositive ? '+' : ''}{quote.change.toFixed(2)} ({isPositive ? '+' : ''}{quote.changesPercentage.toFixed(2)}%)
             </span>
           </div>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-500 flex items-center">
@@ -85,7 +108,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${(currentPrice * 1000000).toLocaleString()}
+              {formatCurrency(quote.marketCap)}
             </div>
           </CardContent>
         </Card>
@@ -94,12 +117,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-500 flex items-center">
               <TrendingUp className="h-4 w-4 mr-1" />
-              Revenue (TTM)
+              P/E Ratio
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${revenueData[revenueData.length - 1].value.toLocaleString()}M
+              {quote.pe ? quote.pe.toFixed(2) : 'N/A'}
             </div>
           </CardContent>
         </Card>
@@ -108,79 +131,117 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-500 flex items-center">
               <BarChart3 className="h-4 w-4 mr-1" />
-              EBITDA (TTM)
+              52W High
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${ebitdaData[ebitdaData.length - 1].value.toLocaleString()}M
+              ${quote.yearHigh.toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-gray-500 flex items-center">
+              <Building2 className="h-4 w-4 mr-1" />
+              Volume
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatNumber(quote.volume)}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {profile?.description && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Company Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700">{profile.description}</p>
+            {profile.website && (
+              <a href={profile.website} target="_blank" rel="noopener noreferrer" 
+                 className="inline-flex items-center mt-2 text-mindful-600 hover:text-mindful-700">
+                Visit Website <ArrowUpRight className="h-4 w-4 ml-1" />
+              </a>
+            )}
+          </CardContent>
+        </Card>
+      )}
       
-      <Tabs defaultValue="price">
+      <Tabs defaultValue="revenue">
         <TabsList className="mb-4">
-          <TabsTrigger value="price">Price</TabsTrigger>
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="ebitda">EBITDA</TabsTrigger>
+          <TabsTrigger value="profitability">Profitability</TabsTrigger>
+          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="price" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle>Price History</CardTitle>
-              <CardDescription>Historical stock price over time</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <LineChart 
-                  data={priceData} 
-                  width={800} 
-                  height={400} 
-                  color="#0ea5e9"
-                  yAxisLabel="Price ($)"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
         
         <TabsContent value="revenue" className="mt-0">
           <Card>
             <CardHeader>
-              <CardTitle>Revenue History</CardTitle>
-              <CardDescription>Quarterly revenue in millions</CardDescription>
+              <CardTitle>Revenue Growth</CardTitle>
+              <CardDescription>Annual revenue over time (in millions)</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                <LineChart 
-                  data={revenueData} 
-                  width={800} 
-                  height={400} 
-                  color="#10b981"
-                  yAxisLabel="Revenue ($M)"
-                />
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`$${value}M`, 'Revenue']} />
+                    <Bar dataKey="revenue" fill="#10b981" />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="ebitda" className="mt-0">
+        <TabsContent value="profitability" className="mt-0">
           <Card>
             <CardHeader>
-              <CardTitle>EBITDA History</CardTitle>
-              <CardDescription>Quarterly EBITDA in millions</CardDescription>
+              <CardTitle>Profitability</CardTitle>
+              <CardDescription>Net income and EBITDA over time (in millions)</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                <LineChart 
-                  data={ebitdaData} 
-                  width={800} 
-                  height={400} 
-                  color="#8b5cf6"
-                  yAxisLabel="EBITDA ($M)"
-                />
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <Tooltip formatter={(value, name) => [`$${value}M`, name]} />
+                    <Line type="monotone" dataKey="netIncome" stroke="#0ea5e9" name="Net Income" />
+                    <Line type="monotone" dataKey="ebitda" stroke="#8b5cf6" name="EBITDA" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="cashflow" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cash Flow</CardTitle>
+              <CardDescription>Free cash flow over time (in millions)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`$${value}M`, 'Free Cash Flow']} />
+                    <Bar dataKey="freeCashFlow" fill="#f59e0b" />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
