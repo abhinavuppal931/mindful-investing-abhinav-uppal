@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import Index from "./pages/Index";
 import Insights from "./pages/Insights";
 import Focus from "./pages/Focus";
@@ -20,22 +21,24 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/insights" element={<Insights />} />
-          <Route path="/focus" element={<Focus />} />
-          <Route path="/portfolios" element={<Portfolios />} />
-          <Route path="/earnings" element={<Earnings />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/badges" element={<Badges />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/insights" element={<Insights />} />
+            <Route path="/focus" element={<Focus />} />
+            <Route path="/portfolios" element={<Portfolios />} />
+            <Route path="/earnings" element={<Earnings />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/badges" element={<Badges />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

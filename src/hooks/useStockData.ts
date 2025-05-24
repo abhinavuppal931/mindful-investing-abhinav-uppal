@@ -61,23 +61,43 @@ export const useStockData = (symbol: string) => {
     const fetchStockData = async () => {
       setLoading(true);
       setError(null);
+      
+      console.log(`Fetching data for symbol: ${symbol}`);
 
       try {
+        // Test the health endpoint first
+        const healthResponse = await fetch('https://us-central1-mindfulinvestingcompanion.cloudfunctions.net/api/health');
+        console.log('Health check status:', healthResponse.status);
+        
+        if (!healthResponse.ok) {
+          throw new Error(`Health check failed: ${healthResponse.status}`);
+        }
+
         // Fetch quote data
+        console.log('Fetching quote data...');
         const quoteData = await fmpAPI.getQuote(symbol);
+        console.log('Quote data received:', quoteData);
+        
         if (quoteData && quoteData.length > 0) {
           setQuote(quoteData[0]);
         }
 
         // Fetch profile data
+        console.log('Fetching profile data...');
         const profileData = await fmpAPI.getProfile(symbol);
+        console.log('Profile data received:', profileData);
+        
         if (profileData && profileData.length > 0) {
           setProfile(profileData[0]);
         }
 
         // Fetch financial statements (income statement)
+        console.log('Fetching financial data...');
         const incomeData = await fmpAPI.getFinancials(symbol, 'annual', 'income');
         const cashFlowData = await fmpAPI.getFinancials(symbol, 'annual', 'cash');
+        
+        console.log('Income data received:', incomeData);
+        console.log('Cash flow data received:', cashFlowData);
         
         // Combine financial data
         const combinedFinancials = incomeData.map((income: any, index: number) => {
@@ -97,9 +117,11 @@ export const useStockData = (symbol: string) => {
         });
 
         setFinancials(combinedFinancials);
+        console.log('Combined financials set:', combinedFinancials);
+        
       } catch (err) {
         console.error('Error fetching stock data:', err);
-        setError('Failed to fetch stock data');
+        setError(err instanceof Error ? err.message : 'Failed to fetch stock data');
       } finally {
         setLoading(false);
       }
@@ -120,6 +142,8 @@ export const useNews = (symbol?: string) => {
     const fetchNews = async () => {
       setLoading(true);
       setError(null);
+      
+      console.log(`Fetching news for symbol: ${symbol || 'market'}`);
 
       try {
         const to = new Date().toISOString().split('T')[0];
@@ -132,10 +156,11 @@ export const useNews = (symbol?: string) => {
           newsData = await finnhubAPI.getMarketNews();
         }
 
+        console.log('News data received:', newsData);
         setNews(newsData || []);
       } catch (err) {
         console.error('Error fetching news:', err);
-        setError('Failed to fetch news');
+        setError(err instanceof Error ? err.message : 'Failed to fetch news');
       } finally {
         setLoading(false);
       }

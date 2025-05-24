@@ -73,6 +73,15 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
+    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 210 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 212.7 26.8% 83.9%;
   }
 }
 
@@ -89,7 +98,7 @@
 
 @layer components {
   .stock-card {
-    @apply bg-white rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow duration-200;
+    @apply bg-card rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow duration-200 border border-border;
   }
   
   .stat-value {
@@ -97,14 +106,14 @@
   }
   
   .stat-label {
-    @apply text-sm text-gray-500;
+    @apply text-sm text-muted-foreground;
   }
   
   .chart-container {
-    @apply p-4 bg-white rounded-lg shadow-md;
+    @apply p-4 bg-card rounded-lg shadow-md border border-border;
   }
 
   .focus-mode {
-    @apply bg-mindful-50 p-6 rounded-xl border border-mindful-200;
+    @apply bg-mindful-50 dark:bg-mindful-950 p-6 rounded-xl border border-mindful-200 dark:border-mindful-800;
   }
 }

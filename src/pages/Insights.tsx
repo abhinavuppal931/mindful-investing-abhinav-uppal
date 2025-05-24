@@ -35,7 +35,7 @@ const Insights = () => {
   return (
     <MainLayout>
       <div className="space-y-8">
-        <h1 className="text-3xl font-bold">Stock Insights</h1>
+        <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
         
         {selectedStock ? (
           <div className="mb-8">
@@ -45,19 +45,19 @@ const Insights = () => {
             />
           </div>
         ) : (
-          <div className="bg-mindful-50 rounded-xl p-6 mb-8 border border-mindful-100">
-            <h2 className="text-xl font-semibold mb-2">Welcome to Stock Insights</h2>
-            <p className="text-gray-700">
+          <div className="bg-mindful-50 dark:bg-mindful-950 rounded-xl p-6 mb-8 border border-mindful-100 dark:border-mindful-800">
+            <h2 className="text-xl font-semibold mb-2 text-foreground">Welcome to Stock Insights</h2>
+            <p className="text-muted-foreground">
               Select a stock from the list below to view detailed financial metrics and interactive charts.
             </p>
           </div>
         )}
         
         <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
           <Input
             placeholder="Search stocks by ticker or company name..."
-            className="pl-10"
+            className="pl-10 bg-background border-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -78,7 +78,7 @@ const Insights = () => {
           
           {filteredStocks.length === 0 && (
             <div className="col-span-full py-12 text-center">
-              <p className="text-gray-500">No stocks found matching "{searchQuery}"</p>
+              <p className="text-muted-foreground">No stocks found matching "{searchQuery}"</p>
             </div>
           )}
         </div>

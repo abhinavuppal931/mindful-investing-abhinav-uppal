@@ -67,19 +67,19 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Custom colors for Mindful Investing
+				// Custom colors for Mindful Investing with dark mode support
 				mindful: {
-					50: '#f0f7ff',  // Lightest blue
-					100: '#e0f2fe',
-					200: '#bae6fd',
-					300: '#7dd3fc',
+					50: '#f0f7ff',   // Lightest blue (light mode)
+					100: '#e0f2fe',  // Very light blue
+					200: '#bae6fd',  // Light blue
+					300: '#7dd3fc',  // Medium light blue
 					400: '#38bdf8',  // Light blue
 					500: '#0ea5e9',  // Primary blue
 					600: '#0284c7',  // Darker blue
-					700: '#0369a1',
-					800: '#075985',
+					700: '#0369a1',  // Dark blue
+					800: '#075985',  // Very dark blue
 					900: '#0c4a6e',  // Darkest blue
-					950: '#082f49',
+					950: '#082f49',  // Ultra dark blue (dark mode)
 				}
 			},
 			borderRadius: {
