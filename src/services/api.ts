@@ -1,98 +1,150 @@
 
-import { functions } from "@/lib/firebase";
-import { httpsCallable } from "firebase/functions";
+import axios from 'axios';
+
+// Get the Firebase Functions URL - update this with your actual Firebase project URL
+const FUNCTIONS_BASE_URL = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:5001/your-project-id/us-central1/api'
+  : 'https://us-central1-your-project-id.cloudfunctions.net/api';
+
+// Create axios instance with base configuration
+const api = axios.create({
+  baseURL: FUNCTIONS_BASE_URL,
+  timeout: 30000,
+});
 
 // Financial Modeling Prep API calls
-export const getStockPrice = async (symbol: string) => {
-  const fetchStockPrice = httpsCallable(functions, 'fetchStockPrice');
-  const result = await fetchStockPrice({ symbol });
-  return result.data;
+export const getStockQuote = async (symbol: string) => {
+  try {
+    const response = await api.get(`/fmp/quote/${symbol}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching stock quote:', error);
+    throw error;
+  }
 };
 
-export const getFinancialData = async (symbol: string, metric: string) => {
-  const fetchFinancialData = httpsCallable(functions, 'fetchFinancialData');
-  const result = await fetchFinancialData({ symbol, metric });
-  return result.data;
+export const getFinancialStatements = async (
+  symbol: string, 
+  statement: 'income' | 'balance' | 'cash' = 'income',
+  period: 'annual' | 'quarter' = 'annual'
+) => {
+  try {
+    const response = await api.get(`/fmp/financials/${symbol}`, {
+      params: { statement, period }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching financial statements:', error);
+    throw error;
+  }
 };
 
-// Financial Datasets API calls
-export const getEarningsCalendar = async (params: { from?: string; to?: string; } = {}) => {
-  const fetchEarningsCalendar = httpsCallable(functions, 'fetchEarningsCalendar');
-  const result = await fetchEarningsCalendar(params);
-  return result.data;
+export const getKeyMetrics = async (symbol: string) => {
+  try {
+    const response = await api.get(`/fmp/metrics/${symbol}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching key metrics:', error);
+    throw error;
+  }
 };
 
-// News API calls
-export const getNewsArticles = async (params: { 
-  symbol?: string; 
-  from?: string; 
-  to?: string;
-  focusMode?: boolean;
-} = {}) => {
-  const fetchNewsArticles = httpsCallable(functions, 'fetchNewsArticles');
-  const result = await fetchNewsArticles(params);
-  return result.data;
+// Finnhub API calls
+export const getCompanyNews = async (
+  symbol: string, 
+  from: string, 
+  to: string
+) => {
+  try {
+    const response = await api.get(`/finnhub/news/${symbol}`, {
+      params: { from, to }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching company news:', error);
+    throw error;
+  }
 };
 
-// Gemini API calls
-export const getCompanyMoatAndRisks = async (symbol: string) => {
-  const fetchMoatAndRisks = httpsCallable(functions, 'fetchMoatAndRisks');
-  const result = await fetchMoatAndRisks({ symbol });
-  return result.data;
+export const getMarketNews = async (category: string = 'general') => {
+  try {
+    const response = await api.get('/finnhub/market-news', {
+      params: { category }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching market news:', error);
+    throw error;
+  }
 };
 
-export const detectBias = async (params: {
+export const getEarningsCalendar = async (from: string, to: string) => {
+  try {
+    const response = await api.get('/finnhub/earnings', {
+      params: { from, to }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching earnings calendar:', error);
+    throw error;
+  }
+};
+
+// Gemini AI calls
+export const getCompanyAnalysis = async (
+  symbol: string, 
+  financialData: any, 
+  newsData: any
+) => {
+  try {
+    const response = await api.post('/gemini/company-analysis', {
+      symbol,
+      financialData,
+      newsData
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error getting company analysis:', error);
+    throw error;
+  }
+};
+
+export const scoreNewsArticles = async (articles: any[]) => {
+  try {
+    const response = await api.post('/gemini/news-scoring', {
+      articles
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error scoring news articles:', error);
+    throw error;
+  }
+};
+
+export const detectTradingBias = async (tradeData: {
   ticker: string;
   action: 'buy' | 'sell';
   shares: number;
   price: number;
   emotionalState: string;
-  questions: { [key: string]: boolean };
+  questions: Record<string, boolean>;
 }) => {
-  const detectTradeBias = httpsCallable(functions, 'detectTradeBias');
-  const result = await detectTradeBias(params);
-  return result.data;
+  try {
+    const response = await api.post('/gemini/bias-detection', tradeData);
+    return response.data;
+  } catch (error) {
+    console.error('Error detecting trading bias:', error);
+    throw error;
+  }
 };
 
-export const summarizeEarningsCall = async (params: {
-  symbol: string;
-  quarter: string;
-  year: string;
-}) => {
-  const summarizeEarningsTranscript = httpsCallable(functions, 'summarizeEarningsTranscript');
-  const result = await summarizeEarningsTranscript(params);
-  return result.data;
-};
-
-export const scoreNewsArticle = async (article: {
-  title: string;
-  content: string;
-  source: string;
-}) => {
-  const scoreNews = httpsCallable(functions, 'scoreNews');
-  const result = await scoreNews(article);
-  return result.data;
-};
-
-// Stripe payment API calls
-export const createSubscription = async (params: {
-  paymentMethodId: string;
-  priceId: string;
-  customerId?: string;
-}) => {
-  const createStripeSubscription = httpsCallable(functions, 'createSubscription');
-  const result = await createStripeSubscription(params);
-  return result.data;
-};
-
-export const cancelSubscription = async (subscriptionId: string) => {
-  const cancelStripeSubscription = httpsCallable(functions, 'cancelSubscription');
-  const result = await cancelStripeSubscription({ subscriptionId });
-  return result.data;
-};
-
-export const checkSubscriptionStatus = async (customerId: string) => {
-  const getSubscriptionStatus = httpsCallable(functions, 'getSubscriptionStatus');
-  const result = await getSubscriptionStatus({ customerId });
-  return result.data;
+// Health check
+export const checkApiHealth = async () => {
+  try {
+    const response = await api.get('/health');
+    return response.data;
+  } catch (error) {
+    console.error('API health check failed:', error);
+    throw error;
+  }
 };
