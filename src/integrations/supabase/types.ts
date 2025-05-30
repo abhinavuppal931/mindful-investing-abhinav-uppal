@@ -9,7 +9,150 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      portfolios: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          subscription_status: string
+          trial_expires_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          subscription_status?: string
+          trial_expires_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          subscription_status?: string
+          trial_expires_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          action: string
+          company_name: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          portfolio_id: string
+          price_per_share: number
+          shares: number
+          ticker_symbol: string
+          trade_date: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          portfolio_id: string
+          price_per_share: number
+          shares: number
+          ticker_symbol: string
+          trade_date?: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          portfolio_id?: string
+          price_per_share?: number
+          shares?: number
+          ticker_symbol?: string
+          trade_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trades_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlists: {
+        Row: {
+          added_at: string
+          id: string
+          ticker_symbol: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          ticker_symbol: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          ticker_symbol?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
