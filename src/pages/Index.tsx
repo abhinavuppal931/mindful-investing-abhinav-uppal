@@ -1,154 +1,307 @@
 
 import React from 'react';
-import MainLayout from '@/components/layout/MainLayout';
-import { Button } from '@/components/ui/button';
-import StockCard from '@/components/cards/StockCard';
-import { 
-  BarChart3, 
-  LineChart, 
-  BrainCircuit, 
-  Calendar, 
-  Briefcase, 
-  Award, 
-  TrendingUp,
-  ArrowRight
-} from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-// Mock data
-const popularStocks = [
-  { ticker: 'AAPL', companyName: 'Apple Inc.', price: 189.84, change: 2.34, changePercent: 1.25 },
-  { ticker: 'MSFT', companyName: 'Microsoft Corporation', price: 410.34, change: 3.56, changePercent: 0.87 },
-  { ticker: 'GOOGL', companyName: 'Alphabet Inc.', price: 156.57, change: -0.42, changePercent: -0.27 },
-  { ticker: 'AMZN', companyName: 'Amazon.com, Inc.', price: 178.22, change: 1.78, changePercent: 1.01 },
-];
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { BrainCircuit, BarChart3, Shield, Target, TrendingUp, Users, ArrowRight, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
+  const { user } = useAuth();
+
   return (
-    <MainLayout>
-      <div className="space-y-12">
-        {/* Hero section */}
-        <section className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-mindful-800 to-mindful-600 text-white p-8 md:p-12">
-          <div className="relative z-10 max-w-3xl">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              Mindful Investing Companion
-            </h1>
-            <p className="text-xl opacity-90 mb-6">
-              Make data-driven investment decisions with psychological tools that help filter market noise and overcome emotional biases.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Button size="lg" asChild className="bg-white text-mindful-700 hover:bg-gray-100">
-                <Link to="/insights">
-                  Explore Insights
-                  <BarChart3 className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild className="bg-transparent border-white text-white hover:bg-white/10">
-                <Link to="/focus">
-                  Enter Focus Mode
-                  <BrainCircuit className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-mindful-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {/* Header */}
+      <header className="container mx-auto px-4 py-6">
+        <nav className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <BrainCircuit className="h-8 w-8 text-mindful-600" />
+            <span className="text-2xl font-bold text-foreground">Mindful Investing</span>
           </div>
-          
-          {/* Abstract background pattern */}
-          <div className="absolute top-0 right-0 w-full h-full opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white transform translate-x-1/3 -translate-y-1/3"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-white transform -translate-x-1/3 translate-y-1/3"></div>
-          </div>
-        </section>
-
-        {/* Features section */}
-        <section>
-          <h2 className="text-2xl font-bold mb-6">Key Features</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
-              <div className="w-12 h-12 bg-mindful-100 rounded-full flex items-center justify-center mb-4">
-                <BarChart3 className="h-6 w-6 text-mindful-600" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Data-Driven Insights</h3>
-              <p className="text-gray-600">
-                Visualize key financial metrics like price, revenue, and EBITDA with interactive charts.
-              </p>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
-              <div className="w-12 h-12 bg-mindful-100 rounded-full flex items-center justify-center mb-4">
-                <BrainCircuit className="h-6 w-6 text-mindful-600" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Focus Mode</h3>
-              <p className="text-gray-600">
-                Filter market noise and focus on meaningful news and press releases for better decision-making.
-              </p>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
-              <div className="w-12 h-12 bg-mindful-100 rounded-full flex items-center justify-center mb-4">
-                <Briefcase className="h-6 w-6 text-mindful-600" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Portfolio Tracking</h3>
-              <p className="text-gray-600">
-                Track your trades, monitor performance, and simulate potential investments.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Popular stocks section */}
-        <section>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Popular Stocks</h2>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/insights" className="flex items-center">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <Link to="/insights">
+                <Button>
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </Link>
-            </Button>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link to="/auth">
+                  <Button>
+                    Get Started
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {popularStocks.map((stock) => (
-              <StockCard
-                key={stock.ticker}
-                ticker={stock.ticker}
-                companyName={stock.companyName}
-                price={stock.price}
-                change={stock.change}
-                changePercent={stock.changePercent}
-                onClick={() => console.log(`View ${stock.ticker} details`)}
-              />
-            ))}
-          </div>
-        </section>
+        </nav>
+      </header>
 
-        {/* Quick navigation section */}
-        <section>
-          <h2 className="text-2xl font-bold mb-6">Quick Navigation</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link to="/insights" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
-              <BarChart3 className="h-8 w-8 text-mindful-600 mb-2" />
-              <span className="font-medium">Insights</span>
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-20 text-center">
+        <Badge className="mb-6 bg-mindful-100 text-mindful-700 hover:bg-mindful-200">
+          14-Day Free Trial • No Credit Card Required
+        </Badge>
+        <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
+          Invest with{' '}
+          <span className="text-mindful-600">Mindfulness</span>
+        </h1>
+        <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+          Cut through market noise and emotional bias with our AI-powered platform. 
+          Make rational investment decisions with advanced sentiment analysis and psychological tools.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {user ? (
+            <Link to="/insights">
+              <Button size="lg" className="px-8">
+                Continue to Dashboard
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
             </Link>
-            
-            <Link to="/focus" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
-              <BrainCircuit className="h-8 w-8 text-mindful-600 mb-2" />
-              <span className="font-medium">Focus Mode</span>
-            </Link>
-            
-            <Link to="/portfolios" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
-              <Briefcase className="h-8 w-8 text-mindful-600 mb-2" />
-              <span className="font-medium">Portfolios</span>
-            </Link>
-            
-            <Link to="/dashboard" className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center text-center">
-              <LineChart className="h-8 w-8 text-mindful-600 mb-2" />
-              <span className="font-medium">Decision Dashboard</span>
-            </Link>
+          ) : (
+            <>
+              <Link to="/auth">
+                <Button size="lg" className="px-8">
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link to="/insights">
+                <Button variant="outline" size="lg" className="px-8">
+                  Explore Features
+                </Button>
+              </Link>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="container mx-auto px-4 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            Powerful Features for Mindful Investors
+          </h2>
+          <p className="text-xl text-muted-foreground">
+            Everything you need to make informed, rational investment decisions
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <Card className="border-mindful-100 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <BarChart3 className="h-8 w-8 text-mindful-600 mb-4" />
+              <CardTitle>Stock Insights</CardTitle>
+              <CardDescription>
+                Interactive D3.js charts with comprehensive financial metrics and AI-generated analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Real-time financial data
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  AI company analysis
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Interactive visualizations
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="border-mindful-100 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <BrainCircuit className="h-8 w-8 text-mindful-600 mb-4" />
+              <CardTitle>Focus Mode</CardTitle>
+              <CardDescription>
+                Filter market noise with FinBERT sentiment analysis and AI-powered content scoring
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Sentiment analysis
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Noise filtering
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  High-signal content
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="border-mindful-100 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <Shield className="h-8 w-8 text-mindful-600 mb-4" />
+              <CardTitle>Bias-Busting Coach</CardTitle>
+              <CardDescription>
+                Detect emotional biases in your trading decisions with psychological assessment tools
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Emotional state tracking
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Bias detection
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Decision scoring
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="border-mindful-100 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <Target className="h-8 w-8 text-mindful-600 mb-4" />
+              <CardTitle>Portfolio Tracking</CardTitle>
+              <CardDescription>
+                Manage multiple portfolios with detailed trade tracking and performance analytics
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Multiple portfolios
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Trade history
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Performance metrics
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="border-mindful-100 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <TrendingUp className="h-8 w-8 text-mindful-600 mb-4" />
+              <CardTitle>Earnings Intelligence</CardTitle>
+              <CardDescription>
+                AI-generated earnings call summaries and comprehensive earnings calendar
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Earnings calendar
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  AI summaries
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Key insights
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="border-mindful-100 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <Users className="h-8 w-8 text-mindful-600 mb-4" />
+              <CardTitle>Decision Dashboard</CardTitle>
+              <CardDescription>
+                Track your progress with gamified badges and weekly rationality statistics
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Progress tracking
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Achievement badges
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Weekly stats
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="container mx-auto px-4 py-20">
+        <Card className="bg-mindful-600 text-white border-0">
+          <CardContent className="p-12 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Ready to Invest Mindfully?
+            </h2>
+            <p className="text-xl mb-8 opacity-90">
+              Join thousands of investors making smarter, more rational decisions
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {user ? (
+                <Link to="/insights">
+                  <Button size="lg" variant="secondary" className="px-8">
+                    Go to Dashboard
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/auth">
+                    <Button size="lg" variant="secondary" className="px-8">
+                      Start Your Free Trial
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Badge className="self-center bg-white/20 text-white hover:bg-white/30">
+                    $10/month after trial
+                  </Badge>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Footer */}
+      <footer className="container mx-auto px-4 py-12 border-t border-border">
+        <div className="text-center">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <BrainCircuit className="h-6 w-6 text-mindful-600" />
+            <span className="text-xl font-bold text-foreground">Mindful Investing</span>
           </div>
-        </section>
-      </div>
-    </MainLayout>
+          <p className="text-muted-foreground">
+            Empowering rational investment decisions through mindful technology
+          </p>
+        </div>
+      </footer>
+    </div>
   );
 };
 

@@ -15,6 +15,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useAuth } from "@/hooks/useAuth";
+import UserMenu from "@/components/auth/UserMenu";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -22,6 +24,7 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const { user } = useAuth();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -30,12 +33,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const navItems = [
     { name: "Home", href: "/", icon: Home },
     { name: "Insights", href: "/insights", icon: BarChart3 },
-    { name: "Focus Mode", href: "/focus", icon: BrainCircuit },
-    { name: "Portfolios", href: "/portfolios", icon: Briefcase },
+    { name: "Focus Mode", href: "/focus", icon: BrainCircuit, protected: true },
+    { name: "Portfolios", href: "/portfolios", icon: Briefcase, protected: true },
     { name: "Earnings", href: "/earnings", icon: Calendar },
     { name: "Decision Dashboard", href: "/dashboard", icon: LineChart },
     { name: "Badges", href: "/badges", icon: Award },
   ];
+
+  // Filter nav items based on auth status
+  const visibleNavItems = navItems.filter(item => !item.protected || user);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -56,15 +62,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Mobile Sidebar (overlay) */}
       {isMenuOpen && (
         <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40" onClick={toggleMenu}>
-          <div className="w-64 bg-card h-full overflow-y-auto border-r border-border" onClick={(e) => e.stopPropagation()}>
+          <div className="w-64 bg-card h-full overflow-y-auto border-r border-border flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b border-border">
               <Link to="/" className="flex items-center space-x-2" onClick={toggleMenu}>
                 <BrainCircuit className="h-6 w-6 text-mindful-600" />
                 <span className="font-bold text-xl text-foreground">Mindful Investing</span>
               </Link>
             </div>
-            <nav className="mt-4">
-              {navItems.map((item) => (
+            <nav className="flex-1 mt-4">
+              {visibleNavItems.map((item) => (
                 <Link
                   key={item.name}
                   to={item.href}
@@ -76,6 +82,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </Link>
               ))}
             </nav>
+            
+            {/* Mobile User Menu */}
+            <div className="p-4 border-t border-border">
+              {user ? (
+                <UserMenu />
+              ) : (
+                <Link to="/auth">
+                  <Button className="w-full" onClick={toggleMenu}>
+                    Sign In
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -91,7 +110,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <ThemeToggle />
           </div>
           <nav className="flex-1 p-4 space-y-2">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
@@ -105,6 +124,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </Link>
             ))}
           </nav>
+          
+          {/* Desktop User Menu at bottom */}
+          <div className="p-4 border-t border-border">
+            {user ? (
+              <UserMenu />
+            ) : (
+              <Link to="/auth">
+                <Button className="w-full">
+                  Sign In
+                </Button>
+              </Link>
+            )}
+          </div>
         </aside>
 
         {/* Main Content */}
