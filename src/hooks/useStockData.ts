@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { fmpAPI, finnhubAPI, geminiAPI } from '../services/api';
+import { fmpAPI, finnhubAPI } from '../services/api';
 
 export interface StockQuote {
   symbol: string;
@@ -66,13 +65,8 @@ export const useStockData = (symbol: string) => {
 
       try {
         // Test the health endpoint first
-        const healthResponse = await fetch('https://us-central1-mindfulinvestingcompanion.cloudfunctions.net/api/health');
-        console.log('Health check status:', healthResponse.status);
+        console.log('Testing Supabase connection...');
         
-        if (!healthResponse.ok) {
-          throw new Error(`Health check failed: ${healthResponse.status}`);
-        }
-
         // Fetch quote data
         console.log('Fetching quote data...');
         const quoteData = await fmpAPI.getQuote(symbol);

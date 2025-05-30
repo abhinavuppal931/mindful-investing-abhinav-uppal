@@ -1,83 +1,155 @@
 
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
-// Use the deployed Firebase Functions URL for production
-const FUNCTIONS_BASE_URL = 'https://us-central1-mindfulinvestingcompanion.cloudfunctions.net';
+// Health check function
+export const healthCheck = async () => {
+  try {
+    const { data, error } = await supabase.functions.invoke('health-check');
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Health check failed:', error);
+    throw error;
+  }
+};
 
-const api = axios.create({
-  baseURL: FUNCTIONS_BASE_URL,
-  timeout: 30000,
-});
-
-// Financial Modeling Prep API calls
+// Financial Modeling Prep API calls via Supabase Edge Functions
 export const fmpAPI = {
   getQuote: async (symbol: string) => {
-    const response = await api.get(`/api/fmp/quote/${symbol}`);
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'quote', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Quote error:', error);
+      throw error;
+    }
   },
 
   getFinancials: async (symbol: string, period = 'annual', statement = 'income') => {
-    const response = await api.get(`/api/fmp/financials/${symbol}?period=${period}&statement=${statement}`);
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'financials', symbol, period, statement }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Financials error:', error);
+      throw error;
+    }
   },
 
   getMetrics: async (symbol: string) => {
-    const response = await api.get(`/api/fmp/metrics/${symbol}`);
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'metrics', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Metrics error:', error);
+      throw error;
+    }
   },
 
   getProfile: async (symbol: string) => {
-    const response = await api.get(`/api/fmp/profile/${symbol}`);
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'profile', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Profile error:', error);
+      throw error;
+    }
   }
 };
 
-// Finnhub API calls
+// Finnhub API calls via Supabase Edge Functions
 export const finnhubAPI = {
   getCompanyNews: async (symbol: string, from: string, to: string) => {
-    const response = await api.get(`/api/finnhub/news/${symbol}?from=${from}&to=${to}`);
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('finnhub-api', {
+        body: { action: 'company-news', symbol, from, to }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Finnhub News error:', error);
+      throw error;
+    }
   },
 
   getMarketNews: async (category = 'general') => {
-    const response = await api.get(`/api/finnhub/market-news?category=${category}`);
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('finnhub-api', {
+        body: { action: 'market-news', category }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Finnhub Market News error:', error);
+      throw error;
+    }
   },
 
   getEarningsCalendar: async (from: string, to: string) => {
-    const response = await api.get(`/api/finnhub/earnings?from=${from}&to=${to}`);
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('finnhub-api', {
+        body: { action: 'earnings', from, to }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Finnhub Earnings error:', error);
+      throw error;
+    }
   }
 };
 
-// Gemini AI API calls
+// Gemini AI API calls via Supabase Edge Functions
 export const geminiAPI = {
   analyzeCompany: async (symbol: string, financialData: any, newsData: any) => {
-    const response = await api.post('/api/gemini/company-analysis', {
-      symbol,
-      financialData,
-      newsData
-    });
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('gemini-ai', {
+        body: { action: 'company-analysis', symbol, financialData, newsData }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Gemini Company Analysis error:', error);
+      throw error;
+    }
   },
 
   scoreNews: async (articles: any[]) => {
-    const response = await api.post('/api/gemini/news-scoring', {
-      articles
-    });
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('gemini-ai', {
+        body: { action: 'news-scoring', articles }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Gemini News Scoring error:', error);
+      throw error;
+    }
   },
 
   detectBias: async (tradeData: any) => {
-    const response = await api.post('/api/gemini/bias-detection', tradeData);
-    return response.data;
+    try {
+      const { data, error } = await supabase.functions.invoke('gemini-ai', {
+        body: { action: 'bias-detection', ...tradeData }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Gemini Bias Detection error:', error);
+      throw error;
+    }
   }
 };
 
-// Health check
-export const healthCheck = async () => {
-  const response = await api.get('/api/health');
-  return response.data;
-};
-
-export default api;
+export default { healthCheck, fmpAPI, finnhubAPI, geminiAPI };

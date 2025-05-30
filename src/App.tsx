@@ -14,9 +14,6 @@ import Dashboard from "./pages/Dashboard";
 import Badges from "./pages/Badges";
 import NotFound from "./pages/NotFound";
 
-// Import Firebase to ensure it's initialized
-import "@/lib/firebase";
-
 const queryClient = new QueryClient();
 
 const App = () => (
