@@ -32,9 +32,17 @@ export const usePortfolios = () => {
 
   const fetchPortfolios = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setPortfolios([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('portfolios')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -49,9 +57,16 @@ export const usePortfolios = () => {
 
   const createPortfolio = async (name: string, description?: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('portfolios')
-        .insert([{ name, description }])
+        .insert([{ 
+          name, 
+          description, 
+          user_id: user.id 
+        }])
         .select()
         .single();
 
