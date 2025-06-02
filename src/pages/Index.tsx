@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,12 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { BrainCircuit, BarChart3, Shield, Target, TrendingUp, Users, ArrowRight, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-
 const Index = () => {
-  const { user } = useAuth();
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-mindful-50 to-white dark:from-gray-900 dark:to-gray-800">
+  const {
+    user
+  } = useAuth();
+  return <div className="min-h-screen bg-gradient-to-br from-mindful-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
       <header className="container mx-auto px-4 py-6">
         <nav className="flex justify-between items-center">
@@ -20,15 +18,12 @@ const Index = () => {
             <span className="text-2xl font-bold text-foreground">Mindful Investing</span>
           </div>
           <div className="flex items-center space-x-4">
-            {user ? (
-              <Link to="/insights">
+            {user ? <Link to="/insights">
                 <Button>
                   Go to Dashboard
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-              </Link>
-            ) : (
-              <>
+              </Link> : <>
                 <Link to="/auth">
                   <Button variant="ghost">Sign In</Button>
                 </Link>
@@ -38,8 +33,7 @@ const Index = () => {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-              </>
-            )}
+              </>}
           </div>
         </nav>
       </header>
@@ -58,15 +52,12 @@ const Index = () => {
           Make rational investment decisions with advanced sentiment analysis and psychological tools.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          {user ? (
-            <Link to="/insights">
+          {user ? <Link to="/insights">
               <Button size="lg" className="px-8">
                 Continue to Dashboard
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-            </Link>
-          ) : (
-            <>
+            </Link> : <>
               <Link to="/auth">
                 <Button size="lg" className="px-8">
                   Start Free Trial
@@ -78,8 +69,7 @@ const Index = () => {
                   Explore Features
                 </Button>
               </Link>
-            </>
-          )}
+            </>}
         </div>
       </section>
 
@@ -99,9 +89,7 @@ const Index = () => {
             <CardHeader>
               <BarChart3 className="h-8 w-8 text-mindful-600 mb-4" />
               <CardTitle>Stock Insights</CardTitle>
-              <CardDescription>
-                Interactive D3.js charts with comprehensive financial metrics and AI-generated analysis
-              </CardDescription>
+              <CardDescription>Interactive charts with comprehensive financial metrics and AI-generated analysis</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
@@ -264,15 +252,12 @@ const Index = () => {
               Join thousands of investors making smarter, more rational decisions
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {user ? (
-                <Link to="/insights">
+              {user ? <Link to="/insights">
                   <Button size="lg" variant="secondary" className="px-8">
                     Go to Dashboard
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
-                </Link>
-              ) : (
-                <>
+                </Link> : <>
                   <Link to="/auth">
                     <Button size="lg" variant="secondary" className="px-8">
                       Start Your Free Trial
@@ -282,8 +267,7 @@ const Index = () => {
                   <Badge className="self-center bg-white/20 text-white hover:bg-white/30">
                     $10/month after trial
                   </Badge>
-                </>
-              )}
+                </>}
             </div>
           </CardContent>
         </Card>
@@ -301,8 +285,6 @@ const Index = () => {
           </p>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
