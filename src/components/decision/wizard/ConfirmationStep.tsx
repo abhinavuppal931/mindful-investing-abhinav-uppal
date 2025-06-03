@@ -37,7 +37,7 @@ const ConfirmationStep = ({ data, onConfirm, onClose }: ConfirmationStepProps) =
   const handleConfirm = async () => {
     setIsSubmitting(true);
     try {
-      await onConfirm({
+      const decisionData = {
         ticker_symbol: data.ticker_symbol.toUpperCase(),
         action: data.action,
         shares: parseFloat(data.shares),
@@ -51,7 +51,10 @@ const ConfirmationStep = ({ data, onConfirm, onClose }: ConfirmationStepProps) =
         decision_quality_score: data.decision_quality_score,
         is_draft: false,
         decision_date: new Date().toISOString().split('T')[0]
-      });
+      };
+
+      console.log('Confirming decision with data:', decisionData);
+      await onConfirm(decisionData);
 
       setIsConfirmed(true);
       toast({ 
@@ -62,10 +65,11 @@ const ConfirmationStep = ({ data, onConfirm, onClose }: ConfirmationStepProps) =
       setTimeout(() => {
         onClose();
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error confirming decision:', error);
       toast({ 
         title: "Error", 
-        description: error instanceof Error ? error.message : "Failed to record decision",
+        description: error?.message || "Failed to record decision",
         variant: "destructive" 
       });
     } finally {

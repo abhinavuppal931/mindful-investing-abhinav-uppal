@@ -39,14 +39,18 @@ export const useDecisions = () => {
         .from('decisions')
         .select('*')
         .eq('user_id', user.id)
-        .eq('is_draft', false) // Only fetch completed decisions
+        .eq('is_draft', false)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase fetch error:', error);
+        throw error;
+      }
+      
       setDecisions(data || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching decisions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch decisions');
+      setError(err?.message || 'Failed to fetch decisions');
     } finally {
       setLoading(false);
     }
@@ -57,20 +61,35 @@ export const useDecisions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('Creating decision with data:', { ...decision, user_id: user.id });
+      // Ensure all required fields are present and properly formatted
+      const decisionData = {
+        ticker_symbol: decision.ticker_symbol.toUpperCase(),
+        action: decision.action,
+        shares: Number(decision.shares),
+        price_per_share: Number(decision.price_per_share),
+        anxious_level: Number(decision.anxious_level || 0),
+        confident_level: Number(decision.confident_level || 0),
+        impulsive_level: Number(decision.impulsive_level || 0),
+        cautious_level: Number(decision.cautious_level || 0),
+        overwhelmed_level: Number(decision.overwhelmed_level || 0),
+        reflection_answers: decision.reflection_answers || {},
+        decision_quality_score: decision.decision_quality_score ? Number(decision.decision_quality_score) : null,
+        is_draft: Boolean(decision.is_draft),
+        decision_date: decision.decision_date,
+        user_id: user.id
+      };
+
+      console.log('Creating decision with data:', decisionData);
 
       const { data, error } = await supabase
         .from('decisions')
-        .insert([{ 
-          ...decision, 
-          user_id: user.id 
-        }])
+        .insert([decisionData])
         .select()
         .single();
 
       if (error) {
         console.error('Supabase error:', error);
-        throw error;
+        throw new Error(error.message || 'Failed to create decision');
       }
       
       console.log('Decision created successfully:', data);
@@ -80,9 +99,9 @@ export const useDecisions = () => {
         setDecisions(prev => [data, ...prev]);
       }
       return data;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating decision:', err);
-      throw err;
+      throw new Error(err?.message || 'Failed to create decision');
     }
   };
 
