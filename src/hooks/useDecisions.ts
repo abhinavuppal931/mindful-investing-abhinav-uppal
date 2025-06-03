@@ -57,6 +57,8 @@ export const useDecisions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      console.log('Creating decision with data:', { ...decision, user_id: user.id });
+
       const { data, error } = await supabase
         .from('decisions')
         .insert([{ 
@@ -66,7 +68,12 @@ export const useDecisions = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Decision created successfully:', data);
       
       // Only add to state if it's not a draft
       if (!decision.is_draft) {

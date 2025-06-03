@@ -69,8 +69,12 @@ const EmotionalStateStep = ({ data, onChange }: EmotionalStateStepProps) => {
                   <TooltipTrigger>
                     <Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs">{emotion.description}</p>
+                  <TooltipContent 
+                    side="top" 
+                    className="max-w-xs p-3 text-sm bg-white border shadow-lg z-50"
+                    sideOffset={8}
+                  >
+                    <p>{emotion.description}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

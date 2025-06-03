@@ -61,14 +61,9 @@ const ReflectionStep = ({ data, onChange }: ReflectionStepProps) => {
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold mb-2">
-          {isLowQuality ? 'Let\'s pause and reflect' : 'Reinforce your decision'}
-        </h3>
+        <h3 className="text-lg font-semibold mb-2">Reflection Questions</h3>
         <p className="text-gray-600">
-          {isLowQuality 
-            ? 'Take a moment to think through your decision mindfully.'
-            : 'Your analysis looks solid. Let\'s confirm your reasoning.'
-          }
+          Take a moment to think through your reasoning for this investment decision.
         </p>
       </div>
 
@@ -99,13 +94,9 @@ const ReflectionStep = ({ data, onChange }: ReflectionStepProps) => {
         ))}
       </div>
 
-      <div className={`p-4 rounded-lg ${isLowQuality ? 'bg-orange-50' : 'bg-green-50'}`}>
-        <p className={`text-sm ${isLowQuality ? 'text-orange-800' : 'text-green-800'}`}>
-          <strong>{isLowQuality ? 'Mindful moment:' : 'Great work:'}</strong>{' '}
-          {isLowQuality 
-            ? 'Taking time to reflect helps you make more intentional investment decisions.'
-            : 'Your thoughtful approach to this decision shows strong investment discipline.'
-          }
+      <div className="p-4 rounded-lg bg-blue-50">
+        <p className="text-sm text-blue-800">
+          <strong>Mindful investing:</strong> Taking time to reflect helps you make more intentional investment decisions and build long-term discipline.
         </p>
       </div>
     </div>
