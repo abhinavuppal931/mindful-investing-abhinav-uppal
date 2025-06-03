@@ -9,10 +9,14 @@ export interface Decision {
   action: 'buy' | 'sell';
   shares: number;
   price_per_share: number;
-  emotional_state: number;
-  based_on_fundamentals: boolean;
-  fits_strategy: boolean;
-  not_reacting_to_news: boolean;
+  anxious_level: number;
+  confident_level: number;
+  impulsive_level: number;
+  cautious_level: number;
+  overwhelmed_level: number;
+  reflection_answers: Record<string, string>;
+  decision_quality_score: number | null;
+  is_draft: boolean;
   decision_date: string;
   created_at: string;
 }
@@ -35,6 +39,7 @@ export const useDecisions = () => {
         .from('decisions')
         .select('*')
         .eq('user_id', user.id)
+        .eq('is_draft', false) // Only fetch completed decisions
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -63,7 +68,10 @@ export const useDecisions = () => {
 
       if (error) throw error;
       
-      setDecisions(prev => [data, ...prev]);
+      // Only add to state if it's not a draft
+      if (!decision.is_draft) {
+        setDecisions(prev => [data, ...prev]);
+      }
       return data;
     } catch (err) {
       console.error('Error creating decision:', err);
@@ -79,8 +87,9 @@ export const useDecisions = () => {
       new Date(d.created_at) >= oneWeekAgo
     );
 
+    // Calculate rational decisions based on quality score
     const rationalDecisions = weeklyDecisions.filter(d => 
-      d.based_on_fundamentals && d.fits_strategy && d.not_reacting_to_news
+      (d.decision_quality_score || 0) > 50
     );
 
     const rationalPercentage = weeklyDecisions.length > 0 

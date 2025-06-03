@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -8,11 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Brain, Plus, TrendingUp, Target, Shield } from 'lucide-react';
 import { useDecisions } from '@/hooks/useDecisions';
-import DecisionDialog from '@/components/decision/DecisionDialog';
+import DecisionWizard from '@/components/decision/DecisionWizard';
 
 const Dashboard = () => {
   const { decisions, loading, createDecision, getWeeklyStats } = useDecisions();
-  const [isDecisionDialogOpen, setIsDecisionDialogOpen] = useState(false);
+  const [isDecisionWizardOpen, setIsDecisionWizardOpen] = useState(false);
   
   const weeklyStats = getWeeklyStats();
 
@@ -77,16 +76,16 @@ const Dashboard = () => {
               </p>
             </div>
             
-            <Dialog open={isDecisionDialogOpen} onOpenChange={setIsDecisionDialogOpen}>
+            <Dialog open={isDecisionWizardOpen} onOpenChange={setIsDecisionWizardOpen}>
               <DialogTrigger asChild>
                 <Button className="flex items-center">
                   <Plus className="h-4 w-4 mr-2" />
                   New Decision
                 </Button>
               </DialogTrigger>
-              <DecisionDialog 
-                open={isDecisionDialogOpen}
-                onOpenChange={setIsDecisionDialogOpen}
+              <DecisionWizard 
+                open={isDecisionWizardOpen}
+                onOpenChange={setIsDecisionWizardOpen}
                 onDecisionAdded={createDecision}
               />
             </Dialog>
@@ -125,7 +124,7 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Badges */}
+          {/* Achievement Badges */}
           <Card>
             <CardHeader>
               <CardTitle>Achievement Badges</CardTitle>
@@ -177,7 +176,7 @@ const Dashboard = () => {
                   <Brain className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium mb-2">No decisions recorded yet</h3>
                   <p className="text-gray-500 mb-4">Start tracking your investment decisions to build discipline</p>
-                  <Button onClick={() => setIsDecisionDialogOpen(true)}>
+                  <Button onClick={() => setIsDecisionWizardOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Record First Decision
                   </Button>
@@ -204,9 +203,11 @@ const Dashboard = () => {
                           {new Date(decision.decision_date).toLocaleDateString()}
                         </div>
                         <div className="flex space-x-1 mt-1">
-                          {decision.based_on_fundamentals && <Badge variant="outline" className="text-xs">Fundamentals</Badge>}
-                          {decision.fits_strategy && <Badge variant="outline" className="text-xs">Strategy</Badge>}
-                          {decision.not_reacting_to_news && <Badge variant="outline" className="text-xs">Rational</Badge>}
+                          {decision.decision_quality_score && (
+                            <Badge variant={decision.decision_quality_score > 50 ? "default" : "secondary"} className="text-xs">
+                              Score: {decision.decision_quality_score}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
