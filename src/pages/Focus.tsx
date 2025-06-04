@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { finnhubAPI } from '@/services/api';
 
 const Focus = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [tickerFilter, setTickerFilter] = useState('');
+  const [tickerFilter, setTickerFilter] = useState('all-stocks');
   const [showHighRelevanceOnly, setShowHighRelevanceOnly] = useState(false);
   const [sentimentFilter, setSentimentFilter] = useState('all');
   const [news, setNews] = useState<any[]>([]);
@@ -222,7 +223,7 @@ const Focus = () => {
                           variant="link" 
                           onClick={() => {
                             setSearchQuery('');
-                            setTickerFilter('');
+                            setTickerFilter('all-stocks');
                             setShowHighRelevanceOnly(false);
                             setSentimentFilter('all');
                           }}
@@ -343,7 +344,7 @@ const Focus = () => {
                         <SelectValue placeholder="All Stocks" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Stocks</SelectItem>
+                        <SelectItem value="all-stocks">All Stocks</SelectItem>
                         <SelectItem value="AAPL">AAPL</SelectItem>
                         <SelectItem value="MSFT">MSFT</SelectItem>
                         <SelectItem value="GOOGL">GOOGL</SelectItem>
@@ -376,7 +377,7 @@ const Focus = () => {
                     className="w-full mt-2"
                     onClick={() => {
                       setSearchQuery('');
-                      setTickerFilter('');
+                      setTickerFilter('all-stocks');
                       setShowHighRelevanceOnly(false);
                       setSentimentFilter('all');
                     }}
