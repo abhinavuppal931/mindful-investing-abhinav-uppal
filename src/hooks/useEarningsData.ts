@@ -1,44 +1,120 @@
 
 import { useState, useEffect } from 'react';
-import { finnhubAPI } from '../services/api';
+import { finnhubAPI, apiNinjasAPI, openaiAPI } from '@/services/api';
 
 export interface EarningsEvent {
-  date: string;
-  epsActual: number;
-  epsEstimate: number;
-  hour: string;
-  quarter: number;
-  revenueActual: number;
-  revenueEstimate: number;
   symbol: string;
-  year: number;
+  date: string;
+  epsActual?: number;
+  epsEstimate?: number;
+  revenueActual?: number;
+  revenueEstimate?: number;
+  hour: string;
 }
 
-export const useEarningsData = (from?: string, to?: string) => {
+export interface EarningsTranscript {
+  symbol: string;
+  year: number;
+  quarter: number;
+  transcript: string;
+  highlights?: string[];
+}
+
+export const useEarningsData = () => {
   const [earnings, setEarnings] = useState<EarningsEvent[]>([]);
+  const [transcripts, setTranscripts] = useState<EarningsTranscript[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchEarnings = async () => {
-      if (!from || !to) return;
+  const fetchEarningsCalendar = async (from?: string, to?: string) => {
+    setLoading(true);
+    setError(null);
 
-      setLoading(true);
-      setError(null);
+    try {
+      // Default to current week if no dates provided
+      const fromDate = from || new Date().toISOString().split('T')[0];
+      const toDate = to || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      try {
-        const data = await finnhubAPI.getEarningsCalendar(from, to);
-        setEarnings(data.earningsCalendar || []);
-      } catch (err) {
-        console.error('Error fetching earnings:', err);
-        setError('Failed to fetch earnings data');
-      } finally {
-        setLoading(false);
+      console.log(`Fetching earnings calendar from ${fromDate} to ${toDate}`);
+      
+      const data = await finnhubAPI.getEarningsCalendar(fromDate, toDate);
+      
+      if (data?.earningsCalendar) {
+        const processedEarnings = data.earningsCalendar.map((event: any) => ({
+          symbol: event.symbol,
+          date: event.date,
+          epsActual: event.epsActual,
+          epsEstimate: event.epsEstimate,
+          revenueActual: event.revenueActual,
+          revenueEstimate: event.revenueEstimate,
+          hour: event.hour || 'amc' // after market close
+        }));
+        
+        setEarnings(processedEarnings);
+      } else {
+        setEarnings([]);
       }
-    };
+    } catch (err) {
+      console.error('Error fetching earnings calendar:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch earnings calendar');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchEarnings();
-  }, [from, to]);
+  const fetchEarningsTranscript = async (symbol: string, year?: number, quarter?: number) => {
+    setLoading(true);
+    setError(null);
 
-  return { earnings, loading, error };
+    try {
+      console.log(`Fetching earnings transcript for ${symbol} ${year}Q${quarter}`);
+      
+      const transcriptData = await apiNinjasAPI.getEarningsTranscript(symbol, year, quarter);
+      
+      if (transcriptData?.transcript) {
+        // Generate highlights using OpenAI
+        const highlightsData = await openaiAPI.analyzeEarningsHighlights(symbol, transcriptData.transcript);
+        
+        const transcript: EarningsTranscript = {
+          symbol,
+          year: year || new Date().getFullYear(),
+          quarter: quarter || Math.ceil((new Date().getMonth() + 1) / 3),
+          transcript: transcriptData.transcript,
+          highlights: highlightsData?.analysis ? highlightsData.analysis.split('\n').filter((line: string) => line.trim()) : []
+        };
+        
+        setTranscripts(prev => {
+          const filtered = prev.filter(t => !(t.symbol === symbol && t.year === year && t.quarter === quarter));
+          return [transcript, ...filtered];
+        });
+        
+        return transcript;
+      }
+    } catch (err) {
+      console.error('Error fetching earnings transcript:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch earnings transcript');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAvailableTranscripts = (symbol: string) => {
+    return transcripts.filter(t => t.symbol === symbol);
+  };
+
+  useEffect(() => {
+    // Fetch current week's earnings on mount
+    fetchEarningsCalendar();
+  }, []);
+
+  return {
+    earnings,
+    transcripts,
+    loading,
+    error,
+    fetchEarningsCalendar,
+    fetchEarningsTranscript,
+    getAvailableTranscripts,
+    refetch: fetchEarningsCalendar
+  };
 };

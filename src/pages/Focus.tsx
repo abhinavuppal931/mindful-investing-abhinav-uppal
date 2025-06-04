@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,31 +9,62 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { BrainCircuit, Calendar, ArrowUpRight, Filter, Info, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { useNews } from '@/hooks/useStockData';
+import { finnhubAPI } from '@/services/api';
 
 const Focus = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [tickerFilter, setTickerFilter] = useState('');
   const [showHighRelevanceOnly, setShowHighRelevanceOnly] = useState(false);
   const [sentimentFilter, setSentimentFilter] = useState('all');
-  
-  const { news, loading, error } = useNews();
+  const [news, setNews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Convert Finnhub news format to our expected format
-  const processedNews = news.map(item => ({
-    id: item.id || Math.random(),
-    title: item.headline,
-    source: item.source,
-    date: new Date(item.datetime * 1000).toISOString().split('T')[0],
-    sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative', // Mock sentiment for now
-    relevance: Math.random() > 0.5 ? 'high' : 'medium', // Mock relevance for now
-    ticker: '',
-    content: item.summary || item.headline,
-    url: item.url
-  }));
+  useEffect(() => {
+    fetchNews();
+  }, [tickerFilter]);
+
+  const fetchNews = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      let newsData;
+      
+      if (tickerFilter && tickerFilter !== 'all-stocks') {
+        // Fetch company-specific news
+        const to = new Date().toISOString().split('T')[0];
+        const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        newsData = await finnhubAPI.getCompanyNews(tickerFilter, from, to);
+      } else {
+        // Fetch general market news
+        newsData = await finnhubAPI.getMarketNews('general');
+      }
+
+      // Process news data and add mock sentiment/relevance scores
+      const processedNews = (newsData || []).map((item: any, index: number) => ({
+        id: item.id || index,
+        title: item.headline,
+        source: item.source,
+        date: new Date(item.datetime * 1000).toISOString().split('T')[0],
+        sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative',
+        relevance: Math.random() > 0.5 ? 'high' : 'medium',
+        ticker: tickerFilter && tickerFilter !== 'all-stocks' ? tickerFilter : '',
+        content: item.summary || item.headline,
+        url: item.url
+      }));
+
+      setNews(processedNews);
+    } catch (err) {
+      console.error('Error fetching news:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch news data');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Filter news based on current filters
-  const filteredNews = processedNews.filter(item => {
+  const filteredNews = news.filter(item => {
     // Search query filter
     if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !item.content.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -102,6 +133,15 @@ const Focus = () => {
             <Label htmlFor="high-relevance">Show High Relevance Only</Label>
           </div>
         </div>
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600">{error}</p>
+            <Button variant="outline" onClick={fetchNews} className="mt-2">
+              Retry
+            </Button>
+          </div>
+        )}
         
         <div className="focus-mode">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -303,7 +343,7 @@ const Focus = () => {
                         <SelectValue placeholder="All Stocks" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all-stocks">All Stocks</SelectItem>
+                        <SelectItem value="">All Stocks</SelectItem>
                         <SelectItem value="AAPL">AAPL</SelectItem>
                         <SelectItem value="MSFT">MSFT</SelectItem>
                         <SelectItem value="GOOGL">GOOGL</SelectItem>

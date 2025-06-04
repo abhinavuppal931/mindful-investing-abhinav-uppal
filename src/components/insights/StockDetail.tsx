@@ -1,9 +1,9 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, BarChart3, Building2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, BarChart3, Building2, BrainCircuit, Shield, AlertTriangle, Wind } from 'lucide-react';
 import { useStockData } from '@/hooks/useStockData';
+import { openaiAPI } from '@/services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 interface StockDetailProps {
@@ -13,6 +13,43 @@ interface StockDetailProps {
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   const { quote, financials, profile, loading, error } = useStockData(ticker);
+  const [aiAnalysis, setAiAnalysis] = useState<{
+    moat: any;
+    risks: any;
+    tailwinds: any;
+  }>({
+    moat: null,
+    risks: null,
+    tailwinds: null
+  });
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+
+  useEffect(() => {
+    if (financials.length > 0 && !analysisLoading) {
+      fetchAIAnalysis();
+    }
+  }, [financials, ticker]);
+
+  const fetchAIAnalysis = async () => {
+    setAnalysisLoading(true);
+    try {
+      const [moatData, risksData, tailwindsData] = await Promise.all([
+        openaiAPI.analyzeCompanyMoat(ticker, financials.slice(0, 3)),
+        openaiAPI.analyzeInvestmentRisks(ticker, financials.slice(0, 3), []),
+        openaiAPI.analyzeTailwindsHeadwinds(ticker, financials.slice(0, 3), [])
+      ]);
+
+      setAiAnalysis({
+        moat: moatData,
+        risks: risksData,
+        tailwinds: tailwindsData
+      });
+    } catch (error) {
+      console.error('Failed to fetch AI analysis:', error);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -152,6 +189,69 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             <div className="text-2xl font-bold">
               {formatNumber(quote.volume)}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* AI Analysis Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Shield className="h-5 w-5 mr-2 text-blue-600" />
+              Competitive Moat
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {analysisLoading ? (
+              <div className="flex items-center justify-center h-24">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : aiAnalysis.moat ? (
+              <p className="text-sm text-gray-700">{aiAnalysis.moat.analysis}</p>
+            ) : (
+              <p className="text-sm text-gray-500">Analysis not available</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
+              Investment Risks
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {analysisLoading ? (
+              <div className="flex items-center justify-center h-24">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+              </div>
+            ) : aiAnalysis.risks ? (
+              <p className="text-sm text-gray-700">{aiAnalysis.risks.analysis}</p>
+            ) : (
+              <p className="text-sm text-gray-500">Analysis not available</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Wind className="h-5 w-5 mr-2 text-green-600" />
+              Tailwinds & Headwinds
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {analysisLoading ? (
+              <div className="flex items-center justify-center h-24">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+              </div>
+            ) : aiAnalysis.tailwinds ? (
+              <p className="text-sm text-gray-700">{aiAnalysis.tailwinds.analysis}</p>
+            ) : (
+              <p className="text-sm text-gray-500">Analysis not available</p>
+            )}
           </CardContent>
         </Card>
       </div>

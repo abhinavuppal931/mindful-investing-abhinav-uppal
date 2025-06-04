@@ -28,10 +28,10 @@ export const fmpAPI = {
     }
   },
 
-  getFinancials: async (symbol: string, period = 'annual', statement = 'income') => {
+  getFinancials: async (symbol: string, period = 'annual', statement = 'income', limit = 10) => {
     try {
       const { data, error } = await supabase.functions.invoke('fmp-api', {
-        body: { action: 'financials', symbol, period, statement }
+        body: { action: 'financials', symbol, period, statement, limit }
       });
       if (error) throw error;
       return data;
@@ -41,10 +41,10 @@ export const fmpAPI = {
     }
   },
 
-  getMetrics: async (symbol: string) => {
+  getMetrics: async (symbol: string, period = 'annual', limit = 10) => {
     try {
       const { data, error } = await supabase.functions.invoke('fmp-api', {
-        body: { action: 'metrics', symbol }
+        body: { action: 'metrics', symbol, period, limit }
       });
       if (error) throw error;
       return data;
@@ -107,49 +107,91 @@ export const finnhubAPI = {
       console.error('Finnhub Earnings error:', error);
       throw error;
     }
-  }
-};
-
-// Gemini AI API calls via Supabase Edge Functions
-export const geminiAPI = {
-  analyzeCompany: async (symbol: string, financialData: any, newsData: any) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('gemini-ai', {
-        body: { action: 'company-analysis', symbol, financialData, newsData }
-      });
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Gemini Company Analysis error:', error);
-      throw error;
-    }
   },
 
-  scoreNews: async (articles: any[]) => {
+  getPressReleases: async (symbol: string, from: string, to: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('gemini-ai', {
-        body: { action: 'news-scoring', articles }
+      const { data, error } = await supabase.functions.invoke('finnhub-api', {
+        body: { action: 'press-releases', symbol, from, to }
       });
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Gemini News Scoring error:', error);
-      throw error;
-    }
-  },
-
-  detectBias: async (tradeData: any) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('gemini-ai', {
-        body: { action: 'bias-detection', ...tradeData }
-      });
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Gemini Bias Detection error:', error);
+      console.error('Finnhub Press Releases error:', error);
       throw error;
     }
   }
 };
 
-export default { healthCheck, fmpAPI, finnhubAPI, geminiAPI };
+// OpenAI Analysis API calls via Supabase Edge Functions
+export const openaiAPI = {
+  analyzeCompanyMoat: async (symbol: string, financialData: any) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('openai-analysis', {
+        body: { action: 'company-moat', symbol, financialData }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('OpenAI Moat Analysis error:', error);
+      throw error;
+    }
+  },
+
+  analyzeInvestmentRisks: async (symbol: string, financialData: any, newsData: any) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('openai-analysis', {
+        body: { action: 'investment-risks', symbol, financialData, newsData }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('OpenAI Risk Analysis error:', error);
+      throw error;
+    }
+  },
+
+  analyzeTailwindsHeadwinds: async (symbol: string, financialData: any, newsData: any) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('openai-analysis', {
+        body: { action: 'tailwinds-headwinds', symbol, financialData, newsData }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('OpenAI Tailwinds/Headwinds Analysis error:', error);
+      throw error;
+    }
+  },
+
+  analyzeEarningsHighlights: async (symbol: string, transcript: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('openai-analysis', {
+        body: { action: 'earnings-highlights', symbol, transcript }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('OpenAI Earnings Highlights error:', error);
+      throw error;
+    }
+  }
+};
+
+// API Ninjas calls via Supabase Edge Functions
+export const apiNinjasAPI = {
+  getEarningsTranscript: async (symbol: string, year?: number, quarter?: number) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('api-ninjas', {
+        body: { action: 'earnings-transcript', symbol, year, quarter }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('API Ninjas Transcript error:', error);
+      throw error;
+    }
+  }
+};
+
+export default { healthCheck, fmpAPI, finnhubAPI, openaiAPI, apiNinjasAPI };
