@@ -6,7 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, BarChart3, Building2, BrainCircuit, Shield, AlertTriangle, Wind, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useStockData } from '@/hooks/useStockData';
 import { openaiAPI, fmpAPI } from '@/services/api';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, Cell } from 'recharts';
 
 interface StockDetailProps {
   ticker: string;
@@ -62,8 +62,21 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     ratios: 'pe'
   });
 
-  const [priceData, setPriceData] = useState<any[]>([]);
-  const [keyMetrics, setKeyMetrics] = useState<any[]>([]);
+  const [additionalData, setAdditionalData] = useState<{
+    priceData: any[];
+    keyMetrics: any[];
+    ratios: any[];
+    dividends: any[];
+    enterpriseValues: any[];
+    financialGrowth: any[];
+  }>({
+    priceData: [],
+    keyMetrics: [],
+    ratios: [],
+    dividends: [],
+    enterpriseValues: [],
+    financialGrowth: []
+  });
 
   useEffect(() => {
     if (financials.length > 0) {
@@ -74,13 +87,24 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
   const fetchAdditionalData = async () => {
     try {
-      // Fetch historical price data
-      const priceResponse = await fmpAPI.getHistoricalPrices(ticker, '1year');
-      setPriceData(priceResponse?.historical?.slice(0, 30).reverse() || []);
+      // Fetch all additional data for comprehensive charts
+      const [priceResponse, metricsResponse, ratiosResponse, dividendsResponse, enterpriseResponse, growthResponse] = await Promise.all([
+        fmpAPI.getHistoricalPrices(ticker),
+        fmpAPI.getMetrics(ticker, 'annual', 5),
+        fmpAPI.getRatios(ticker, 'annual', 5),
+        fmpAPI.getDividends(ticker),
+        fmpAPI.getEnterpriseValues(ticker, 'annual', 5),
+        fmpAPI.getFinancialGrowth(ticker, 'annual', 5)
+      ]);
 
-      // Fetch key metrics
-      const metricsResponse = await fmpAPI.getMetrics(ticker, 'annual', 5);
-      setKeyMetrics(metricsResponse || []);
+      setAdditionalData({
+        priceData: priceResponse?.historical?.slice(0, 252).reverse() || [], // Last year of trading days
+        keyMetrics: metricsResponse || [],
+        ratios: ratiosResponse || [],
+        dividends: dividendsResponse?.historical || [],
+        enterpriseValues: enterpriseResponse || [],
+        financialGrowth: growthResponse || []
+      });
     } catch (error) {
       console.error('Failed to fetch additional data:', error);
     }
@@ -139,11 +163,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   };
 
   const formatCurrency = (value: number) => {
-    if (value >= 1000000000000) {
+    if (Math.abs(value) >= 1000000000000) {
       return `$${(value / 1000000000000).toFixed(2)}T`;
-    } else if (value >= 1000000000) {
+    } else if (Math.abs(value) >= 1000000000) {
       return `$${(value / 1000000000).toFixed(1)}B`;
-    } else if (value >= 1000000) {
+    } else if (Math.abs(value) >= 1000000) {
       return `$${(value / 1000000).toFixed(1)}M`;
     } else {
       return `$${value.toLocaleString()}`;
@@ -151,11 +175,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   };
 
   const formatNumber = (value: number) => {
-    if (value >= 1000000000000) {
+    if (Math.abs(value) >= 1000000000000) {
       return `${(value / 1000000000000).toFixed(2)}T`;
-    } else if (value >= 1000000000) {
+    } else if (Math.abs(value) >= 1000000000) {
       return `${(value / 1000000000).toFixed(1)}B`;
-    } else if (value >= 1000000) {
+    } else if (Math.abs(value) >= 1000000) {
       return `${(value / 1000000).toFixed(1)}M`;
     } else {
       return value.toLocaleString();
@@ -163,17 +187,26 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   };
 
   const formatAIContent = (content: string) => {
-    return content.split('\n').map((line, index) => {
+    // Clean up the content by removing markdown symbols and formatting nicely
+    const cleanContent = content
+      .replace(/###\s*/g, '') // Remove ### headers
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove ** bold formatting but keep text
+      .replace(/\*([^*]+)\*/g, '$1') // Remove * italic formatting but keep text
+      .replace(/^\s*[\*\-•]\s*/gm, '• ') // Normalize bullet points
+      .trim();
+
+    return cleanContent.split('\n').map((line, index) => {
       const trimmed = line.trim();
-      if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+      if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
         return (
-          <li key={index} className="mb-2 text-sm text-gray-700 leading-relaxed">
+          <li key={index} className="mb-3 text-sm text-gray-700 leading-relaxed list-none">
+            <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2 flex-shrink-0"></span>
             {trimmed.substring(1).trim()}
           </li>
         );
-      } else if (trimmed.length > 0) {
+      } else if (trimmed.length > 0 && !trimmed.match(/^\d+\./)) {
         return (
-          <p key={index} className="mb-3 text-sm text-gray-700 leading-relaxed">
+          <p key={index} className="mb-4 text-sm text-gray-700 leading-relaxed font-medium">
             {trimmed}
           </p>
         );
@@ -209,46 +242,50 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
   const isPositive = quote.change >= 0;
   
-  // Prepare chart data with improved formatting
+  // Prepare comprehensive chart data with proper formatting
   const revenueData = financials.map(f => ({
     year: new Date(f.date).getFullYear(),
     revenue: f.revenue / 1000000,
     netIncome: f.netIncome / 1000000,
-    freeCashFlow: f.freeCashFlow / 1000000,
-    operatingCashFlow: f.operatingCashFlow / 1000000,
     ebitda: f.ebitda / 1000000,
     eps: f.netIncome / (quote.sharesOutstanding || 1),
+    freeCashFlow: f.freeCashFlow / 1000000,
+    operatingCashFlow: f.operatingCashFlow / 1000000,
+    fcfPerShare: f.freeCashFlow / (quote.sharesOutstanding || 1),
     grossProfit: f.grossProfit / 1000000,
     operatingIncome: f.operatingIncome / 1000000,
     totalCash: f.totalCash / 1000000,
-    totalDebt: f.totalDebt / 1000000
+    totalDebt: f.totalDebt / 1000000,
+    grossMargin: f.revenue > 0 ? ((f.grossProfit / f.revenue) * 100) : 0,
+    operatingMargin: f.revenue > 0 ? ((f.operatingIncome / f.revenue) * 100) : 0,
+    researchAndDevelopment: (f as any).researchAndDevelopmentExpenses / 1000000 || 0,
+    salesAndMarketing: (f as any).sellingGeneralAndAdministrativeExpenses / 1000000 || 0
   })).reverse();
 
   // Price chart data
-  const priceChartData = priceData.map(p => ({
+  const priceChartData = additionalData.priceData.map(p => ({
     date: p.date,
     price: p.close
   }));
 
-  // Margins data
-  const marginsData = revenueData.map(d => ({
-    year: d.year,
-    grossMargin: d.revenue > 0 ? ((d.grossProfit / d.revenue) * 100) : 0,
-    operatingMargin: d.revenue > 0 ? ((d.operatingIncome / d.revenue) * 100) : 0
-  }));
-
-  // Key ratios data
-  const ratiosData = keyMetrics.map((metric, index) => ({
-    year: new Date(metric.date).getFullYear(),
-    pe: metric.peRatio || 0,
-    ps: metric.priceToSalesRatio || 0,
-    pOcf: metric.priceCashFlowRatio || 0,
-    pEbitda: metric.enterpriseValueMultiple || 0,
-    debtToEquity: metric.debtToEquity || 0,
-    roe: metric.returnOnEquity * 100 || 0,
-    roic: metric.returnOnCapitalEmployed * 100 || 0
+  // Key ratios data with proper metrics access
+  const ratiosData = additionalData.ratios.map(ratio => ({
+    year: new Date(ratio.date).getFullYear(),
+    pe: ratio.priceEarningsRatio || 0,
+    ps: ratio.priceToSalesRatio || 0,
+    pOcf: ratio.priceCashFlowRatio || 0,
+    pEbitda: ratio.enterpriseValueMultiple || 0,
+    debtToEquity: ratio.debtEquityRatio || 0,
+    roe: (ratio.returnOnEquity || 0) * 100,
+    roic: (ratio.returnOnCapitalEmployed || 0) * 100
   })).reverse();
-  
+
+  // Dividends data
+  const dividendsData = additionalData.dividends.map(d => ({
+    year: new Date(d.date).getFullYear(),
+    dividend: d.dividend || 0
+  })).reverse();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -358,11 +395,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         </CardContent>
       </Card>
 
-      {/* Expandable AI Analysis Sections */}
+      {/* Expandable AI Analysis Sections with improved formatting */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Competitive Moat */}
         <Collapsible open={expandedSections.moat} onOpenChange={() => handleSectionToggle('moat')}>
-          <Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                 <CardTitle className="flex items-center justify-between">
@@ -378,15 +415,15 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
+              <CardContent className="pt-0">
                 {loadingSections.moat ? (
                   <div className="flex items-center justify-center h-24">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                   </div>
                 ) : aiAnalysis.moat ? (
-                  <ul className="space-y-2">
+                  <div className="space-y-2">
                     {formatAIContent(aiAnalysis.moat.analysis)}
-                  </ul>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500">Click to generate analysis</p>
                 )}
@@ -397,7 +434,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
         {/* Investment Risks */}
         <Collapsible open={expandedSections.risks} onOpenChange={() => handleSectionToggle('risks')}>
-          <Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                 <CardTitle className="flex items-center justify-between">
@@ -413,15 +450,15 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
+              <CardContent className="pt-0">
                 {loadingSections.risks ? (
                   <div className="flex items-center justify-center h-24">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
                   </div>
                 ) : aiAnalysis.risks ? (
-                  <ul className="space-y-2">
+                  <div className="space-y-2">
                     {formatAIContent(aiAnalysis.risks.analysis)}
-                  </ul>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500">Click to generate analysis</p>
                 )}
@@ -432,7 +469,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
         {/* Near-term Tailwinds & Headwinds */}
         <Collapsible open={expandedSections.nearTerm} onOpenChange={() => handleSectionToggle('nearTerm')}>
-          <Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                 <CardTitle className="flex items-center justify-between">
@@ -448,15 +485,15 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
+              <CardContent className="pt-0">
                 {loadingSections.nearTerm ? (
                   <div className="flex items-center justify-center h-24">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
                   </div>
                 ) : aiAnalysis.nearTermTailwinds ? (
-                  <ul className="space-y-2">
+                  <div className="space-y-2">
                     {formatAIContent(aiAnalysis.nearTermTailwinds.analysis)}
-                  </ul>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500">Click to generate analysis</p>
                 )}
@@ -467,7 +504,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
         {/* Long-term Tailwinds & Headwinds */}
         <Collapsible open={expandedSections.longTerm} onOpenChange={() => handleSectionToggle('longTerm')}>
-          <Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                 <CardTitle className="flex items-center justify-between">
@@ -483,15 +520,15 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
+              <CardContent className="pt-0">
                 {loadingSections.longTerm ? (
                   <div className="flex items-center justify-center h-24">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                   </div>
                 ) : aiAnalysis.longTermTailwinds ? (
-                  <ul className="space-y-2">
+                  <div className="space-y-2">
                     {formatAIContent(aiAnalysis.longTermTailwinds.analysis)}
-                  </ul>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500">Click to generate analysis</p>
                 )}
@@ -501,6 +538,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         </Collapsible>
       </div>
 
+      {/* ... keep existing code (company overview section) */}
       {profile?.description && (
         <Card>
           <CardHeader>
@@ -518,14 +556,50 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         </Card>
       )}
       
-      <Tabs defaultValue="revenue">
-        <TabsList className="mb-4">
+      {/* Comprehensive Financial Charts - All 8 Categories */}
+      <Tabs defaultValue="price" className="space-y-4">
+        <TabsList className="grid grid-cols-4 lg:grid-cols-8 w-full">
+          <TabsTrigger value="price">Price</TabsTrigger>
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="profitability">Profitability</TabsTrigger>
           <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
+          <TabsTrigger value="cashdebt">Cash & Debt</TabsTrigger>
+          <TabsTrigger value="margins">Margins</TabsTrigger>
+          <TabsTrigger value="ratios">Key Ratios</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="revenue" className="mt-0">
+
+        {/* Price Chart */}
+        <TabsContent value="price">
+          <Card>
+            <CardHeader>
+              <CardTitle>Stock Price Movement</CardTitle>
+              <CardDescription>Historical price trend over the last year</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={priceChartData}>
+                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Price']} />
+                    <Area type="monotone" dataKey="price" stroke="#0ea5e9" fill="url(#priceGradient)" />
+                    <defs>
+                      <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Revenue Chart */}
+        <TabsContent value="revenue">
           <Card>
             <CardHeader>
               <CardTitle>Revenue Growth</CardTitle>
@@ -535,10 +609,10 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
                     <XAxis dataKey="year" />
                     <YAxis />
-                    <Tooltip formatter={(value) => [`$${value}M`, 'Revenue']} />
+                    <Tooltip formatter={(value) => [`${formatNumber(Number(value) * 1000000)}`, 'Revenue']} />
                     <Bar dataKey="revenue" fill="#10b981" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -546,46 +620,246 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="profitability" className="mt-0">
+
+        {/* Profitability Chart with Toggles */}
+        <TabsContent value="profitability">
           <Card>
             <CardHeader>
               <CardTitle>Profitability</CardTitle>
-              <CardDescription>Net income and EBITDA over time (in millions)</CardDescription>
+              <CardDescription>Financial performance metrics over time (in millions)</CardDescription>
+              <div className="flex space-x-2">
+                <Button
+                  variant={chartToggles.profitability === 'netIncome' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'netIncome' }))}
+                >
+                  Net Income
+                </Button>
+                <Button
+                  variant={chartToggles.profitability === 'ebitda' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'ebitda' }))}
+                >
+                  EBITDA
+                </Button>
+                <Button
+                  variant={chartToggles.profitability === 'eps' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'eps' }))}
+                >
+                  EPS
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
                     <XAxis dataKey="year" />
                     <YAxis />
-                    <Tooltip formatter={(value, name) => [`$${value}M`, name]} />
-                    <Line type="monotone" dataKey="netIncome" stroke="#0ea5e9" name="Net Income" />
-                    <Line type="monotone" dataKey="ebitda" stroke="#8b5cf6" name="EBITDA" />
+                    <Tooltip formatter={(value) => {
+                      if (chartToggles.profitability === 'eps') {
+                        return [`$${Number(value).toFixed(2)}`, 'EPS'];
+                      }
+                      return [`${formatNumber(Number(value) * 1000000)}`, chartToggles.profitability === 'netIncome' ? 'Net Income' : 'EBITDA'];
+                    }} />
+                    <Line type="monotone" dataKey={chartToggles.profitability} stroke="#8b5cf6" strokeWidth={3} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="cashflow" className="mt-0">
+
+        {/* Cash Flow Chart with Toggles */}
+        <TabsContent value="cashflow">
           <Card>
             <CardHeader>
               <CardTitle>Cash Flow</CardTitle>
-              <CardDescription>Free cash flow over time (in millions)</CardDescription>
+              <CardDescription>Cash generation metrics over time</CardDescription>
+              <div className="flex space-x-2">
+                <Button
+                  variant={chartToggles.cashFlow === 'freeCashFlow' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'freeCashFlow' }))}
+                >
+                  Free Cash Flow
+                </Button>
+                <Button
+                  variant={chartToggles.cashFlow === 'operatingCashFlow' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'operatingCashFlow' }))}
+                >
+                  Operating Cash Flow
+                </Button>
+                <Button
+                  variant={chartToggles.cashFlow === 'fcfPerShare' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'fcfPerShare' }))}
+                >
+                  FCF Per Share
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
                     <XAxis dataKey="year" />
                     <YAxis />
-                    <Tooltip formatter={(value) => [`$${value}M`, 'Free Cash Flow']} />
-                    <Bar dataKey="freeCashFlow" fill="#f59e0b" />
+                    <Tooltip formatter={(value) => {
+                      if (chartToggles.cashFlow === 'fcfPerShare') {
+                        return [`$${Number(value).toFixed(2)}`, 'FCF Per Share'];
+                      }
+                      return [`${formatNumber(Number(value) * 1000000)}`, chartToggles.cashFlow === 'freeCashFlow' ? 'Free Cash Flow' : 'Operating Cash Flow'];
+                    }} />
+                    <Bar dataKey={chartToggles.cashFlow} fill="#f59e0b" />
                   </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Expenses Chart */}
+        <TabsContent value="expenses">
+          <Card>
+            <CardHeader>
+              <CardTitle>Operating Expenses</CardTitle>
+              <CardDescription>R&D and Sales & Marketing expenses (in millions)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <Tooltip formatter={(value, name) => [`${formatNumber(Number(value) * 1000000)}`, name === 'researchAndDevelopment' ? 'R&D' : 'Sales & Marketing']} />
+                    <Bar dataKey="researchAndDevelopment" fill="#ef4444" name="R&D" />
+                    <Bar dataKey="salesAndMarketing" fill="#f97316" name="Sales & Marketing" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Cash & Debt Chart */}
+        <TabsContent value="cashdebt">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cash vs Debt</CardTitle>
+              <CardDescription>Balance sheet cash and debt levels (in millions)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <Tooltip formatter={(value, name) => [`${formatNumber(Number(value) * 1000000)}`, name === 'totalCash' ? 'Cash' : 'Debt']} />
+                    <Bar dataKey="totalCash" fill="#22c55e" name="Cash" />
+                    <Bar dataKey="totalDebt" fill="#dc2626" name="Debt" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Margins Chart with Toggles */}
+        <TabsContent value="margins">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profit Margins</CardTitle>
+              <CardDescription>Profitability margins over time (%)</CardDescription>
+              <div className="flex space-x-2">
+                <Button
+                  variant={chartToggles.margins === 'grossMargin' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, margins: 'grossMargin' }))}
+                >
+                  Gross Margin
+                </Button>
+                <Button
+                  variant={chartToggles.margins === 'operatingMargin' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, margins: 'operatingMargin' }))}
+                >
+                  Operating Margin
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, chartToggles.margins === 'grossMargin' ? 'Gross Margin' : 'Operating Margin']} />
+                    <Line type="monotone" dataKey={chartToggles.margins} stroke="#06b6d4" strokeWidth={3} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Key Ratios Chart with Toggles */}
+        <TabsContent value="ratios">
+          <Card>
+            <CardHeader>
+              <CardTitle>Key Financial Ratios</CardTitle>
+              <CardDescription>Important valuation and profitability ratios</CardDescription>
+              <div className="grid grid-cols-4 gap-2">
+                <Button
+                  variant={chartToggles.ratios === 'pe' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'pe' }))}
+                >
+                  P/E
+                </Button>
+                <Button
+                  variant={chartToggles.ratios === 'ps' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'ps' }))}
+                >
+                  P/S
+                </Button>
+                <Button
+                  variant={chartToggles.ratios === 'roe' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'roe' }))}
+                >
+                  ROE
+                </Button>
+                <Button
+                  variant={chartToggles.ratios === 'debtToEquity' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'debtToEquity' }))}
+                >
+                  Debt/Equity
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={ratiosData}>
+                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => {
+                      const suffix = ['roe', 'roic'].includes(chartToggles.ratios) ? '%' : '';
+                      return [`${Number(value).toFixed(2)}${suffix}`, chartToggles.ratios.toUpperCase()];
+                    }} />
+                    <Line type="monotone" dataKey={chartToggles.ratios} stroke="#8b5cf6" strokeWidth={3} />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>

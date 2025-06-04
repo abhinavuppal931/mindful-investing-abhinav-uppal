@@ -84,9 +84,27 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/key-metrics/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
+      case 'ratios':
+        endpoint = `${BASE_URL}/ratios/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
       case 'historical-prices':
-        endpoint = `${BASE_URL}/historical-price-full/${symbol}?apikey=${FMP_API_KEY}`;
+        // For free tier, get 1 year of daily data
+        endpoint = `${BASE_URL}/historical-price-full/${symbol}?from=${new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}&to=${new Date().toISOString().split('T')[0]}&apikey=${FMP_API_KEY}`;
         ttl = 30 * 60 * 1000; // 30 minutes
+        break;
+      case 'enterprise-values':
+        endpoint = `${BASE_URL}/enterprise-values/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
+      case 'financial-growth':
+        endpoint = `${BASE_URL}/financial-growth/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
+      case 'dividends':
+        // For dividends, get historical dividend data
+        endpoint = `${BASE_URL}/historical-price-full/stock_dividend/${symbol}?apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       default:
         throw new Error('Invalid action');

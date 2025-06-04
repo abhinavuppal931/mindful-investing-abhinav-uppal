@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 // Health check function
@@ -49,6 +50,58 @@ export const fmpAPI = {
       return data;
     } catch (error) {
       console.error('FMP Metrics error:', error);
+      throw error;
+    }
+  },
+
+  getRatios: async (symbol: string, period = 'annual', limit = 10) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'ratios', symbol, period, limit }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Ratios error:', error);
+      throw error;
+    }
+  },
+
+  getEnterpriseValues: async (symbol: string, period = 'annual', limit = 10) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'enterprise-values', symbol, period, limit }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Enterprise Values error:', error);
+      throw error;
+    }
+  },
+
+  getFinancialGrowth: async (symbol: string, period = 'annual', limit = 10) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'financial-growth', symbol, period, limit }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Financial Growth error:', error);
+      throw error;
+    }
+  },
+
+  getDividends: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'dividends', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Dividends error:', error);
       throw error;
     }
   },
@@ -135,7 +188,6 @@ export const finnhubAPI = {
   }
 };
 
-// OpenAI Analysis API calls via Supabase Edge Functions
 export const openaiAPI = {
   analyzeCompanyMoat: async (symbol: string, financialData: any) => {
     try {
@@ -216,7 +268,6 @@ export const openaiAPI = {
   }
 };
 
-// API Ninjas calls via Supabase Edge Functions
 export const apiNinjasAPI = {
   getEarningsTranscript: async (symbol: string, year?: number, quarter?: number) => {
     try {
