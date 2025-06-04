@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { fmpAPI, finnhubAPI } from '../services/api';
 
@@ -64,9 +65,6 @@ export const useStockData = (symbol: string) => {
       console.log(`Fetching data for symbol: ${symbol}`);
 
       try {
-        // Test the health endpoint first
-        console.log('Testing Supabase connection...');
-        
         // Fetch quote data
         console.log('Fetching quote data...');
         const quoteData = await fmpAPI.getQuote(symbol);
@@ -74,6 +72,8 @@ export const useStockData = (symbol: string) => {
         
         if (quoteData && quoteData.length > 0) {
           setQuote(quoteData[0]);
+        } else {
+          throw new Error('No quote data available');
         }
 
         // Fetch profile data
