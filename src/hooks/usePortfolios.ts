@@ -186,3 +186,106 @@ export const useTrades = (portfolioId?: string) => {
     refetch: fetchTrades
   };
 };
+
+// New hook to fetch real-time stock prices for portfolio holdings
+export const usePortfolioWithPrices = (portfolioId?: string) => {
+  const { trades, loading: tradesLoading, error, createTrade, deleteTrade, refetch } = useTrades(portfolioId);
+  const [holdings, setHoldings] = useState<any[]>([]);
+  const [pricesLoading, setPricesLoading] = useState(false);
+
+  useEffect(() => {
+    if (trades.length > 0) {
+      calculateHoldingsWithRealPrices();
+    } else {
+      setHoldings([]);
+    }
+  }, [trades]);
+
+  const calculateHoldingsWithRealPrices = async () => {
+    setPricesLoading(true);
+    try {
+      // Group trades by ticker
+      const holdingsMap = new Map();
+      
+      trades.forEach(trade => {
+        const key = trade.ticker_symbol;
+        if (!holdingsMap.has(key)) {
+          holdingsMap.set(key, {
+            ticker: trade.ticker_symbol,
+            companyName: trade.company_name || trade.ticker_symbol,
+            totalShares: 0,
+            totalCost: 0,
+            trades: []
+          });
+        }
+        
+        const holding = holdingsMap.get(key);
+        if (trade.action === 'buy') {
+          holding.totalShares += trade.shares;
+          holding.totalCost += trade.shares * trade.price_per_share;
+        } else {
+          holding.totalShares -= trade.shares;
+          holding.totalCost -= trade.shares * trade.price_per_share;
+        }
+        holding.trades.push(trade);
+      });
+
+      // Filter out positions with zero or negative shares
+      const validHoldings = Array.from(holdingsMap.values()).filter(h => h.totalShares > 0);
+
+      // Fetch current prices for each ticker
+      const holdingsWithPrices = await Promise.all(
+        validHoldings.map(async (holding) => {
+          try {
+            const { fmpAPI } = await import('@/services/api');
+            const quoteData = await fmpAPI.getQuote(holding.ticker);
+            const currentPrice = quoteData?.[0]?.price || holding.totalCost / holding.totalShares;
+            
+            const avgPrice = holding.totalCost / holding.totalShares;
+            const totalValue = holding.totalShares * currentPrice;
+            const returnPct = ((currentPrice - avgPrice) / avgPrice) * 100;
+
+            return {
+              ticker: holding.ticker,
+              companyName: holding.companyName,
+              shares: holding.totalShares,
+              avgPrice,
+              currentPrice,
+              totalValue,
+              return: returnPct
+            };
+          } catch (error) {
+            console.error(`Error fetching price for ${holding.ticker}:`, error);
+            // Fallback to average price if API fails
+            const avgPrice = holding.totalCost / holding.totalShares;
+            return {
+              ticker: holding.ticker,
+              companyName: holding.companyName,
+              shares: holding.totalShares,
+              avgPrice,
+              currentPrice: avgPrice,
+              totalValue: holding.totalShares * avgPrice,
+              return: 0
+            };
+          }
+        })
+      );
+
+      setHoldings(holdingsWithPrices);
+    } catch (error) {
+      console.error('Error calculating holdings with real prices:', error);
+    } finally {
+      setPricesLoading(false);
+    }
+  };
+
+  return {
+    holdings,
+    trades,
+    loading: tradesLoading || pricesLoading,
+    error,
+    createTrade,
+    deleteTrade,
+    refetch
+  };
+};

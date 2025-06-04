@@ -77,7 +77,7 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Analyze the competitive moat for ${symbol}. Consider the financial data: ${JSON.stringify(financialData?.slice(0, 3))}. Provide a structured analysis covering: 1) Primary competitive advantages, 2) Moat strength (Wide/Narrow/None), 3) Sustainability factors. Keep it under 200 words.`
+            content: `Analyze the competitive moat for ${symbol}. Consider the financial data: ${JSON.stringify(financialData?.slice(0, 3))}. Provide a structured analysis covering: 1) Primary competitive advantages, 2) Moat strength (Wide/Narrow/None), 3) Sustainability factors. Keep it under 200 words and format as bullet points.`
           }
         ]);
         break;
@@ -90,20 +90,46 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Identify the top investment risks for ${symbol}. Consider the financial data: ${JSON.stringify(financialData?.slice(0, 3))} and recent news: ${JSON.stringify(newsData?.slice(0, 5))}. Structure as: 1) Financial risks, 2) Industry/Market risks, 3) Company-specific risks. Keep it under 200 words.`
+            content: `Identify the top investment risks for ${symbol}. Consider the financial data: ${JSON.stringify(financialData?.slice(0, 3))} and recent news: ${JSON.stringify(newsData?.slice(0, 5))}. Structure as: 1) Financial risks, 2) Industry/Market risks, 3) Company-specific risks. Keep it under 200 words and format as bullet points.`
           }
         ]);
         break;
 
-      case 'tailwinds-headwinds':
+      case 'near-term-tailwinds':
         analysisResult = await callOpenAI([
           {
             role: 'system',
-            content: 'You are a professional investment analyst. Analyze factors that could drive or hinder company performance.'
+            content: 'You are a professional investment analyst. Analyze near-term factors that could drive or hinder company performance over the next 6-12 months.'
           },
           {
             role: 'user',
-            content: `Analyze tailwinds and headwinds for ${symbol}. Consider financial data: ${JSON.stringify(financialData?.slice(0, 3))} and news: ${JSON.stringify(newsData?.slice(0, 5))}. Structure as: Near-term (6-12 months): Tailwinds & Headwinds, Long-term (2-5 years): Tailwinds & Headwinds. Keep it under 250 words.`
+            content: `Analyze near-term (6-12 months) tailwinds and headwinds for ${symbol}. Consider financial data: ${JSON.stringify(financialData?.slice(0, 3))} and news: ${JSON.stringify(newsData?.slice(0, 5))}. Structure as: Tailwinds: [bullet points], Headwinds: [bullet points]. Keep it under 150 words total.`
+          }
+        ]);
+        break;
+
+      case 'long-term-tailwinds':
+        analysisResult = await callOpenAI([
+          {
+            role: 'system',
+            content: 'You are a professional investment analyst. Analyze long-term factors that could drive or hinder company performance over the next 2-5 years.'
+          },
+          {
+            role: 'user',
+            content: `Analyze long-term (2-5 years) tailwinds and headwinds for ${symbol}. Consider financial data: ${JSON.stringify(financialData?.slice(0, 3))} and strategic positioning. Structure as: Tailwinds: [bullet points], Headwinds: [bullet points]. Keep it under 150 words total.`
+          }
+        ]);
+        break;
+
+      case 'brief-insight':
+        analysisResult = await callOpenAI([
+          {
+            role: 'system',
+            content: 'You are a financial market analyst. Provide brief, actionable insights about what is driving a stock today.'
+          },
+          {
+            role: 'user',
+            content: `Generate a brief 2-3 sentence market insight for ${symbol} focusing on "what's driving the stock price today." Consider recent financial performance: ${JSON.stringify(financialData?.slice(0, 1))}. Be concise and actionable for investors.`
           }
         ]);
         break;

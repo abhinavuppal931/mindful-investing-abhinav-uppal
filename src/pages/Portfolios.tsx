@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Briefcase, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { usePortfolios, useTrades } from '@/hooks/usePortfolios';
+import { usePortfolios, usePortfolioWithPrices } from '@/hooks/usePortfolios';
 import PortfolioMetrics from '@/components/portfolios/PortfolioMetrics';
 import HoldingsTable from '@/components/portfolios/HoldingsTable';
 import TradeDialog from '@/components/portfolios/TradeDialog';
@@ -20,8 +19,8 @@ const Portfolios = () => {
   const [isAddPortfolioOpen, setIsAddPortfolioOpen] = useState(false);
   const [isAddTradeOpen, setIsAddTradeOpen] = useState(false);
 
-  // Get trades for active portfolio
-  const { trades, createTrade } = useTrades(activePortfolio || undefined);
+  // Get holdings with real-time prices for active portfolio
+  const { holdings, createTrade, loading: holdingsLoading } = usePortfolioWithPrices(activePortfolio || undefined);
   
   // Set first portfolio as active when portfolios load
   React.useEffect(() => {
@@ -30,45 +29,6 @@ const Portfolios = () => {
     }
   }, [portfolios, activePortfolio]);
 
-  // Calculate portfolio metrics based on trades
-  const calculateHoldings = () => {
-    const holdings = new Map();
-    
-    trades.forEach(trade => {
-      const key = trade.ticker_symbol;
-      if (!holdings.has(key)) {
-        holdings.set(key, {
-          ticker: trade.ticker_symbol,
-          companyName: trade.company_name || trade.ticker_symbol,
-          totalShares: 0,
-          totalCost: 0,
-          trades: []
-        });
-      }
-      
-      const holding = holdings.get(key);
-      if (trade.action === 'buy') {
-        holding.totalShares += trade.shares;
-        holding.totalCost += trade.shares * trade.price_per_share;
-      } else {
-        holding.totalShares -= trade.shares;
-        holding.totalCost -= trade.shares * trade.price_per_share;
-      }
-      holding.trades.push(trade);
-    });
-
-    return Array.from(holdings.values()).filter(h => h.totalShares > 0).map(holding => ({
-      ticker: holding.ticker,
-      companyName: holding.companyName,
-      shares: holding.totalShares,
-      avgPrice: holding.totalCost / holding.totalShares,
-      currentPrice: holding.avgPrice * 1.02, // Mock current price
-      totalValue: holding.totalShares * (holding.avgPrice * 1.02),
-      return: ((holding.avgPrice * 1.02) - holding.avgPrice) / holding.avgPrice * 100
-    }));
-  };
-
-  const holdings = calculateHoldings();
   const currentPortfolio = portfolios.find(p => p.id === activePortfolio);
 
   if (!user) {
@@ -141,7 +101,12 @@ const Portfolios = () => {
             
             {portfolios.map(portfolio => (
               <TabsContent key={portfolio.id} value={portfolio.id} className="mt-0">
-                {holdings.length > 0 ? (
+                {holdingsLoading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mindful-600 mx-auto"></div>
+                    <p className="mt-4 text-muted-foreground">Loading portfolio data...</p>
+                  </div>
+                ) : holdings.length > 0 ? (
                   <>
                     <PortfolioMetrics holdings={holdings} />
                     <HoldingsTable 

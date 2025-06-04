@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StockCard from '@/components/cards/StockCard';
 import StockDetail from '@/components/insights/StockDetail';
@@ -10,31 +9,66 @@ import { Search, Star, StarOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { toast } from '@/hooks/use-toast';
+import { fmpAPI } from '@/services/api';
 
-// Mock data for stocks
-const stocksList = [
-  { ticker: 'AAPL', companyName: 'Apple Inc.', price: 189.84, change: 2.34, changePercent: 1.25 },
-  { ticker: 'MSFT', companyName: 'Microsoft Corporation', price: 410.34, change: 3.56, changePercent: 0.87 },
-  { ticker: 'GOOGL', companyName: 'Alphabet Inc.', price: 156.57, change: -0.42, changePercent: -0.27 },
-  { ticker: 'AMZN', companyName: 'Amazon.com, Inc.', price: 178.22, change: 1.78, changePercent: 1.01 },
-  { ticker: 'META', companyName: 'Meta Platforms, Inc.', price: 474.33, change: 5.21, changePercent: 1.11 },
-  { ticker: 'TSLA', companyName: 'Tesla, Inc.', price: 176.75, change: -3.25, changePercent: -1.80 },
-  { ticker: 'NVDA', companyName: 'NVIDIA Corporation', price: 840.87, change: 12.34, changePercent: 1.49 },
-  { ticker: 'BRK.B', companyName: 'Berkshire Hathaway Inc.', price: 408.67, change: 0.78, changePercent: 0.19 },
-];
-
+// Remove mock data and fetch real stock data
 const Insights = () => {
   const { user } = useAuth();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStock, setSelectedStock] = useState<typeof stocksList[0] | null>(null);
+  const [selectedStock, setSelectedStock] = useState<any | null>(null);
+  const [stocksList, setStocksList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Predefined list of popular stocks to fetch
+  const popularTickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'BRK.B'];
+
+  useEffect(() => {
+    fetchStocksList();
+  }, []);
+
+  const fetchStocksList = async () => {
+    setLoading(true);
+    try {
+      const stockPromises = popularTickers.map(async (ticker) => {
+        try {
+          const quoteData = await fmpAPI.getQuote(ticker);
+          const profileData = await fmpAPI.getProfile(ticker);
+          
+          if (quoteData && quoteData.length > 0 && profileData && profileData.length > 0) {
+            const quote = quoteData[0];
+            const profile = profileData[0];
+            return {
+              ticker: quote.symbol,
+              companyName: profile.companyName || quote.name,
+              price: quote.price,
+              change: quote.change,
+              changePercent: quote.changesPercentage
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error(`Error fetching data for ${ticker}:`, error);
+          return null;
+        }
+      });
+
+      const stocks = await Promise.all(stockPromises);
+      const validStocks = stocks.filter(stock => stock !== null);
+      setStocksList(validStocks);
+    } catch (error) {
+      console.error('Error fetching stocks list:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredStocks = stocksList.filter(stock => 
     stock.ticker.toLowerCase().includes(searchQuery.toLowerCase()) || 
     stock.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleStockSelect = (stock: typeof stocksList[0]) => {
+  const handleStockSelect = (stock: any) => {
     setSelectedStock(stock);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -67,6 +101,19 @@ const Insights = () => {
     const stock = stocksList.find(s => s.ticker === item.ticker_symbol);
     return stock ? { ...stock, addedAt: item.added_at } : null;
   }).filter(Boolean);
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="space-y-8">
+          <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>

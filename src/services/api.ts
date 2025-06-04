@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Health check function
@@ -63,6 +62,19 @@ export const fmpAPI = {
       return data;
     } catch (error) {
       console.error('FMP Profile error:', error);
+      throw error;
+    }
+  },
+
+  getHistoricalPrices: async (symbol: string, period = '1year') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'historical-prices', symbol, period }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Historical Prices error:', error);
       throw error;
     }
   }
@@ -151,15 +163,41 @@ export const openaiAPI = {
     }
   },
 
-  analyzeTailwindsHeadwinds: async (symbol: string, financialData: any, newsData: any) => {
+  analyzeNearTermTailwinds: async (symbol: string, financialData: any, newsData: any) => {
     try {
       const { data, error } = await supabase.functions.invoke('openai-analysis', {
-        body: { action: 'tailwinds-headwinds', symbol, financialData, newsData }
+        body: { action: 'near-term-tailwinds', symbol, financialData, newsData }
       });
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('OpenAI Tailwinds/Headwinds Analysis error:', error);
+      console.error('OpenAI Near-term Tailwinds error:', error);
+      throw error;
+    }
+  },
+
+  analyzeLongTermTailwinds: async (symbol: string, financialData: any, newsData: any) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('openai-analysis', {
+        body: { action: 'long-term-tailwinds', symbol, financialData, newsData }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('OpenAI Long-term Tailwinds error:', error);
+      throw error;
+    }
+  },
+
+  generateBriefInsight: async (symbol: string, financialData: any) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('openai-analysis', {
+        body: { action: 'brief-insight', symbol, financialData }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('OpenAI Brief Insight error:', error);
       throw error;
     }
   },

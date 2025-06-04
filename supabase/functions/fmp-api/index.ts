@@ -84,6 +84,10 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/key-metrics/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
+      case 'historical-prices':
+        endpoint = `${BASE_URL}/historical-price-full/${symbol}?apikey=${FMP_API_KEY}`;
+        ttl = 30 * 60 * 1000; // 30 minutes
+        break;
       default:
         throw new Error('Invalid action');
     }
