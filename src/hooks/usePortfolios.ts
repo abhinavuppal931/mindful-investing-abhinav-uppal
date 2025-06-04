@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -186,7 +187,7 @@ export const useTrades = (portfolioId?: string) => {
   };
 };
 
-// Enhanced hook to fetch real-time stock prices for portfolio holdings
+// New hook to fetch real-time stock prices for portfolio holdings
 export const usePortfolioWithPrices = (portfolioId?: string) => {
   const { trades, loading: tradesLoading, error, createTrade, deleteTrade, refetch } = useTrades(portfolioId);
   const [holdings, setHoldings] = useState<any[]>([]);
@@ -202,8 +203,6 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
 
   const calculateHoldingsWithRealPrices = async () => {
     setPricesLoading(true);
-    console.log('Calculating holdings with real prices for trades:', trades);
-    
     try {
       // Group trades by ticker
       const holdingsMap = new Map();
@@ -233,24 +232,14 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
 
       // Filter out positions with zero or negative shares
       const validHoldings = Array.from(holdingsMap.values()).filter(h => h.totalShares > 0);
-      console.log('Valid holdings before price fetch:', validHoldings);
 
       // Fetch current prices for each ticker
       const holdingsWithPrices = await Promise.all(
         validHoldings.map(async (holding) => {
           try {
-            console.log(`Fetching current price for ${holding.ticker}...`);
             const { fmpAPI } = await import('@/services/api');
             const quoteData = await fmpAPI.getQuote(holding.ticker);
-            
-            let currentPrice = holding.totalCost / holding.totalShares; // fallback to avg price
-            
-            if (quoteData && quoteData.length > 0 && quoteData[0].price) {
-              currentPrice = quoteData[0].price;
-              console.log(`Successfully fetched price for ${holding.ticker}: $${currentPrice}`);
-            } else {
-              console.warn(`No current price available for ${holding.ticker}, using average cost`);
-            }
+            const currentPrice = quoteData?.[0]?.price || holding.totalCost / holding.totalShares;
             
             const avgPrice = holding.totalCost / holding.totalShares;
             const totalValue = holding.totalShares * currentPrice;
@@ -282,7 +271,6 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
         })
       );
 
-      console.log('Holdings with prices calculated:', holdingsWithPrices);
       setHoldings(holdingsWithPrices);
     } catch (error) {
       console.error('Error calculating holdings with real prices:', error);
