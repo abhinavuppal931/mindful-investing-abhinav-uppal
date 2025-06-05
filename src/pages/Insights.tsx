@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StockCard from '@/components/cards/StockCard';
 import StockDetail from '@/components/insights/StockDetail';
+import MarketIndices from '@/components/insights/MarketIndices';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,14 +12,15 @@ import { useWatchlist } from '@/hooks/useWatchlist';
 import { toast } from '@/hooks/use-toast';
 import { fmpAPI } from '@/services/api';
 
-// Remove mock data and fetch real stock data
 const Insights = () => {
   const { user } = useAuth();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStock, setSelectedStock] = useState<any | null>(null);
   const [stocksList, setStocksList] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Predefined list of popular stocks to fetch
   const popularTickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'BRK.B'];
@@ -60,6 +62,42 @@ const Insights = () => {
       console.error('Error fetching stocks list:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearch = async (query: string) => {
+    setSearchLoading(true);
+    try {
+      const stockPromises = query.split(',').map(async (ticker) => {
+        try {
+          const quoteData = await fmpAPI.getQuote(ticker);
+          const profileData = await fmpAPI.getProfile(ticker);
+          
+          if (quoteData && quoteData.length > 0 && profileData && profileData.length > 0) {
+            const quote = quoteData[0];
+            const profile = profileData[0];
+            return {
+              ticker: quote.symbol,
+              companyName: profile.companyName || quote.name,
+              price: quote.price,
+              change: quote.change,
+              changePercent: quote.changesPercentage
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error(`Error fetching data for ${ticker}:`, error);
+          return null;
+        }
+      });
+
+      const stocks = await Promise.all(stockPromises);
+      const validStocks = stocks.filter(stock => stock !== null);
+      setSearchResults(validStocks);
+    } catch (error) {
+      console.error('Error fetching search results:', error);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -106,7 +144,10 @@ const Insights = () => {
     return (
       <MainLayout>
         <div className="space-y-8">
-          <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
+            <MarketIndices />
+          </div>
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
           </div>
@@ -118,7 +159,10 @@ const Insights = () => {
   return (
     <MainLayout>
       <div className="space-y-8">
-        <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
+          <MarketIndices />
+        </div>
         
         {selectedStock ? (
           <div className="mb-8">
@@ -132,7 +176,7 @@ const Insights = () => {
             <div className="bg-mindful-50 dark:bg-mindful-950 rounded-xl p-6 border border-mindful-100 dark:border-mindful-800">
               <h2 className="text-xl font-semibold mb-2 text-foreground">Welcome to Stock Insights</h2>
               <p className="text-muted-foreground">
-                Select a stock from the list below to view detailed financial metrics and interactive charts.
+                Search for any stock by ticker or company name, or select from the popular stocks below to view detailed financial metrics and interactive charts.
               </p>
             </div>
 
@@ -186,6 +230,11 @@ const Insights = () => {
             className="pl-10 bg-background border-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyUp={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch(searchQuery);
+              }
+            }}
           />
         </div>
         

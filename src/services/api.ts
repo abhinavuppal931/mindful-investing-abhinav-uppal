@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Health check function
@@ -128,6 +127,71 @@ export const fmpAPI = {
       return data;
     } catch (error) {
       console.error('FMP Historical Prices error:', error);
+      throw error;
+    }
+  },
+
+  searchSymbol: async (query: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'search-symbol', query }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Symbol Search error:', error);
+      throw error;
+    }
+  },
+
+  searchByName: async (query: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'search-name', query }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Name Search error:', error);
+      throw error;
+    }
+  },
+
+  getRevenueProductSegmentation: async (symbol: string, period = 'annual') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'revenue-product-segmentation', symbol, period }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Revenue Product Segmentation error:', error);
+      throw error;
+    }
+  },
+
+  getRevenueGeographicSegmentation: async (symbol: string, period = 'annual') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'revenue-geographic-segmentation', symbol, period }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Revenue Geographic Segmentation error:', error);
+      throw error;
+    }
+  },
+
+  getIndexQuote: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'index-quote', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Index Quote error:', error);
       throw error;
     }
   }

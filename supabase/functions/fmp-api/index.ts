@@ -52,7 +52,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, symbol, period = 'annual', statement = 'income', limit = 5 } = await req.json();
+    const { action, symbol, period = 'annual', statement = 'income', limit = 5, query } = await req.json();
     
     if (!FMP_API_KEY) {
       throw new Error('FMP API key not configured');
@@ -89,7 +89,6 @@ serve(async (req) => {
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       case 'historical-prices':
-        // For free tier, get 1 year of daily data
         endpoint = `${BASE_URL}/historical-price-full/${symbol}?from=${new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}&to=${new Date().toISOString().split('T')[0]}&apikey=${FMP_API_KEY}`;
         ttl = 30 * 60 * 1000; // 30 minutes
         break;
@@ -102,15 +101,34 @@ serve(async (req) => {
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       case 'dividends':
-        // For dividends, get historical dividend data
         endpoint = `${BASE_URL}/historical-price-full/stock_dividend/${symbol}?apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
+      case 'search-symbol':
+        endpoint = `${BASE_URL}/search?query=${query}&limit=10&apikey=${FMP_API_KEY}`;
+        ttl = 60 * 60 * 1000; // 1 hour
+        break;
+      case 'search-name':
+        endpoint = `${BASE_URL}/search-name?query=${query}&limit=10&apikey=${FMP_API_KEY}`;
+        ttl = 60 * 60 * 1000; // 1 hour
+        break;
+      case 'revenue-product-segmentation':
+        endpoint = `${BASE_URL}/revenue-product-segmentation/${symbol}?period=${period}&structure=flat&apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
+      case 'revenue-geographic-segmentation':
+        endpoint = `${BASE_URL}/revenue-geographic-segmentation/${symbol}?period=${period}&structure=flat&apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
+      case 'index-quote':
+        endpoint = `${BASE_URL}/quote/${symbol}?apikey=${FMP_API_KEY}`;
+        ttl = 30 * 60 * 1000; // 30 minutes
         break;
       default:
         throw new Error('Invalid action');
     }
 
-    const cacheKey = `fmp_${action}_${symbol}_${period}_${statement}_${limit}`;
+    const cacheKey = `fmp_${action}_${symbol || query}_${period}_${statement}_${limit}`;
     const cachedEntry = cache.get(cacheKey);
 
     if (cachedEntry && isValidCache(cachedEntry)) {

@@ -2,26 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, BarChart3, Building2, BrainCircuit, Shield, AlertTriangle, Wind, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, BarChart3, Building2, Info, Shield, AlertTriangle, Wind, ChevronDown, ChevronUp } from 'lucide-react';
 import { useStockData } from '@/hooks/useStockData';
 import { openaiAPI, fmpAPI } from '@/services/api';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
+
 interface StockDetailProps {
   ticker: string;
   companyName: string;
 }
-const StockDetail: React.FC<StockDetailProps> = ({
-  ticker,
-  companyName
-}) => {
-  const {
-    quote,
-    financials,
-    profile,
-    loading,
-    error
-  } = useStockData(ticker);
+
+const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
+  const { quote, financials, profile, loading, error } = useStockData(ticker);
+  
   const [aiAnalysis, setAiAnalysis] = useState<{
     moat: any;
     risks: any;
@@ -35,6 +30,7 @@ const StockDetail: React.FC<StockDetailProps> = ({
     longTermTailwinds: null,
     briefInsight: null
   });
+
   const [expandedSections, setExpandedSections] = useState<{
     moat: boolean;
     risks: boolean;
@@ -46,6 +42,7 @@ const StockDetail: React.FC<StockDetailProps> = ({
     nearTerm: false,
     longTerm: false
   });
+
   const [loadingSections, setLoadingSections] = useState<{
     moat: boolean;
     risks: boolean;
@@ -59,12 +56,33 @@ const StockDetail: React.FC<StockDetailProps> = ({
     longTerm: false,
     briefInsight: false
   });
+
   const [chartToggles, setChartToggles] = useState({
+    revenue: 'total',
     profitability: 'netIncome',
     cashFlow: 'freeCashFlow',
     margins: 'grossMargin',
     ratios: 'pe'
   });
+
+  const [periodFilters, setPeriodFilters] = useState({
+    revenue: 5,
+    profitability: 5,
+    cashFlow: 5,
+    expenses: 5,
+    cashdebt: 5,
+    margins: 5,
+    ratios: 5
+  });
+
+  const [lazyLoadedData, setLazyLoadedData] = useState<{
+    [key: string]: {
+      loaded: boolean;
+      loading: boolean;
+      data: any;
+    };
+  }>({});
+
   const [additionalData, setAdditionalData] = useState<{
     priceData: any[];
     keyMetrics: any[];
@@ -75,6 +93,8 @@ const StockDetail: React.FC<StockDetailProps> = ({
     dividends: any[];
     enterpriseValues: any[];
     financialGrowth: any[];
+    revenueProductSegmentation: any[];
+    revenueGeographicSegmentation: any[];
   }>({
     priceData: [],
     keyMetrics: [],
@@ -84,40 +104,141 @@ const StockDetail: React.FC<StockDetailProps> = ({
     cashFlowStatement: [],
     dividends: [],
     enterpriseValues: [],
-    financialGrowth: []
+    financialGrowth: [],
+    revenueProductSegmentation: [],
+    revenueGeographicSegmentation: []
   });
+
   useEffect(() => {
     if (financials.length > 0) {
       fetchBriefInsight();
-      fetchAdditionalData();
+      fetchPriceData(); // Load price data immediately
     }
   }, [financials, ticker]);
-  const fetchAdditionalData = async () => {
+
+  const fetchPriceData = async () => {
     try {
-      // Fetch all additional data for comprehensive charts
-      const [priceResponse, metricsResponse, ratiosResponse, balanceResponse, incomeResponse, cashFlowResponse, dividendsResponse, enterpriseResponse, growthResponse] = await Promise.all([fmpAPI.getHistoricalPrices(ticker), fmpAPI.getMetrics(ticker, 'annual', 5), fmpAPI.getRatios(ticker, 'annual', 5), fmpAPI.getFinancials(ticker, 'annual', 'balance', 5), fmpAPI.getFinancials(ticker, 'annual', 'income', 5), fmpAPI.getFinancials(ticker, 'annual', 'cash', 5), fmpAPI.getDividends(ticker), fmpAPI.getEnterpriseValues(ticker, 'annual', 5), fmpAPI.getFinancialGrowth(ticker, 'annual', 5)]);
-      console.log('Price data:', priceResponse);
-      console.log('Key metrics:', metricsResponse);
-      console.log('Ratios:', ratiosResponse);
-      console.log('Balance sheet:', balanceResponse);
-      console.log('Income statement:', incomeResponse);
-      console.log('Financial growth:', growthResponse);
-      setAdditionalData({
-        priceData: priceResponse?.historical?.slice(0, 252).reverse() || [],
-        // Last year of trading days
-        keyMetrics: metricsResponse || [],
-        ratios: ratiosResponse || [],
-        balanceSheet: balanceResponse || [],
-        incomeStatement: incomeResponse || [],
-        cashFlowStatement: cashFlowResponse || [],
-        dividends: dividendsResponse?.historical || [],
-        enterpriseValues: enterpriseResponse || [],
-        financialGrowth: growthResponse || []
-      });
+      const priceResponse = await fmpAPI.getHistoricalPrices(ticker);
+      setAdditionalData(prev => ({
+        ...prev,
+        priceData: priceResponse?.historical?.slice(0, 252).reverse() || []
+      }));
     } catch (error) {
-      console.error('Failed to fetch additional data:', error);
+      console.error('Failed to fetch price data:', error);
     }
   };
+
+  const fetchTabData = async (tabKey: string) => {
+    if (lazyLoadedData[tabKey]?.loaded || lazyLoadedData[tabKey]?.loading) return;
+
+    setLazyLoadedData(prev => ({
+      ...prev,
+      [tabKey]: { loaded: false, loading: true, data: null }
+    }));
+
+    try {
+      let dataPromises = [];
+      
+      switch (tabKey) {
+        case 'revenue':
+          dataPromises = [
+            fmpAPI.getMetrics(ticker, 'annual', periodFilters.revenue),
+            fmpAPI.getRatios(ticker, 'annual', periodFilters.revenue),
+            fmpAPI.getFinancials(ticker, 'annual', 'income', periodFilters.revenue),
+            fmpAPI.getRevenueProductSegmentation(ticker),
+            fmpAPI.getRevenueGeographicSegmentation(ticker),
+            fmpAPI.getFinancialGrowth(ticker, 'annual', periodFilters.revenue)
+          ];
+          break;
+        case 'profitability':
+          dataPromises = [
+            fmpAPI.getFinancials(ticker, 'annual', 'income', periodFilters.profitability),
+            fmpAPI.getFinancialGrowth(ticker, 'annual', periodFilters.profitability)
+          ];
+          break;
+        case 'cashflow':
+          dataPromises = [
+            fmpAPI.getFinancials(ticker, 'annual', 'cash', periodFilters.cashFlow),
+            fmpAPI.getMetrics(ticker, 'annual', periodFilters.cashFlow),
+            fmpAPI.getFinancialGrowth(ticker, 'annual', periodFilters.cashFlow)
+          ];
+          break;
+        case 'expenses':
+          dataPromises = [
+            fmpAPI.getFinancials(ticker, 'annual', 'income', periodFilters.expenses)
+          ];
+          break;
+        case 'cashdebt':
+          dataPromises = [
+            fmpAPI.getFinancials(ticker, 'annual', 'balance', periodFilters.cashdebt)
+          ];
+          break;
+        case 'margins':
+          dataPromises = [
+            fmpAPI.getRatios(ticker, 'annual', periodFilters.margins)
+          ];
+          break;
+        case 'ratios':
+          dataPromises = [
+            fmpAPI.getRatios(ticker, 'annual', periodFilters.ratios),
+            fmpAPI.getMetrics(ticker, 'annual', periodFilters.ratios)
+          ];
+          break;
+      }
+
+      const results = await Promise.all(dataPromises);
+      
+      setLazyLoadedData(prev => ({
+        ...prev,
+        [tabKey]: { loaded: true, loading: false, data: results }
+      }));
+
+      // Update additionalData based on results
+      const updateData: any = {};
+      switch (tabKey) {
+        case 'revenue':
+          updateData.keyMetrics = results[0] || [];
+          updateData.ratios = results[1] || [];
+          updateData.incomeStatement = results[2] || [];
+          updateData.revenueProductSegmentation = results[3] || [];
+          updateData.revenueGeographicSegmentation = results[4] || [];
+          updateData.financialGrowth = results[5] || [];
+          break;
+        case 'profitability':
+          updateData.incomeStatement = results[0] || [];
+          updateData.financialGrowth = results[1] || [];
+          break;
+        case 'cashflow':
+          updateData.cashFlowStatement = results[0] || [];
+          updateData.keyMetrics = results[1] || [];
+          updateData.financialGrowth = results[2] || [];
+          break;
+        case 'expenses':
+          updateData.incomeStatement = results[0] || [];
+          break;
+        case 'cashdebt':
+          updateData.balanceSheet = results[0] || [];
+          break;
+        case 'margins':
+          updateData.ratios = results[0] || [];
+          break;
+        case 'ratios':
+          updateData.ratios = results[0] || [];
+          updateData.keyMetrics = results[1] || [];
+          break;
+      }
+      
+      setAdditionalData(prev => ({ ...prev, ...updateData }));
+
+    } catch (error) {
+      console.error(`Failed to fetch ${tabKey} data:`, error);
+      setLazyLoadedData(prev => ({
+        ...prev,
+        [tabKey]: { loaded: false, loading: false, data: null }
+      }));
+    }
+  };
+
   const fetchBriefInsight = async () => {
     setLoadingSections(prev => ({
       ...prev,
@@ -138,6 +259,7 @@ const StockDetail: React.FC<StockDetailProps> = ({
       }));
     }
   };
+
   const handleSectionToggle = async (section: string) => {
     const isExpanded = expandedSections[section as keyof typeof expandedSections];
     setExpandedSections(prev => ({
@@ -179,29 +301,8 @@ const StockDetail: React.FC<StockDetailProps> = ({
       }
     }
   };
+
   const formatCurrency = (value: number) => {
-    if (Math.abs(value) >= 1000000000000) {
-      return `$${(value / 1000000000000).toFixed(2)}T`;
-    } else if (Math.abs(value) >= 1000000000) {
-      return `$${(value / 1000000000).toFixed(1)}B`;
-    } else if (Math.abs(value) >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    } else {
-      return `$${value.toLocaleString()}`;
-    }
-  };
-  const formatNumber = (value: number) => {
-    if (Math.abs(value) >= 1000000000000) {
-      return `${(value / 1000000000000).toFixed(2)}T`;
-    } else if (Math.abs(value) >= 1000000000) {
-      return `${(value / 1000000000).toFixed(1)}B`;
-    } else if (Math.abs(value) >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`;
-    } else {
-      return value.toLocaleString();
-    }
-  };
-  const formatAxisValue = (value: number) => {
     if (Math.abs(value) >= 1000000000000) {
       return `$${(value / 1000000000000).toFixed(1)}T`;
     } else if (Math.abs(value) >= 1000000000) {
@@ -213,14 +314,19 @@ const StockDetail: React.FC<StockDetailProps> = ({
     }
     return `$${value.toFixed(0)}`;
   };
-  const formatPercentageAxis = (value: number) => {
-    return `${value.toFixed(0)}%`;
+
+  const formatAxisValue = (value: number) => {
+    if (Math.abs(value) >= 1000000000) {
+      return `${(value / 1000000000).toFixed(0)}B`;
+    } else if (Math.abs(value) >= 1000000) {
+      return `${(value / 1000000).toFixed(0)}M`;
+    } else if (Math.abs(value) >= 1000) {
+      return `${(value / 1000).toFixed(0)}K`;
+    }
+    return value.toFixed(0);
   };
-  const formatRatioAxis = (value: number) => {
-    return value.toFixed(1);
-  };
+
   const formatAIContent = (content: string) => {
-    // Clean up the content by removing markdown symbols and formatting nicely
     const cleanContent = content.replace(/###\s*/g, '') // Remove ### headers
     .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove ** bold formatting but keep text
     .replace(/\*([^*]+)\*/g, '$1') // Remove * italic formatting but keep text
@@ -241,6 +347,7 @@ const StockDetail: React.FC<StockDetailProps> = ({
       return null;
     }).filter(Boolean);
   };
+
   const renderGrowthMetrics = (data: any[]) => {
     if (!data || data.length === 0) return null;
     const latestGrowth = data[0];
@@ -281,97 +388,214 @@ const StockDetail: React.FC<StockDetailProps> = ({
           </div>)}
       </div>;
   };
+
   if (loading) {
-    return <div className="flex justify-center items-center h-64">
+    return (
+      <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-mindful-600"></div>
-      </div>;
+      </div>
+    );
   }
+
   if (error) {
-    return <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <h3 className="text-red-800 font-medium">Error loading stock data</h3>
         <p className="text-red-600">{error}</p>
-      </div>;
+      </div>
+    );
   }
+
   if (!quote) {
-    return <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+    return (
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
         <p className="text-gray-600">No data available for {ticker}</p>
-      </div>;
+      </div>
+    );
   }
+
   const isPositive = quote.change >= 0;
+  
+  // Enhanced financial data processing
+  const processFinancialData = (tabKey: string) => {
+    const tabData = lazyLoadedData[tabKey]?.data;
+    if (!tabData) return [];
 
-  // Prepare comprehensive chart data with proper formatting
-  const revenueData = financials.map(f => ({
-    year: new Date(f.date).getFullYear(),
-    revenue: f.revenue / 1000000,
-    netIncome: f.netIncome / 1000000,
-    ebitda: f.ebitda / 1000000,
-    eps: f.netIncome / (quote.sharesOutstanding || 1),
-    freeCashFlow: f.freeCashFlow / 1000000,
-    operatingCashFlow: f.operatingCashFlow / 1000000,
-    fcfPerShare: f.freeCashFlow / (quote.sharesOutstanding || 1),
-    grossProfit: f.grossProfit / 1000000,
-    operatingIncome: f.operatingIncome / 1000000,
-    totalCash: f.totalCash / 1000000,
-    totalDebt: f.totalDebt / 1000000,
-    grossMargin: f.revenue > 0 ? f.grossProfit / f.revenue * 100 : 0,
-    operatingMargin: f.revenue > 0 ? f.operatingIncome / f.revenue * 100 : 0
-  })).reverse();
+    const limit = periodFilters[tabKey as keyof typeof periodFilters];
+    
+    switch (tabKey) {
+      case 'revenue':
+        const incomeData = tabData[2] || [];
+        const productSeg = tabData[3] || [];
+        const geoSeg = tabData[4] || [];
+        if (chartToggles.revenue === 'total') {
+          return incomeData.slice(0, limit).map((income: any) => ({
+            year: new Date(income.date).getFullYear(),
+            revenue: income.revenue / 1000000000
+          })).reverse();
+        } else if (chartToggles.revenue === 'product') {
+          // Process product segmentation data for stacked bar chart
+          // Assuming productSeg is an array of objects with date and segment revenues
+          // We will transform it into array of { year, segment1, segment2, ... }
+          if (!productSeg.length) return [];
+          // Extract unique segment names
+          const segments = new Set<string>();
+          productSeg.forEach((item: any) => {
+            Object.keys(item).forEach(key => {
+              if (key !== 'date') segments.add(key);
+            });
+          });
+          const segmentArray = Array.from(segments);
+          // Group by year
+          const grouped: Record<string, any> = {};
+          productSeg.forEach((item: any) => {
+            const year = new Date(item.date).getFullYear();
+            if (!grouped[year]) grouped[year] = { year };
+            segmentArray.forEach(seg => {
+              grouped[year][seg] = (grouped[year][seg] || 0) + (item[seg] || 0);
+            });
+          });
+          // Convert to array and slice by limit
+          const result = Object.values(grouped).sort((a, b) => b.year - a.year).slice(0, limit).reverse();
+          // Convert values to billions
+          return result.map((item: any) => {
+            const newItem: any = { year: item.year };
+            segmentArray.forEach(seg => {
+              newItem[seg] = item[seg] / 1000000000;
+            });
+            return newItem;
+          });
+        } else if (chartToggles.revenue === 'geographic') {
+          // Process geographic segmentation data for stacked bar chart
+          if (!geoSeg.length) return [];
+          const regions = new Set<string>();
+          geoSeg.forEach((item: any) => {
+            Object.keys(item).forEach(key => {
+              if (key !== 'date') regions.add(key);
+            });
+          });
+          const regionArray = Array.from(regions);
+          const grouped: Record<string, any> = {};
+          geoSeg.forEach((item: any) => {
+            const year = new Date(item.date).getFullYear();
+            if (!grouped[year]) grouped[year] = { year };
+            regionArray.forEach(region => {
+              grouped[year][region] = (grouped[year][region] || 0) + (item[region] || 0);
+            });
+          });
+          const result = Object.values(grouped).sort((a, b) => b.year - a.year).slice(0, limit).reverse();
+          return result.map((item: any) => {
+            const newItem: any = { year: item.year };
+            regionArray.forEach(region => {
+              newItem[region] = item[region] / 1000000000;
+            });
+            return newItem;
+          });
+        }
+        return [];
+      
+      case 'profitability':
+        const profitData = tabData[0] || [];
+        return profitData.slice(0, limit).map((income: any) => ({
+          year: new Date(income.date).getFullYear(),
+          netIncome: income.netIncome / 1000000000,
+          ebitda: income.ebitda / 1000000000,
+          eps: income.eps || 0
+        })).reverse();
 
-  // Enhanced financial data using additional API responses
-  const enhancedFinancialData = additionalData.incomeStatement.map((income, index) => {
-    const balance = additionalData.balanceSheet[index] || {};
-    const cashFlow = additionalData.cashFlowStatement[index] || {};
-    const metrics = additionalData.keyMetrics[index] || {};
-    return {
-      year: new Date(income.date).getFullYear(),
-      revenue: (income.revenue || 0) / 1000000,
-      netIncome: (income.netIncome || 0) / 1000000,
-      ebitda: (income.ebitda || 0) / 1000000,
-      eps: income.eps || 0,
-      freeCashFlow: (cashFlow.freeCashFlow || 0) / 1000000,
-      operatingCashFlow: (cashFlow.operatingCashFlow || 0) / 1000000,
-      fcfPerShare: (cashFlow.freeCashFlow || 0) / (quote.sharesOutstanding || 1),
-      freeCashFlowYield: (metrics.freeCashFlowYield || 0) * 100,
-      grossProfit: (income.grossProfit || 0) / 1000000,
-      operatingIncome: (income.operatingIncome || 0) / 1000000,
-      totalCash: (balance.cashAndCashEquivalents || 0) / 1000000,
-      totalDebt: (balance.totalDebt || 0) / 1000000,
-      grossMargin: income.revenue > 0 ? (income.grossProfit || 0) / income.revenue * 100 : 0,
-      operatingMargin: income.revenue > 0 ? (income.operatingIncome || 0) / income.revenue * 100 : 0,
-      researchAndDevelopment: (income.researchAndDevelopmentExpenses || 0) / 1000000,
-      salesAndMarketing: (income.sellingGeneralAndAdministrativeExpenses || 0) / 1000000,
-      operatingExpenses: (income.operatingExpenses || 0) / 1000000
-    };
-  }).reverse();
+      case 'cashflow':
+        const cashData = tabData[0] || [];
+        const metricsData = tabData[1] || [];
+        return cashData.slice(0, limit).map((cash: any, index: number) => {
+          const metrics = metricsData[index] || {};
+          return {
+            year: new Date(cash.date).getFullYear(),
+            freeCashFlow: cash.freeCashFlow / 1000000000,
+            operatingCashFlow: cash.operatingCashFlow / 1000000000,
+            stockBasedCompensation: cash.stockBasedCompensation ? cash.stockBasedCompensation / 1000000000 : 0,
+            capitalExpenditure: Math.abs(cash.capitalExpenditure || 0) / 1000000000,
+            freeCashFlowYield: (metrics.freeCashFlowYield || 0) * 100
+          };
+        }).reverse();
 
-  // Price chart data
+      case 'expenses':
+        const expensesData = tabData[0] || [];
+        return expensesData.slice(0, limit).map((income: any) => ({
+          year: new Date(income.date).getFullYear(),
+          researchAndDevelopment: (income.researchAndDevelopmentExpenses || 0) / 1000000000,
+          salesAndMarketing: (income.sellingGeneralAndAdministrativeExpenses || 0) / 1000000000,
+          operatingExpenses: (income.operatingExpenses || 0) / 1000000000
+        })).reverse();
+
+      case 'cashdebt':
+        const balanceData = tabData[0] || [];
+        return balanceData.slice(0, limit).map((balance: any) => ({
+          year: new Date(balance.date).getFullYear(),
+          totalCash: (balance.cashAndCashEquivalents || 0) / 1000000000,
+          totalDebt: (balance.totalDebt || 0) / 1000000000
+        })).reverse();
+
+      case 'margins':
+        const marginData = tabData[0] || [];
+        return marginData.slice(0, limit).map((ratio: any) => ({
+          year: new Date(ratio.date).getFullYear(),
+          grossMargin: (ratio.grossProfitMargin || 0) * 100,
+          operatingMargin: (ratio.operatingProfitMargin || 0) * 100,
+          ebitdaMargin: (ratio.ebitdaMargin || 0) * 100,
+          netProfitMargin: (ratio.netProfitMargin || 0) * 100
+        })).reverse();
+
+      case 'ratios':
+        const ratioData = tabData[0] || [];
+        const keyMetricsData = tabData[1] || [];
+        return ratioData.slice(0, limit).map((ratio: any, index: number) => {
+          const metrics = keyMetricsData[index] || {};
+          return {
+            year: new Date(ratio.date).getFullYear(),
+            pe: ratio.priceEarningsRatio || 0,
+            ps: ratio.priceToSalesRatio || 0,
+            pFcf: ratio.priceToFreeCashFlowsRatio || metrics.priceToFreeCashFlowsRatio || 0,
+            pOcf: ratio.priceCashFlowRatio || 0,
+            roe: (ratio.returnOnEquity || 0) * 100,
+            roic: (ratio.returnOnCapitalEmployed || 0) * 100
+          };
+        }).reverse();
+
+      default:
+        return [];
+    }
+  };
+
+  // Price chart data with gradient
   const priceChartData = additionalData.priceData.map(p => ({
     date: p.date,
-    price: p.close,
-    volume: p.volume
+    price: p.close
   }));
 
-  // Key ratios data with proper metrics access
-  const ratiosData = additionalData.ratios.map((ratio, index) => {
-    const metrics = additionalData.keyMetrics[index] || {};
-    return {
-      year: new Date(ratio.date).getFullYear(),
-      pe: ratio.priceEarningsRatio || 0,
-      ps: ratio.priceToSalesRatio || 0,
-      pFcf: metrics.priceToFreeCashFlowsRatio || 0,
-      pOcf: ratio.priceCashFlowRatio || 0,
-      debtToEquity: ratio.debtEquityRatio || 0,
-      roe: (ratio.returnOnEquity || 0) * 100,
-      roic: (ratio.returnOnCapitalEmployed || 0) * 100
-    };
-  }).reverse();
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="text-sm font-medium text-gray-900 mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center space-x-2">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-sm text-gray-700">
+                {entry.name}: {entry.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
-  // Dividends data
-  const dividendsData = additionalData.dividends.map(d => ({
-    year: new Date(d.date).getFullYear(),
-    dividend: d.dividend || 0
-  })).reverse();
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">{ticker}</h1>
@@ -444,7 +668,7 @@ const StockDetail: React.FC<StockDetailProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatNumber(quote.volume)}
+              {formatAxisValue(quote.volume)}
             </div>
           </CardContent>
         </Card>
@@ -586,8 +810,8 @@ const StockDetail: React.FC<StockDetailProps> = ({
           </CardContent>
         </Card>}
       
-      {/* Comprehensive Financial Charts - All 8 Categories */}
-      <Tabs defaultValue="price" className="space-y-4">
+      {/* Enhanced Financial Charts */}
+      <Tabs defaultValue="price" className="space-y-4" onValueChange={(value) => fetchTabData(value)}>
         <TabsList className="grid grid-cols-4 lg:grid-cols-8 w-full">
           <TabsTrigger value="price">Price</TabsTrigger>
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
@@ -599,7 +823,7 @@ const StockDetail: React.FC<StockDetailProps> = ({
           <TabsTrigger value="ratios">Key Ratios</TabsTrigger>
         </TabsList>
 
-        {/* Price Chart */}
+        {/* Price Chart - Enhanced */}
         <TabsContent value="price">
           <Card>
             <CardHeader>
@@ -608,150 +832,294 @@ const StockDetail: React.FC<StockDetailProps> = ({
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                {priceChartData.length > 0 ? <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={priceChartData}>
-                      <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
-                      <XAxis dataKey="date" tickFormatter={value => new Date(value).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                  })} />
-                      <YAxis tickFormatter={formatAxisValue} />
-                      <Tooltip formatter={(value, name) => [`$${Number(value).toFixed(2)}`, 'Price']} labelFormatter={value => new Date(value).toLocaleDateString()} />
-                      <Line type="monotone" dataKey="price" stroke="#0ea5e9" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer> : <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-500">No price data available</p>
-                  </div>}
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={priceChartData}>
+                    <defs>
+                      <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={formatCurrency} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="#0ea5e9" 
+                      strokeWidth={2}
+                      fill="url(#priceGradient)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Revenue Chart */}
+        {/* Revenue Chart - Enhanced with Segmentation */}
         <TabsContent value="revenue">
           <Card>
             <CardHeader>
-              <CardTitle>Revenue Growth</CardTitle>
-              <CardDescription>Annual revenue over time (in millions)</CardDescription>
+              <CardTitle>Revenue Analysis</CardTitle>
+              <CardDescription>Revenue growth and segmentation analysis</CardDescription>
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-2">
+                  <Button
+                    variant={chartToggles.revenue === 'total' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, revenue: 'total' }))}
+                  >
+                    Total Revenue
+                  </Button>
+                  <Button
+                    variant={chartToggles.revenue === 'product' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, revenue: 'product' }))}
+                  >
+                    Product Segments
+                  </Button>
+                  <Button
+                    variant={chartToggles.revenue === 'geographic' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, revenue: 'geographic' }))}
+                  >
+                    Geographic Segments
+                  </Button>
+                </div>
+                <Select
+                  value={periodFilters.revenue.toString()}
+                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, revenue: parseInt(value) }))}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1Y</SelectItem>
+                    <SelectItem value="3">3Y</SelectItem>
+                    <SelectItem value="5">5Y</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={enhancedFinancialData}>
-                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
-                    <XAxis dataKey="year" />
-                    <YAxis tickFormatter={formatAxisValue} />
-                    <Tooltip formatter={value => [`${formatNumber(Number(value) * 1000000)}`, 'Revenue']} />
-                    <Bar dataKey="revenue" fill="#10b981" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {lazyLoadedData.revenue?.loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    {chartToggles.revenue === 'total' ? (
+                      <BarChart data={processFinancialData('revenue')}>
+                        <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="revenue" fill="#10b981" name="Revenue ($B)" />
+                      </BarChart>
+                    ) : (
+                      <BarChart data={processFinancialData('revenue')}>
+                        <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend />
+                        {chartToggles.revenue === 'product' && additionalData.revenueProductSegmentation.length > 0 && Object.keys(additionalData.revenueProductSegmentation[0]).filter(k => k !== 'year').map((key) => (
+                          <Bar key={key} dataKey={key} stackId="a" name={key} fill={`#${Math.floor(Math.random()*16777215).toString(16)}`} />
+                        ))}
+                        {chartToggles.revenue === 'geographic' && additionalData.revenueGeographicSegmentation.length > 0 && Object.keys(additionalData.revenueGeographicSegmentation[0]).filter(k => k !== 'year').map((key) => (
+                          <Bar key={key} dataKey={key} stackId="a" name={key} fill={`#${Math.floor(Math.random()*16777215).toString(16)}`} />
+                        ))}
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                )}
               </div>
               {renderGrowthMetrics(additionalData.financialGrowth)}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Profitability Chart with Toggles */}
+        {/* Profitability Chart - Enhanced as Bar Charts */}
         <TabsContent value="profitability">
           <Card>
             <CardHeader>
-              <CardTitle>Profitability</CardTitle>
-              <CardDescription>Financial performance metrics over time (in millions)</CardDescription>
-              <div className="flex space-x-2">
-                <Button variant={chartToggles.profitability === 'netIncome' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                profitability: 'netIncome'
-              }))}>
-                  Net Income
-                </Button>
-                <Button variant={chartToggles.profitability === 'ebitda' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                profitability: 'ebitda'
-              }))}>
-                  EBITDA
-                </Button>
-                <Button variant={chartToggles.profitability === 'eps' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                profitability: 'eps'
-              }))}>
-                  EPS
-                </Button>
+              <CardTitle>Profitability Metrics</CardTitle>
+              <CardDescription>Financial performance over time</CardDescription>
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-2">
+                  <Button
+                    variant={chartToggles.profitability === 'netIncome' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'netIncome' }))}
+                  >
+                    Net Income
+                  </Button>
+                  <Button
+                    variant={chartToggles.profitability === 'ebitda' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'ebitda' }))}
+                  >
+                    EBITDA
+                  </Button>
+                  <Button
+                    variant={chartToggles.profitability === 'eps' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'eps' }))}
+                  >
+                    EPS
+                  </Button>
+                </div>
+                <Select
+                  value={periodFilters.profitability.toString()}
+                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, profitability: parseInt(value) }))}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1Y</SelectItem>
+                    <SelectItem value="3">3Y</SelectItem>
+                    <SelectItem value="5">5Y</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={enhancedFinancialData}>
-                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
-                    <XAxis dataKey="year" />
-                    <YAxis tickFormatter={chartToggles.profitability === 'eps' ? value => `$${value.toFixed(2)}` : formatAxisValue} />
-                    <Tooltip formatter={value => {
-                    if (chartToggles.profitability === 'eps') {
-                      return [`$${Number(value).toFixed(2)}`, 'EPS'];
-                    }
-                    return [`${formatNumber(Number(value) * 1000000)}`, chartToggles.profitability === 'netIncome' ? 'Net Income' : 'EBITDA'];
-                  }} />
-                    <Line type="monotone" dataKey={chartToggles.profitability} stroke="#8b5cf6" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+                {lazyLoadedData.profitability?.loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={processFinancialData('profitability')}>
+                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                      <YAxis 
+                        tickFormatter={chartToggles.profitability === 'eps' ? 
+                          (value) => `$${value.toFixed(2)}` : formatAxisValue} 
+                        axisLine={false} 
+                        tickLine={false} 
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar 
+                        dataKey={chartToggles.profitability} 
+                        fill={chartToggles.profitability === 'netIncome' ? '#8b5cf6' : 
+                             chartToggles.profitability === 'ebitda' ? '#06b6d4' : '#f59e0b'} 
+                        name={chartToggles.profitability === 'netIncome' ? 'Net Income ($B)' :
+                             chartToggles.profitability === 'ebitda' ? 'EBITDA ($B)' : 'EPS ($)'}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
-              {renderGrowthMetrics(additionalData.financialGrowth)}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Cash Flow Chart with Toggles */}
+        {/* Enhanced Cash Flow Chart */}
         <TabsContent value="cashflow">
           <Card>
             <CardHeader>
-              <CardTitle>Cash Flow</CardTitle>
-              <CardDescription>Cash generation metrics over time</CardDescription>
-              <div className="flex space-x-2">
-                <Button variant={chartToggles.cashFlow === 'freeCashFlow' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                cashFlow: 'freeCashFlow'
-              }))}>
-                  Free Cash Flow
-                </Button>
-                <Button variant={chartToggles.cashFlow === 'operatingCashFlow' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                cashFlow: 'operatingCashFlow'
-              }))}>
-                  Operating Cash Flow
-                </Button>
-                <Button variant={chartToggles.cashFlow === 'fcfPerShare' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                cashFlow: 'fcfPerShare'
-              }))}>FCF/Share</Button>
-                <Button variant={chartToggles.cashFlow === 'freeCashFlowYield' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                cashFlow: 'freeCashFlowYield'
-              }))}>
-                  FCF Yield
-                </Button>
+              <CardTitle>Cash Flow Analysis</CardTitle>
+              <CardDescription>Cash generation and capital allocation</CardDescription>
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-2">
+                  <Button
+                    variant={chartToggles.cashFlow === 'freeCashFlow' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'freeCashFlow' }))}
+                  >
+                    Free Cash Flow
+                  </Button>
+                  <Button
+                    variant={chartToggles.cashFlow === 'operatingCashFlow' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'operatingCashFlow' }))}
+                  >
+                    Operating CF
+                  </Button>
+                  <Button
+                    variant={chartToggles.cashFlow === 'stockBasedCompensation' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'stockBasedCompensation' }))}
+                  >
+                    Stock-Based Comp
+                  </Button>
+                  <Button
+                    variant={chartToggles.cashFlow === 'capitalExpenditure' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'capitalExpenditure' }))}
+                  >
+                    CapEx
+                  </Button>
+                  <Button
+                    variant={chartToggles.cashFlow === 'freeCashFlowYield' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'freeCashFlowYield' }))}
+                  >
+                    FCF Yield
+                  </Button>
+                  <Button
+                    variant={chartToggles.cashFlow === 'fcfVsSbc' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'fcfVsSbc' }))}
+                  >
+                    FCF vs SBC
+                  </Button>
+                </div>
+                <Select
+                  value={periodFilters.cashFlow.toString()}
+                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, cashFlow: parseInt(value) }))}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1Y</SelectItem>
+                    <SelectItem value="3">3Y</SelectItem>
+                    <SelectItem value="5">5Y</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={enhancedFinancialData}>
-                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
-                    <XAxis dataKey="year" />
-                    <YAxis tickFormatter={chartToggles.cashFlow === 'fcfPerShare' ? value => `$${value.toFixed(2)}` : chartToggles.cashFlow === 'freeCashFlowYield' ? formatPercentageAxis : formatAxisValue} />
-                    <Tooltip formatter={value => {
-                    if (chartToggles.cashFlow === 'fcfPerShare') {
-                      return [`$${Number(value).toFixed(2)}`, 'FCF Per Share'];
-                    }
-                    if (chartToggles.cashFlow === 'freeCashFlowYield') {
-                      return [`${Number(value).toFixed(2)}%`, 'FCF Yield'];
-                    }
-                    return [`${formatNumber(Number(value) * 1000000)}`, chartToggles.cashFlow === 'freeCashFlow' ? 'Free Cash Flow' : 'Operating Cash Flow'];
-                  }} />
-                    <Bar dataKey={chartToggles.cashFlow} fill="#f59e0b" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {lazyLoadedData.cashflow?.loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    {chartToggles.cashFlow === 'fcfVsSbc' ? (
+                      <BarChart data={processFinancialData('cashflow')}>
+                        <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend />
+                        <Bar dataKey="freeCashFlow" fill="#22c55e" name="Free Cash Flow ($B)" />
+                        <Bar dataKey="stockBasedCompensation" fill="#ef4444" name="Stock-Based Comp ($B)" />
+                      </BarChart>
+                    ) : (
+                      <BarChart data={processFinancialData('cashflow')}>
+                        <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                        <YAxis 
+                          tickFormatter={chartToggles.cashFlow === 'freeCashFlowYield' ? 
+                            (value) => `${value.toFixed(1)}%` : formatAxisValue} 
+                          axisLine={false} 
+                          tickLine={false} 
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar 
+                          dataKey={chartToggles.cashFlow} 
+                          fill="#f59e0b" 
+                          name={chartToggles.cashFlow === 'freeCashFlowYield' ? 'FCF Yield (%)' : 
+                               chartToggles.cashFlow + ' ($B)'}
+                        />
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                )}
               </div>
-              {renderGrowthMetrics(additionalData.financialGrowth)}
             </CardContent>
           </Card>
         </TabsContent>
@@ -761,21 +1129,42 @@ const StockDetail: React.FC<StockDetailProps> = ({
           <Card>
             <CardHeader>
               <CardTitle>Operating Expenses</CardTitle>
-              <CardDescription>R&D, Sales & Marketing, and Operating expenses (in millions)</CardDescription>
+              <CardDescription>R&D, Sales & Marketing, and Operating expenses (in billions)</CardDescription>
+              <div className="flex justify-between items-center">
+                <Select
+                  value={periodFilters.expenses.toString()}
+                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, expenses: parseInt(value) }))}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1Y</SelectItem>
+                    <SelectItem value="3">3Y</SelectItem>
+                    <SelectItem value="5">5Y</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={enhancedFinancialData}>
-                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
-                    <XAxis dataKey="year" />
-                    <YAxis tickFormatter={formatAxisValue} />
-                    <Tooltip formatter={(value, name) => [`${formatNumber(Number(value) * 1000000)}`, name === 'researchAndDevelopment' ? 'R&D' : name === 'salesAndMarketing' ? 'Sales & Marketing' : 'Operating Expenses']} />
-                    <Bar dataKey="researchAndDevelopment" fill="#ef4444" name="R&D" />
-                    <Bar dataKey="salesAndMarketing" fill="#f97316" name="Sales & Marketing" />
-                    <Bar dataKey="operatingExpenses" fill="#6366f1" name="Operating Expenses" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {lazyLoadedData.expenses?.loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={processFinancialData('expenses')}>
+                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Bar dataKey="researchAndDevelopment" fill="#ef4444" name="R&D ($B)" />
+                      <Bar dataKey="salesAndMarketing" fill="#f97316" name="Sales & Marketing ($B)" />
+                      <Bar dataKey="operatingExpenses" fill="#6366f1" name="Operating Expenses ($B)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -786,135 +1175,225 @@ const StockDetail: React.FC<StockDetailProps> = ({
           <Card>
             <CardHeader>
               <CardTitle>Cash vs Debt</CardTitle>
-              <CardDescription>Balance sheet cash and debt levels (in millions)</CardDescription>
+              <CardDescription>Balance sheet cash and debt levels (in billions)</CardDescription>
+              <div className="flex justify-between items-center">
+                <Select
+                  value={periodFilters.cashdebt.toString()}
+                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, cashdebt: parseInt(value) }))}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1Y</SelectItem>
+                    <SelectItem value="3">3Y</SelectItem>
+                    <SelectItem value="5">5Y</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={enhancedFinancialData}>
-                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
-                    <XAxis dataKey="year" />
-                    <YAxis tickFormatter={formatAxisValue} />
-                    <Tooltip formatter={(value, name) => [`${formatNumber(Number(value) * 1000000)}`, name === 'totalCash' ? 'Cash & Cash Equivalents' : 'Total Debt']} />
-                    <Bar dataKey="totalCash" fill="#22c55e" name="Cash" />
-                    <Bar dataKey="totalDebt" fill="#dc2626" name="Debt" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {lazyLoadedData.cashdebt?.loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={processFinancialData('cashdebt')}>
+                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Bar dataKey="totalCash" fill="#22c55e" name="Total Cash ($B)" />
+                      <Bar dataKey="totalDebt" fill="#dc2626" name="Total Debt ($B)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Margins Chart with Toggles */}
+        {/* Enhanced Margins Chart */}
         <TabsContent value="margins">
           <Card>
             <CardHeader>
               <CardTitle>Profit Margins</CardTitle>
               <CardDescription>Profitability margins over time (%)</CardDescription>
-              <div className="flex space-x-2">
-                <Button variant={chartToggles.margins === 'grossMargin' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                margins: 'grossMargin'
-              }))}>
-                  Gross Margin
-                </Button>
-                <Button variant={chartToggles.margins === 'operatingMargin' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                margins: 'operatingMargin'
-              }))}>
-                  Operating Margin
-                </Button>
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-2">
+                  <Button
+                    variant={chartToggles.margins === 'grossMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, margins: 'grossMargin' }))}
+                  >
+                    Gross Margin
+                  </Button>
+                  <Button
+                    variant={chartToggles.margins === 'operatingMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, margins: 'operatingMargin' }))}
+                  >
+                    Operating Margin
+                  </Button>
+                  <Button
+                    variant={chartToggles.margins === 'ebitdaMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, margins: 'ebitdaMargin' }))}
+                  >
+                    EBITDA Margin
+                  </Button>
+                  <Button
+                    variant={chartToggles.margins === 'netProfitMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, margins: 'netProfitMargin' }))}
+                  >
+                    Net Profit Margin
+                  </Button>
+                </div>
+                <Select
+                  value={periodFilters.margins.toString()}
+                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, margins: parseInt(value) }))}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1Y</SelectItem>
+                    <SelectItem value="3">3Y</SelectItem>
+                    <SelectItem value="5">5Y</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={enhancedFinancialData}>
-                    <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
-                    <XAxis dataKey="year" />
-                    <YAxis tickFormatter={formatPercentageAxis} />
-                    <Tooltip formatter={value => [`${Number(value).toFixed(1)}%`, chartToggles.margins === 'grossMargin' ? 'Gross Margin' : 'Operating Margin']} />
-                    <Line type="monotone" dataKey={chartToggles.margins} stroke="#06b6d4" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+                {lazyLoadedData.margins?.loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={processFinancialData('margins')}>
+                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={(value) => `${value.toFixed(0)}%`} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey={chartToggles.margins} 
+                        stroke="#06b6d4" 
+                        strokeWidth={3} 
+                        dot={{ fill: '#06b6d4', strokeWidth: 2, r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Key Ratios Chart with Toggles */}
+        {/* Enhanced Ratios Chart */}
         <TabsContent value="ratios">
           <Card>
             <CardHeader>
               <CardTitle>Key Financial Ratios</CardTitle>
-              <CardDescription>Important valuation and profitability ratios</CardDescription>
-              <div className="grid grid-cols-4 gap-2">
-                <Button variant={chartToggles.ratios === 'pe' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                ratios: 'pe'
-              }))}>
-                  P/E
-                </Button>
-                <Button variant={chartToggles.ratios === 'ps' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                ratios: 'ps'
-              }))}>
-                  P/S
-                </Button>
-                <Button variant={chartToggles.ratios === 'pFcf' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                ratios: 'pFcf'
-              }))}>
-                  P/FCF
-                </Button>
-                <Button variant={chartToggles.ratios === 'pOcf' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                ratios: 'pOcf'
-              }))}>
-                  P/OCF
-                </Button>
-                <Button variant={chartToggles.ratios === 'roe' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                ratios: 'roe'
-              }))}>
-                  ROE
-                </Button>
-                <Button variant={chartToggles.ratios === 'roic' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                ratios: 'roic'
-              }))}>
-                  ROIC
-                </Button>
-                <Button variant={chartToggles.ratios === 'debtToEquity' ? 'default' : 'outline'} size="sm" onClick={() => setChartToggles(prev => ({
-                ...prev,
-                ratios: 'debtToEquity'
-              }))}>
-                  Debt/Equity
-                </Button>
+              <CardDescription>Valuation and profitability ratios</CardDescription>
+              <div className="flex justify-between items-center">
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    variant={chartToggles.ratios === 'pe' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'pe' }))}
+                  >
+                    P/E
+                  </Button>
+                  <Button
+                    variant={chartToggles.ratios === 'ps' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'ps' }))}
+                  >
+                    P/S
+                  </Button>
+                  <Button
+                    variant={chartToggles.ratios === 'pFcf' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'pFcf' }))}
+                  >
+                    P/FCF
+                  </Button>
+                  <Button
+                    variant={chartToggles.ratios === 'pOcf' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'pOcf' }))}
+                  >
+                    P/OCF
+                  </Button>
+                  <Button
+                    variant={chartToggles.ratios === 'roe' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'roe' }))}
+                  >
+                    ROE
+                  </Button>
+                  <Button
+                    variant={chartToggles.ratios === 'roic' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'roic' }))}
+                  >
+                    ROIC
+                  </Button>
+                </div>
+                <Select
+                  value={periodFilters.ratios.toString()}
+                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, ratios: parseInt(value) }))}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1Y</SelectItem>
+                    <SelectItem value="3">3Y</SelectItem>
+                    <SelectItem value="5">5Y</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
-                {ratiosData.length > 0 ? <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={ratiosData}>
-                      <CartesianGrid strokeDasharray="none" stroke="#f0f0f0" />
-                      <XAxis dataKey="year" />
-                      <YAxis tickFormatter={['roe', 'roic'].includes(chartToggles.ratios) ? formatPercentageAxis : formatRatioAxis} />
-                      <Tooltip formatter={value => {
-                    const suffix = ['roe', 'roic'].includes(chartToggles.ratios) ? '%' : '';
-                    const label = chartToggles.ratios.toUpperCase().replace('PFCF', 'P/FCF').replace('POCF', 'P/OCF');
-                    return [`${Number(value).toFixed(2)}${suffix}`, label];
-                  }} />
-                      <Line type="monotone" dataKey={chartToggles.ratios} stroke="#8b5cf6" strokeWidth={3} dot={false} />
+                {lazyLoadedData.ratios?.loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={processFinancialData('ratios')}>
+                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
+                      <YAxis 
+                        tickFormatter={['roe', 'roic'].includes(chartToggles.ratios) ? 
+                          (value) => `${value.toFixed(0)}%` : (value) => value.toFixed(1)} 
+                        axisLine={false} 
+                        tickLine={false} 
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey={chartToggles.ratios} 
+                        stroke="#8b5cf6" 
+                        strokeWidth={3}
+                        dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+                      />
                     </LineChart>
-                  </ResponsiveContainer> : <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-500">No ratio data available</p>
-                  </div>}
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-    </div>;
+    </div>
+  );
 };
+
 export default StockDetail;
