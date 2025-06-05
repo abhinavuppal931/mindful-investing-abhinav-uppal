@@ -38,8 +38,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   const [longTermAnalysis, setLongTermAnalysis] = useState<string>('');
   const [dailyDriverAnalysis, setDailyDriverAnalysis] = useState<string>('');
   
-  // Loading states
+  // Loading states - Fixed to include price property
   const [loadingStates, setLoadingStates] = useState({
+    price: false,
     revenue: false,
     profitability: false,
     margins: false,
@@ -589,6 +590,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                         <SelectItem value="1">1 Year</SelectItem>
                         <SelectItem value="3">3 Years</SelectItem>
                         <SelectItem value="5">5 Years</SelectItem>
+                        <SelectItem value="10">10 Years</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
