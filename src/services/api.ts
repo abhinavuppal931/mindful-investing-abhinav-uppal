@@ -53,6 +53,19 @@ export const fmpAPI = {
     }
   },
 
+  getMetricsTTM: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'metrics-ttm', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Metrics TTM error:', error);
+      throw error;
+    }
+  },
+
   getRatios: async (symbol: string, period = 'annual', limit = 10) => {
     try {
       const { data, error } = await supabase.functions.invoke('fmp-api', {
@@ -62,6 +75,19 @@ export const fmpAPI = {
       return data;
     } catch (error) {
       console.error('FMP Ratios error:', error);
+      throw error;
+    }
+  },
+
+  getRatiosTTM: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'ratios-ttm', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Ratios TTM error:', error);
       throw error;
     }
   },
@@ -133,11 +159,22 @@ export const fmpAPI = {
 
   searchSymbol: async (query: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('fmp-api', {
+      // Try symbol search first
+      const { data: symbolData, error: symbolError } = await supabase.functions.invoke('fmp-api', {
         body: { action: 'search-symbol', query }
       });
-      if (error) throw error;
-      return data;
+      
+      if (!symbolError && symbolData && symbolData.length > 0) {
+        return symbolData;
+      }
+
+      // If no results, try name search
+      const { data: nameData, error: nameError } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'search-name', query }
+      });
+      
+      if (nameError) throw nameError;
+      return nameData || [];
     } catch (error) {
       console.error('FMP Symbol Search error:', error);
       throw error;
@@ -192,6 +229,19 @@ export const fmpAPI = {
       return data;
     } catch (error) {
       console.error('FMP Index Quote error:', error);
+      throw error;
+    }
+  },
+
+  getHistoricalChart: async (symbol: string, from: string, to: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'historical-chart', symbol, from, to }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Historical Chart error:', error);
       throw error;
     }
   }

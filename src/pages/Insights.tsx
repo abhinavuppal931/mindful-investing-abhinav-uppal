@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StockCard from '@/components/cards/StockCard';
@@ -6,11 +7,12 @@ import MarketIndices from '@/components/insights/MarketIndices';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Star, StarOff } from 'lucide-react';
+import { Search, Star, StarOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { toast } from '@/hooks/use-toast';
 import { fmpAPI } from '@/services/api';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const Insights = () => {
   const { user } = useAuth();
@@ -19,8 +21,12 @@ const Insights = () => {
   const [selectedStock, setSelectedStock] = useState<any | null>(null);
   const [stocksList, setStocksList] = useState<any[]>([]);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Debounce search query
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Predefined list of popular stocks to fetch
   const popularTickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'BRK.B'];
@@ -28,6 +34,16 @@ const Insights = () => {
   useEffect(() => {
     fetchStocksList();
   }, []);
+
+  // Handle search when debounced query changes
+  useEffect(() => {
+    if (debouncedSearchQuery.length >= 2) {
+      handleSearch(debouncedSearchQuery);
+    } else {
+      setSearchResults([]);
+      setShowSearchResults(false);
+    }
+  }, [debouncedSearchQuery]);
 
   const fetchStocksList = async () => {
     setLoading(true);
@@ -66,48 +82,71 @@ const Insights = () => {
   };
 
   const handleSearch = async (query: string) => {
+    if (!query || query.length < 2) return;
+    
     setSearchLoading(true);
     try {
-      const stockPromises = query.split(',').map(async (ticker) => {
-        try {
-          const quoteData = await fmpAPI.getQuote(ticker);
-          const profileData = await fmpAPI.getProfile(ticker);
-          
-          if (quoteData && quoteData.length > 0 && profileData && profileData.length > 0) {
-            const quote = quoteData[0];
-            const profile = profileData[0];
-            return {
-              ticker: quote.symbol,
-              companyName: profile.companyName || quote.name,
-              price: quote.price,
-              change: quote.change,
-              changePercent: quote.changesPercentage
-            };
-          }
-          return null;
-        } catch (error) {
-          console.error(`Error fetching data for ${ticker}:`, error);
-          return null;
-        }
-      });
-
-      const stocks = await Promise.all(stockPromises);
-      const validStocks = stocks.filter(stock => stock !== null);
-      setSearchResults(validStocks);
+      // Use the new search API
+      const searchData = await fmpAPI.searchStock(query);
+      
+      if (searchData && searchData.length > 0) {
+        // Get quotes for search results to include price data
+        const resultsWithQuotes = await Promise.all(
+          searchData.slice(0, 10).map(async (item: any) => {
+            try {
+              const quoteData = await fmpAPI.getQuote(item.symbol);
+              if (quoteData && quoteData.length > 0) {
+                const quote = quoteData[0];
+                return {
+                  ticker: item.symbol,
+                  companyName: item.name,
+                  price: quote.price,
+                  change: quote.change,
+                  changePercent: quote.changesPercentage,
+                  exchange: item.exchangeShortName || item.exchange
+                };
+              }
+              return {
+                ticker: item.symbol,
+                companyName: item.name,
+                price: 0,
+                change: 0,
+                changePercent: 0,
+                exchange: item.exchangeShortName || item.exchange
+              };
+            } catch (error) {
+              console.error(`Error fetching quote for ${item.symbol}:`, error);
+              return {
+                ticker: item.symbol,
+                companyName: item.name,
+                price: 0,
+                change: 0,
+                changePercent: 0,
+                exchange: item.exchangeShortName || item.exchange
+              };
+            }
+          })
+        );
+        
+        setSearchResults(resultsWithQuotes.filter(Boolean));
+        setShowSearchResults(true);
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(true);
+      }
     } catch (error) {
-      console.error('Error fetching search results:', error);
+      console.error('Error searching stocks:', error);
+      setSearchResults([]);
+      setShowSearchResults(true);
     } finally {
       setSearchLoading(false);
     }
   };
 
-  const filteredStocks = stocksList.filter(stock => 
-    stock.ticker.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    stock.companyName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const handleStockSelect = (stock: any) => {
     setSelectedStock(stock);
+    setSearchQuery('');
+    setShowSearchResults(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -230,51 +269,102 @@ const Insights = () => {
             className="pl-10 bg-background border-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyUp={(e) => {
-              if (e.key === 'Enter') {
-                handleSearch(searchQuery);
-              }
-            }}
           />
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {filteredStocks.map((stock) => (
-            <div key={stock.ticker} className="relative">
-              <StockCard
-                ticker={stock.ticker}
-                companyName={stock.companyName}
-                price={stock.price}
-                change={stock.change}
-                changePercent={stock.changePercent}
-                onClick={() => handleStockSelect(stock)}
-              />
-              {user && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 h-6 w-6"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleWatchlistToggle(stock.ticker);
-                  }}
-                >
-                  {isInWatchlist(stock.ticker) ? (
-                    <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-                  ) : (
-                    <StarOff className="h-4 w-4 text-gray-400" />
-                  )}
-                </Button>
-              )}
-            </div>
-          ))}
-          
-          {filteredStocks.length === 0 && (
-            <div className="col-span-full py-12 text-center">
-              <p className="text-muted-foreground">No stocks found matching "{searchQuery}"</p>
+          {searchLoading && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           )}
         </div>
+
+        {/* Search Results */}
+        {showSearchResults && searchQuery.length >= 2 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Search Results for "{searchQuery}"</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {searchResults.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {searchResults.map((stock) => (
+                    <div key={stock.ticker} className="relative">
+                      <StockCard
+                        ticker={stock.ticker}
+                        companyName={stock.companyName}
+                        price={stock.price}
+                        change={stock.change}
+                        changePercent={stock.changePercent}
+                        onClick={() => handleStockSelect(stock)}
+                      />
+                      {user && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWatchlistToggle(stock.ticker);
+                          }}
+                        >
+                          {isInWatchlist(stock.ticker) ? (
+                            <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                          ) : (
+                            <StarOff className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">
+                  No stocks found matching "{searchQuery}"
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Popular Stocks */}
+        {!selectedStock && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {stocksList.map((stock) => (
+              <div key={stock.ticker} className="relative">
+                <StockCard
+                  ticker={stock.ticker}
+                  companyName={stock.companyName}
+                  price={stock.price}
+                  change={stock.change}
+                  changePercent={stock.changePercent}
+                  onClick={() => handleStockSelect(stock)}
+                />
+                {user && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleWatchlistToggle(stock.ticker);
+                    }}
+                  >
+                    {isInWatchlist(stock.ticker) ? (
+                      <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                    ) : (
+                      <StarOff className="h-4 w-4 text-gray-400" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            ))}
+            
+            {stocksList.length === 0 && (
+              <div className="col-span-full py-12 text-center">
+                <p className="text-muted-foreground">No stocks available</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </MainLayout>
   );

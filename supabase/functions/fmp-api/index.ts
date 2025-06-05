@@ -52,7 +52,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, symbol, period = 'annual', statement = 'income', limit = 5, query } = await req.json();
+    const { action, symbol, period = 'annual', statement = 'income', limit = 5, query, from, to } = await req.json();
     
     if (!FMP_API_KEY) {
       throw new Error('FMP API key not configured');
@@ -84,12 +84,26 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/key-metrics/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
+      case 'metrics-ttm':
+        endpoint = `${BASE_URL}/key-metrics-ttm/${symbol}?apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
       case 'ratios':
         endpoint = `${BASE_URL}/ratios/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
+      case 'ratios-ttm':
+        endpoint = `${BASE_URL}/ratios-ttm/${symbol}?apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
       case 'historical-prices':
-        endpoint = `${BASE_URL}/historical-price-full/${symbol}?from=${new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}&to=${new Date().toISOString().split('T')[0]}&apikey=${FMP_API_KEY}`;
+        const fromDate = from || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const toDate = to || new Date().toISOString().split('T')[0];
+        endpoint = `${BASE_URL}/historical-price-full/${symbol}?from=${fromDate}&to=${toDate}&apikey=${FMP_API_KEY}`;
+        ttl = 30 * 60 * 1000; // 30 minutes
+        break;
+      case 'historical-chart':
+        endpoint = `${BASE_URL}/historical-chart/1day/${symbol}?from=${from}&to=${to}&apikey=${FMP_API_KEY}`;
         ttl = 30 * 60 * 1000; // 30 minutes
         break;
       case 'enterprise-values':
@@ -128,7 +142,7 @@ serve(async (req) => {
         throw new Error('Invalid action');
     }
 
-    const cacheKey = `fmp_${action}_${symbol || query}_${period}_${statement}_${limit}`;
+    const cacheKey = `fmp_${action}_${symbol || query}_${period}_${statement}_${limit}_${from}_${to}`;
     const cachedEntry = cache.get(cacheKey);
 
     if (cachedEntry && isValidCache(cachedEntry)) {

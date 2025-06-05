@@ -1,1397 +1,1014 @@
+
 import React, { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, BarChart3, Building2, Info, Shield, AlertTriangle, Wind, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target } from 'lucide-react';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
+import { fmpAPI } from '@/services/api';
 import { useStockData } from '@/hooks/useStockData';
-import { openaiAPI, fmpAPI } from '@/services/api';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
 
 interface StockDetailProps {
   ticker: string;
   companyName: string;
 }
 
+// Helper function to format currency values
+const formatCurrency = (value: number, decimals = 2): string => {
+  if (Math.abs(value) >= 1e12) {
+    return `$${(value / 1e12).toFixed(decimals)}T`;
+  } else if (Math.abs(value) >= 1e9) {
+    return `$${(value / 1e9).toFixed(decimals)}B`;
+  } else if (Math.abs(value) >= 1e6) {
+    return `$${(value / 1e6).toFixed(decimals)}M`;
+  } else {
+    return `$${value.toFixed(decimals)}`;
+  }
+};
+
+// Helper function for Y-axis formatting
+const formatYAxis = (value: number): string => {
+  if (Math.abs(value) >= 1e9) {
+    return `$${(value / 1e9).toFixed(0)}B`;
+  } else if (Math.abs(value) >= 1e6) {
+    return `$${(value / 1e6).toFixed(0)}M`;
+  } else {
+    return `$${value.toFixed(0)}`;
+  }
+};
+
+// Helper function for percentage formatting
+const formatPercentage = (value: number): string => {
+  return `${(value * 100).toFixed(1)}%`;
+};
+
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
-  const { quote, financials, profile, loading, error } = useStockData(ticker);
-  
-  const [aiAnalysis, setAiAnalysis] = useState<{
-    moat: any;
-    risks: any;
-    nearTermTailwinds: any;
-    longTermTailwinds: any;
-    briefInsight: any;
-  }>({
-    moat: null,
-    risks: null,
-    nearTermTailwinds: null,
-    longTermTailwinds: null,
-    briefInsight: null
-  });
-
-  const [expandedSections, setExpandedSections] = useState<{
-    moat: boolean;
-    risks: boolean;
-    nearTerm: boolean;
-    longTerm: boolean;
-  }>({
-    moat: false,
-    risks: false,
-    nearTerm: false,
-    longTerm: false
-  });
-
-  const [loadingSections, setLoadingSections] = useState<{
-    moat: boolean;
-    risks: boolean;
-    nearTerm: boolean;
-    longTerm: boolean;
-    briefInsight: boolean;
-  }>({
-    moat: false,
-    risks: false,
-    nearTerm: false,
-    longTerm: false,
-    briefInsight: false
-  });
-
-  const [chartToggles, setChartToggles] = useState({
+  const { quote, profile, loading, error } = useStockData(ticker);
+  const [activeTab, setActiveTab] = useState('price');
+  const [activeMetric, setActiveMetric] = useState<{[key: string]: string}>({
     revenue: 'total',
     profitability: 'netIncome',
-    cashFlow: 'freeCashFlow',
+    cashFlow: 'operatingCashFlow',
+    expenses: 'operating',
+    cashDebt: 'comparison',
     margins: 'grossMargin',
     ratios: 'pe'
   });
+  const [period, setPeriod] = useState<'1Y' | '3Y' | '5Y' | '10Y'>('5Y');
+  const [dataType, setDataType] = useState<'annual' | 'quarterly'>('annual');
+  const [ratioType, setRatioType] = useState<'annual' | 'ttm'>('annual');
+  
+  // Data states
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartLoading, setChartLoading] = useState<{[key: string]: boolean}>({});
+  const [ratiosData, setRatiosData] = useState<any[]>([]);
+  const [metricsData, setMetricsData] = useState<any[]>([]);
+  const [growthData, setGrowthData] = useState<any>(null);
+  const [revenueSegmentData, setRevenueSegmentData] = useState<any[]>([]);
+  const [historicalPrices, setHistoricalPrices] = useState<any[]>([]);
 
-  const [periodFilters, setPeriodFilters] = useState({
-    revenue: 5,
-    profitability: 5,
-    cashFlow: 5,
-    expenses: 5,
-    cashdebt: 5,
-    margins: 5,
-    ratios: 5
-  });
+  // Period mapping for API calls
+  const getPeriodLimit = (selectedPeriod: string) => {
+    switch (selectedPeriod) {
+      case '1Y': return dataType === 'quarterly' ? 4 : 1;
+      case '3Y': return dataType === 'quarterly' ? 12 : 3;
+      case '5Y': return dataType === 'quarterly' ? 20 : 5;
+      case '10Y': return dataType === 'quarterly' ? 40 : 10;
+      default: return 5;
+    }
+  };
 
-  const [lazyLoadedData, setLazyLoadedData] = useState<{
-    [key: string]: {
-      loaded: boolean;
-      loading: boolean;
-      data: any;
-    };
-  }>({});
-
-  const [additionalData, setAdditionalData] = useState<{
-    priceData: any[];
-    keyMetrics: any[];
-    ratios: any[];
-    balanceSheet: any[];
-    incomeStatement: any[];
-    cashFlowStatement: any[];
-    dividends: any[];
-    enterpriseValues: any[];
-    financialGrowth: any[];
-    revenueProductSegmentation: any[];
-    revenueGeographicSegmentation: any[];
-  }>({
-    priceData: [],
-    keyMetrics: [],
-    ratios: [],
-    balanceSheet: [],
-    incomeStatement: [],
-    cashFlowStatement: [],
-    dividends: [],
-    enterpriseValues: [],
-    financialGrowth: [],
-    revenueProductSegmentation: [],
-    revenueGeographicSegmentation: []
-  });
-
+  // Load chart data when tab/metric changes
   useEffect(() => {
-    if (financials.length > 0) {
-      fetchBriefInsight();
-      fetchPriceData(); // Load price data immediately
+    if (activeTab !== 'price') {
+      loadChartData(activeTab, activeMetric[activeTab]);
     }
-  }, [financials, ticker]);
+  }, [activeTab, activeMetric, period, dataType, ratioType, ticker]);
 
-  const fetchPriceData = async () => {
-    try {
-      const priceResponse = await fmpAPI.getHistoricalPrices(ticker);
-      setAdditionalData(prev => ({
-        ...prev,
-        priceData: priceResponse?.historical?.slice(0, 252).reverse() || []
-      }));
-    } catch (error) {
-      console.error('Failed to fetch price data:', error);
+  // Load price data immediately
+  useEffect(() => {
+    if (ticker) {
+      loadPriceData();
     }
-  };
+  }, [ticker, period]);
 
-  const fetchTabData = async (tabKey: string) => {
-    if (lazyLoadedData[tabKey]?.loaded || lazyLoadedData[tabKey]?.loading) return;
-
-    setLazyLoadedData(prev => ({
-      ...prev,
-      [tabKey]: { loaded: false, loading: true, data: null }
-    }));
-
+  const loadPriceData = async () => {
+    setChartLoading(prev => ({ ...prev, price: true }));
     try {
-      let dataPromises = [];
+      const endDate = new Date();
+      const startDate = new Date();
       
-      switch (tabKey) {
-        case 'revenue':
-          dataPromises = [
-            fmpAPI.getMetrics(ticker, 'annual', periodFilters.revenue),
-            fmpAPI.getRatios(ticker, 'annual', periodFilters.revenue),
-            fmpAPI.getFinancials(ticker, 'annual', 'income', periodFilters.revenue),
-            fmpAPI.getRevenueProductSegmentation(ticker),
-            fmpAPI.getRevenueGeographicSegmentation(ticker),
-            fmpAPI.getFinancialGrowth(ticker, 'annual', periodFilters.revenue)
-          ];
+      switch (period) {
+        case '1Y':
+          startDate.setFullYear(endDate.getFullYear() - 1);
           break;
-        case 'profitability':
-          dataPromises = [
-            fmpAPI.getFinancials(ticker, 'annual', 'income', periodFilters.profitability),
-            fmpAPI.getFinancialGrowth(ticker, 'annual', periodFilters.profitability)
-          ];
+        case '3Y':
+          startDate.setFullYear(endDate.getFullYear() - 3);
           break;
-        case 'cashflow':
-          dataPromises = [
-            fmpAPI.getFinancials(ticker, 'annual', 'cash', periodFilters.cashFlow),
-            fmpAPI.getMetrics(ticker, 'annual', periodFilters.cashFlow),
-            fmpAPI.getFinancialGrowth(ticker, 'annual', periodFilters.cashFlow)
-          ];
+        case '5Y':
+          startDate.setFullYear(endDate.getFullYear() - 5);
           break;
-        case 'expenses':
-          dataPromises = [
-            fmpAPI.getFinancials(ticker, 'annual', 'income', periodFilters.expenses)
-          ];
-          break;
-        case 'cashdebt':
-          dataPromises = [
-            fmpAPI.getFinancials(ticker, 'annual', 'balance', periodFilters.cashdebt)
-          ];
-          break;
-        case 'margins':
-          dataPromises = [
-            fmpAPI.getRatios(ticker, 'annual', periodFilters.margins)
-          ];
-          break;
-        case 'ratios':
-          dataPromises = [
-            fmpAPI.getRatios(ticker, 'annual', periodFilters.ratios),
-            fmpAPI.getMetrics(ticker, 'annual', periodFilters.ratios)
-          ];
+        case '10Y':
+          startDate.setFullYear(endDate.getFullYear() - 10);
           break;
       }
 
-      const results = await Promise.all(dataPromises);
-      
-      setLazyLoadedData(prev => ({
-        ...prev,
-        [tabKey]: { loaded: true, loading: false, data: results }
-      }));
+      const data = await fmpAPI.getHistoricalChart(
+        ticker,
+        startDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      );
 
-      // Update additionalData based on results
-      const updateData: any = {};
-      switch (tabKey) {
-        case 'revenue':
-          updateData.keyMetrics = results[0] || [];
-          updateData.ratios = results[1] || [];
-          updateData.incomeStatement = results[2] || [];
-          updateData.revenueProductSegmentation = results[3] || [];
-          updateData.revenueGeographicSegmentation = results[4] || [];
-          updateData.financialGrowth = results[5] || [];
-          break;
-        case 'profitability':
-          updateData.incomeStatement = results[0] || [];
-          updateData.financialGrowth = results[1] || [];
-          break;
-        case 'cashflow':
-          updateData.cashFlowStatement = results[0] || [];
-          updateData.keyMetrics = results[1] || [];
-          updateData.financialGrowth = results[2] || [];
-          break;
-        case 'expenses':
-          updateData.incomeStatement = results[0] || [];
-          break;
-        case 'cashdebt':
-          updateData.balanceSheet = results[0] || [];
-          break;
-        case 'margins':
-          updateData.ratios = results[0] || [];
-          break;
-        case 'ratios':
-          updateData.ratios = results[0] || [];
-          updateData.keyMetrics = results[1] || [];
-          break;
+      if (data && data.length > 0) {
+        const formattedData = data.map((item: any) => ({
+          date: item.date,
+          price: parseFloat(item.close.toFixed(2)),
+          volume: item.volume
+        })).reverse();
+        setHistoricalPrices(formattedData);
       }
-      
-      setAdditionalData(prev => ({ ...prev, ...updateData }));
-
     } catch (error) {
-      console.error(`Failed to fetch ${tabKey} data:`, error);
-      setLazyLoadedData(prev => ({
-        ...prev,
-        [tabKey]: { loaded: false, loading: false, data: null }
-      }));
-    }
-  };
-
-  const fetchBriefInsight = async () => {
-    setLoadingSections(prev => ({
-      ...prev,
-      briefInsight: true
-    }));
-    try {
-      const insight = await openaiAPI.generateBriefInsight(ticker, financials.slice(0, 3));
-      setAiAnalysis(prev => ({
-        ...prev,
-        briefInsight: insight
-      }));
-    } catch (error) {
-      console.error('Failed to fetch brief insight:', error);
+      console.error('Error loading price data:', error);
     } finally {
-      setLoadingSections(prev => ({
-        ...prev,
-        briefInsight: false
-      }));
+      setChartLoading(prev => ({ ...prev, price: false }));
     }
   };
 
-  const handleSectionToggle = async (section: string) => {
-    const isExpanded = expandedSections[section as keyof typeof expandedSections];
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !isExpanded
-    }));
-    if (!isExpanded && !aiAnalysis[section as keyof typeof aiAnalysis]) {
-      setLoadingSections(prev => ({
-        ...prev,
-        [section]: true
-      }));
-      try {
-        let analysisResult;
-        switch (section) {
-          case 'moat':
-            analysisResult = await openaiAPI.analyzeCompanyMoat(ticker, financials.slice(0, 3));
-            break;
-          case 'risks':
-            analysisResult = await openaiAPI.analyzeInvestmentRisks(ticker, financials.slice(0, 3), []);
-            break;
-          case 'nearTerm':
-            analysisResult = await openaiAPI.analyzeNearTermTailwinds(ticker, financials.slice(0, 3), []);
-            break;
-          case 'longTerm':
-            analysisResult = await openaiAPI.analyzeLongTermTailwinds(ticker, financials.slice(0, 3), []);
-            break;
-        }
-        setAiAnalysis(prev => ({
-          ...prev,
-          [section === 'nearTerm' ? 'nearTermTailwinds' : section === 'longTerm' ? 'longTermTailwinds' : section]: analysisResult
-        }));
-      } catch (error) {
-        console.error(`Failed to fetch ${section} analysis:`, error);
-      } finally {
-        setLoadingSections(prev => ({
-          ...prev,
-          [section]: false
-        }));
+  const loadChartData = async (tab: string, metric: string) => {
+    setChartLoading(prev => ({ ...prev, [tab]: true }));
+    
+    try {
+      const limit = getPeriodLimit(period);
+      let data: any[] = [];
+
+      switch (tab) {
+        case 'revenue':
+          if (metric === 'total') {
+            const incomeData = await fmpAPI.getFinancials(ticker, dataType, 'income', limit);
+            data = incomeData.map((item: any) => ({
+              year: new Date(item.date).getFullYear(),
+              revenue: item.revenue || 0
+            })).reverse();
+          } else if (metric === 'productSegments') {
+            const segmentData = await fmpAPI.getRevenueProductSegmentation(ticker, dataType);
+            if (segmentData && segmentData.length > 0) {
+              // Process product segmentation data
+              const latestData = segmentData.slice(0, limit);
+              data = latestData.map((item: any) => {
+                const result: any = { year: new Date(item.date).getFullYear() };
+                if (item.data) {
+                  Object.keys(item.data).forEach(key => {
+                    result[key] = item.data[key] || 0;
+                  });
+                }
+                return result;
+              }).reverse();
+              setRevenueSegmentData(data);
+            }
+          } else if (metric === 'geographicSegments') {
+            const geoData = await fmpAPI.getRevenueGeographicSegmentation(ticker, dataType);
+            if (geoData && geoData.length > 0) {
+              const latestData = geoData.slice(0, limit);
+              data = latestData.map((item: any) => {
+                const result: any = { year: new Date(item.date).getFullYear() };
+                if (item.data) {
+                  Object.keys(item.data).forEach(key => {
+                    result[key] = item.data[key] || 0;
+                  });
+                }
+                return result;
+              }).reverse();
+              setRevenueSegmentData(data);
+            }
+          }
+          break;
+
+        case 'profitability':
+          const incomeData = await fmpAPI.getFinancials(ticker, dataType, 'income', limit);
+          data = incomeData.map((item: any) => ({
+            year: new Date(item.date).getFullYear(),
+            netIncome: item.netIncome || 0,
+            ebitda: item.ebitda || 0,
+            eps: item.eps || 0
+          })).reverse();
+          break;
+
+        case 'cashFlow':
+          const cashData = await fmpAPI.getFinancials(ticker, dataType, 'cash', limit);
+          const metricsForFCF = await fmpAPI.getMetrics(ticker, dataType, limit);
+          data = cashData.map((item: any, index: number) => {
+            const metrics = metricsForFCF[index] || {};
+            return {
+              year: new Date(item.date).getFullYear(),
+              operatingCashFlow: item.operatingCashFlow || 0,
+              freeCashFlow: item.freeCashFlow || 0,
+              freeCashFlowPerShare: metrics.freeCashFlowPerShare || 0,
+              stockBasedCompensation: item.stockBasedCompensation || 0,
+              capitalExpenditure: Math.abs(item.capitalExpenditure) || 0,
+              freeCashFlowYield: metrics.freeCashFlowYield || 0
+            };
+          }).reverse();
+          break;
+
+        case 'expenses':
+          const expenseData = await fmpAPI.getFinancials(ticker, dataType, 'income', limit);
+          data = expenseData.map((item: any) => ({
+            year: new Date(item.date).getFullYear(),
+            rdExpenses: item.researchAndDevelopmentExpenses || 0,
+            sgaExpenses: item.sellingGeneralAndAdministrativeExpenses || 0,
+            operatingExpenses: item.operatingExpenses || 0
+          })).reverse();
+          break;
+
+        case 'cashDebt':
+          const balanceData = await fmpAPI.getFinancials(ticker, dataType, 'balance', limit);
+          data = balanceData.map((item: any) => ({
+            year: new Date(item.date).getFullYear(),
+            totalCash: item.cashAndCashEquivalents || 0,
+            totalDebt: item.totalDebt || 0
+          })).reverse();
+          break;
+
+        case 'margins':
+          const ratiosForMargins = ratioType === 'ttm' 
+            ? [await fmpAPI.getRatiosTTM(ticker)]
+            : await fmpAPI.getRatios(ticker, dataType, limit);
+          
+          data = ratiosForMargins.map((item: any) => ({
+            year: ratioType === 'ttm' ? 'TTM' : new Date(item.date).getFullYear(),
+            grossMargin: item.grossProfitMargin || 0,
+            operatingMargin: item.operatingProfitMargin || 0,
+            netMargin: item.netProfitMargin || 0,
+            ebitdaMargin: item.ebitdaMargin || 0
+          })).reverse();
+          break;
+
+        case 'ratios':
+          const ratiosSource = ratioType === 'ttm' 
+            ? [await fmpAPI.getRatiosTTM(ticker)]
+            : await fmpAPI.getRatios(ticker, dataType, limit);
+          
+          data = ratiosSource.map((item: any) => ({
+            year: ratioType === 'ttm' ? 'TTM' : new Date(item.date).getFullYear(),
+            pe: item.priceEarningsRatio || 0,
+            ps: item.priceToSalesRatio || 0,
+            pfcf: item.priceToFreeCashFlowsRatio || 0,
+            pocf: item.priceToOperatingCashFlowsRatio || 0,
+            roe: item.returnOnEquity || 0,
+            roic: item.returnOnCapitalEmployed || 0
+          })).reverse();
+          setRatiosData(data);
+          break;
       }
+
+      setChartData(data);
+    } catch (error) {
+      console.error(`Error loading ${tab} data:`, error);
+    } finally {
+      setChartLoading(prev => ({ ...prev, [tab]: false }));
     }
   };
 
-  const formatCurrency = (value: number) => {
-    if (Math.abs(value) >= 1000000000000) {
-      return `$${(value / 1000000000000).toFixed(1)}T`;
-    } else if (Math.abs(value) >= 1000000000) {
-      return `$${(value / 1000000000).toFixed(0)}B`;
-    } else if (Math.abs(value) >= 1000000) {
-      return `$${(value / 1000000).toFixed(0)}M`;
-    } else if (Math.abs(value) >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value.toFixed(0)}`;
-  };
+  // Load growth data
+  useEffect(() => {
+    const loadGrowthData = async () => {
+      try {
+        const data = await fmpAPI.getFinancialGrowth(ticker, 'annual', 10);
+        if (data && data.length > 0) {
+          const latest = data[0];
+          setGrowthData({
+            revenue: {
+              threeYear: latest.revenueGrowth || 0,
+              fiveYear: latest.fiveYRevenueGrowthPerShare || 0,
+              tenYear: latest.tenYRevenueGrowthPerShare || 0
+            },
+            netIncome: {
+              threeYear: latest.netIncomeGrowth || 0,
+              fiveYear: latest.fiveYNetIncomeGrowthPerShare || 0,
+              tenYear: latest.tenYNetIncomeGrowthPerShare || 0
+            },
+            operatingCF: {
+              threeYear: latest.operatingCashFlowGrowth || 0,
+              fiveYear: latest.fiveYOperatingCFGrowthPerShare || 0,
+              tenYear: latest.tenYOperatingCFGrowthPerShare || 0
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error loading growth data:', error);
+      }
+    };
 
-  const formatAxisValue = (value: number) => {
-    if (Math.abs(value) >= 1000000000) {
-      return `${(value / 1000000000).toFixed(0)}B`;
-    } else if (Math.abs(value) >= 1000000) {
-      return `${(value / 1000000).toFixed(0)}M`;
-    } else if (Math.abs(value) >= 1000) {
-      return `${(value / 1000).toFixed(0)}K`;
+    if (ticker) {
+      loadGrowthData();
     }
-    return value.toFixed(0);
-  };
+  }, [ticker]);
 
-  const formatAIContent = (content: string) => {
-    const cleanContent = content.replace(/###\s*/g, '') // Remove ### headers
-    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove ** bold formatting but keep text
-    .replace(/\*([^*]+)\*/g, '$1') // Remove * italic formatting but keep text
-    .replace(/^\s*[\*\-•]\s*/gm, '• ') // Normalize bullet points
-    .trim();
-    return cleanContent.split('\n').map((line, index) => {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
-        return <li key={index} className="mb-3 text-sm text-gray-700 leading-relaxed list-none">
-            <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2 flex-shrink-0"></span>
-            {trimmed.substring(1).trim()}
-          </li>;
-      } else if (trimmed.length > 0 && !trimmed.match(/^\d+\./)) {
-        return <p key={index} className="mb-4 text-sm text-gray-700 leading-relaxed font-medium">
-            {trimmed}
-          </p>;
+  const renderChart = () => {
+    if (chartLoading[activeTab]) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
+    }
+
+    const data = activeTab === 'price' ? historicalPrices : 
+                 (activeTab === 'revenue' && (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments')) ? revenueSegmentData : chartData;
+
+    if (!data || data.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          No data available
+        </div>
+      );
+    }
+
+    // Custom tooltip component
+    const CustomTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
+            <p className="font-medium">{label}</p>
+            {payload.map((entry: any, index: number) => (
+              <p key={index} style={{ color: entry.color }} className="text-sm">
+                {entry.name}: {
+                  entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt')
+                    ? formatCurrency(entry.value)
+                    : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield')
+                    ? formatPercentage(entry.value)
+                    : entry.value.toFixed(2)
+                }
+              </p>
+            ))}
+          </div>
+        );
       }
       return null;
-    }).filter(Boolean);
+    };
+
+    switch (activeTab) {
+      case 'price':
+        return (
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data}>
+                <defs>
+                  <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0.05}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="date" stroke="#6b7280" />
+                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="price" 
+                  stroke="#22c55e" 
+                  strokeWidth={2}
+                  fill="url(#priceGradient)"
+                  name="Price ($)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        );
+
+      case 'revenue':
+        if (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments') {
+          const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'year') : [];
+          const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
+          
+          return (
+            <ChartContainer config={{}} className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                  <XAxis dataKey="year" stroke="#6b7280" />
+                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                  <ChartTooltip content={<CustomTooltip />} />
+                  {keys.map((key, index) => (
+                    <Bar 
+                      key={key} 
+                      dataKey={key} 
+                      stackId="segments" 
+                      fill={colors[index % colors.length]}
+                      name={key}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          );
+        }
+        return (
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                <Bar dataKey="revenue" fill="#22c55e" name="Revenue ($)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        );
+
+      case 'profitability':
+        return (
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                {activeMetric.profitability === 'netIncome' && <Bar dataKey="netIncome" fill="#3b82f6" name="Net Income ($)" />}
+                {activeMetric.profitability === 'ebitda' && <Bar dataKey="ebitda" fill="#8b5cf6" name="EBITDA ($)" />}
+                {activeMetric.profitability === 'eps' && <Bar dataKey="eps" fill="#f59e0b" name="EPS ($)" />}
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        );
+
+      case 'cashFlow':
+        if (activeMetric.cashFlow === 'comparison') {
+          return (
+            <ChartContainer config={{}} className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                  <XAxis dataKey="year" stroke="#6b7280" />
+                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                  <ChartTooltip content={<CustomTooltip />} />
+                  <Bar dataKey="freeCashFlow" fill="#22c55e" name="Free Cash Flow ($)" />
+                  <Bar dataKey="stockBasedCompensation" fill="#f59e0b" name="Stock-Based Compensation ($)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          );
+        }
+        return (
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                {activeMetric.cashFlow === 'operatingCashFlow' && <Bar dataKey="operatingCashFlow" fill="#06b6d4" name="Operating Cash Flow ($)" />}
+                {activeMetric.cashFlow === 'freeCashFlow' && <Bar dataKey="freeCashFlow" fill="#22c55e" name="Free Cash Flow ($)" />}
+                {activeMetric.cashFlow === 'freeCashFlowPerShare' && <Bar dataKey="freeCashFlowPerShare" fill="#8b5cf6" name="FCF Per Share ($)" />}
+                {activeMetric.cashFlow === 'freeCashFlowYield' && <Bar dataKey="freeCashFlowYield" fill="#f59e0b" name="FCF Yield (%)" />}
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        );
+
+      case 'expenses':
+        return (
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                <Bar dataKey="rdExpenses" fill="#ef4444" name="R&D ($)" />
+                <Bar dataKey="sgaExpenses" fill="#f59e0b" name="Sales & Marketing ($)" />
+                <Bar dataKey="operatingExpenses" fill="#8b5cf6" name="Operating Expenses ($)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        );
+
+      case 'cashDebt':
+        return (
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                <Bar dataKey="totalCash" fill="#22c55e" name="Total Cash ($)" />
+                <Bar dataKey="totalDebt" fill="#ef4444" name="Total Debt ($)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        );
+
+      case 'margins':
+        return (
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                {activeMetric.margins === 'grossMargin' && <Line type="monotone" dataKey="grossMargin" stroke="#22c55e" strokeWidth={2} name="Gross Margin (%)" />}
+                {activeMetric.margins === 'operatingMargin' && <Line type="monotone" dataKey="operatingMargin" stroke="#3b82f6" strokeWidth={2} name="Operating Margin (%)" />}
+                {activeMetric.margins === 'netMargin' && <Line type="monotone" dataKey="netMargin" stroke="#8b5cf6" strokeWidth={2} name="Net Margin (%)" />}
+                {activeMetric.margins === 'ebitdaMargin' && <Line type="monotone" dataKey="ebitdaMargin" stroke="#f59e0b" strokeWidth={2} name="EBITDA Margin (%)" />}
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        );
+
+      case 'ratios':
+        return (
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={ratiosData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                {activeMetric.ratios === 'pe' && <Line type="monotone" dataKey="pe" stroke="#3b82f6" strokeWidth={2} name="P/E Ratio" />}
+                {activeMetric.ratios === 'ps' && <Line type="monotone" dataKey="ps" stroke="#22c55e" strokeWidth={2} name="P/S Ratio" />}
+                {activeMetric.ratios === 'pfcf' && <Line type="monotone" dataKey="pfcf" stroke="#f59e0b" strokeWidth={2} name="P/FCF Ratio" />}
+                {activeMetric.ratios === 'pocf' && <Line type="monotone" dataKey="pocf" stroke="#8b5cf6" strokeWidth={2} name="P/OCF Ratio" />}
+                {activeMetric.ratios === 'roe' && <Line type="monotone" dataKey="roe" stroke="#ef4444" strokeWidth={2} name="ROE (%)" />}
+                {activeMetric.ratios === 'roic' && <Line type="monotone" dataKey="roic" stroke="#06b6d4" strokeWidth={2} name="ROIC (%)" />}
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        );
+
+      default:
+        return null;
+    }
   };
 
-  const renderGrowthMetrics = (data: any[]) => {
-    if (!data || data.length === 0) return null;
-    const latestGrowth = data[0];
-    const metrics = [{
-      label: '3Y Revenue Growth',
-      value: latestGrowth?.threeYRevenueGrowthPerShare
-    }, {
-      label: '5Y Revenue Growth',
-      value: latestGrowth?.fiveYRevenueGrowthPerShare
-    }, {
-      label: '10Y Revenue Growth',
-      value: latestGrowth?.tenYRevenueGrowthPerShare
-    }, {
-      label: '3Y Net Income Growth',
-      value: latestGrowth?.threeYNetIncomeGrowthPerShare
-    }, {
-      label: '5Y Net Income Growth',
-      value: latestGrowth?.fiveYNetIncomeGrowthPerShare
-    }, {
-      label: '10Y Net Income Growth',
-      value: latestGrowth?.tenYNetIncomeGrowthPerShare
-    }, {
-      label: '3Y Operating CF Growth',
-      value: latestGrowth?.threeYOperatingCFGrowthPerShare
-    }, {
-      label: '5Y Operating CF Growth',
-      value: latestGrowth?.fiveYOperatingCFGrowthPerShare
-    }, {
-      label: '10Y Operating CF Growth',
-      value: latestGrowth?.tenYOperatingCFGrowthPerShare
-    }].filter(metric => metric.value !== undefined && metric.value !== null);
-    return <div className="mt-6 grid grid-cols-3 gap-4">
-        {metrics.map((metric, index) => <div key={index} className={`p-3 rounded-lg text-center ${metric.value >= 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-            <div className="text-xs text-gray-600 mb-1">{metric.label}</div>
-            <div className={`font-semibold ${metric.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {metric.value >= 0 ? '+' : ''}{(metric.value * 100).toFixed(1)}%
-            </div>
-          </div>)}
-      </div>;
+  const renderGrowthMetrics = (type: 'revenue' | 'netIncome' | 'operatingCF') => {
+    if (!growthData || !growthData[type]) return null;
+
+    const data = growthData[type];
+    const titles = {
+      revenue: 'Revenue Growth',
+      netIncome: 'Net Income Growth', 
+      operatingCF: 'Operating CF Growth'
+    };
+
+    return (
+      <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="text-center">
+          <div className="text-xs text-muted-foreground mb-1">10Y Growth</div>
+          <div className={`text-sm font-medium ${data.tenYear >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {data.tenYear >= 0 ? '+' : ''}{(data.tenYear * 100).toFixed(1)}%
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="text-xs text-muted-foreground mb-1">5Y Growth</div>
+          <div className={`text-sm font-medium ${data.fiveYear >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {data.fiveYear >= 0 ? '+' : ''}{(data.fiveYear * 100).toFixed(1)}%
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="text-xs text-muted-foreground mb-1">3Y Growth</div>
+          <div className={`text-sm font-medium ${data.threeYear >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {data.threeYear >= 0 ? '+' : ''}{(data.threeYear * 100).toFixed(1)}%
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-mindful-600"></div>
-      </div>
+      <Card>
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <h3 className="text-red-800 font-medium">Error loading stock data</h3>
-        <p className="text-red-600">{error}</p>
-      </div>
+      <Card>
+        <CardContent className="py-8">
+          <div className="text-center text-red-600">
+            Error loading stock data: {error}
+          </div>
+        </CardContent>
+      </Card>
     );
   }
-
-  if (!quote) {
-    return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-        <p className="text-gray-600">No data available for {ticker}</p>
-      </div>
-    );
-  }
-
-  const isPositive = quote.change >= 0;
-  
-  // Enhanced financial data processing
-  const processFinancialData = (tabKey: string) => {
-    const tabData = lazyLoadedData[tabKey]?.data;
-    if (!tabData) return [];
-
-    const limit = periodFilters[tabKey as keyof typeof periodFilters];
-    
-    switch (tabKey) {
-      case 'revenue':
-        const incomeData = tabData[2] || [];
-        const productSeg = tabData[3] || [];
-        const geoSeg = tabData[4] || [];
-        if (chartToggles.revenue === 'total') {
-          return incomeData.slice(0, limit).map((income: any) => ({
-            year: new Date(income.date).getFullYear(),
-            revenue: income.revenue / 1000000000
-          })).reverse();
-        } else if (chartToggles.revenue === 'product') {
-          // Process product segmentation data for stacked bar chart
-          // Assuming productSeg is an array of objects with date and segment revenues
-          // We will transform it into array of { year, segment1, segment2, ... }
-          if (!productSeg.length) return [];
-          // Extract unique segment names
-          const segments = new Set<string>();
-          productSeg.forEach((item: any) => {
-            Object.keys(item).forEach(key => {
-              if (key !== 'date') segments.add(key);
-            });
-          });
-          const segmentArray = Array.from(segments);
-          // Group by year
-          const grouped: Record<string, any> = {};
-          productSeg.forEach((item: any) => {
-            const year = new Date(item.date).getFullYear();
-            if (!grouped[year]) grouped[year] = { year };
-            segmentArray.forEach(seg => {
-              grouped[year][seg] = (grouped[year][seg] || 0) + (item[seg] || 0);
-            });
-          });
-          // Convert to array and slice by limit
-          const result = Object.values(grouped).sort((a, b) => b.year - a.year).slice(0, limit).reverse();
-          // Convert values to billions
-          return result.map((item: any) => {
-            const newItem: any = { year: item.year };
-            segmentArray.forEach(seg => {
-              newItem[seg] = item[seg] / 1000000000;
-            });
-            return newItem;
-          });
-        } else if (chartToggles.revenue === 'geographic') {
-          // Process geographic segmentation data for stacked bar chart
-          if (!geoSeg.length) return [];
-          const regions = new Set<string>();
-          geoSeg.forEach((item: any) => {
-            Object.keys(item).forEach(key => {
-              if (key !== 'date') regions.add(key);
-            });
-          });
-          const regionArray = Array.from(regions);
-          const grouped: Record<string, any> = {};
-          geoSeg.forEach((item: any) => {
-            const year = new Date(item.date).getFullYear();
-            if (!grouped[year]) grouped[year] = { year };
-            regionArray.forEach(region => {
-              grouped[year][region] = (grouped[year][region] || 0) + (item[region] || 0);
-            });
-          });
-          const result = Object.values(grouped).sort((a, b) => b.year - a.year).slice(0, limit).reverse();
-          return result.map((item: any) => {
-            const newItem: any = { year: item.year };
-            regionArray.forEach(region => {
-              newItem[region] = item[region] / 1000000000;
-            });
-            return newItem;
-          });
-        }
-        return [];
-      
-      case 'profitability':
-        const profitData = tabData[0] || [];
-        return profitData.slice(0, limit).map((income: any) => ({
-          year: new Date(income.date).getFullYear(),
-          netIncome: income.netIncome / 1000000000,
-          ebitda: income.ebitda / 1000000000,
-          eps: income.eps || 0
-        })).reverse();
-
-      case 'cashflow':
-        const cashData = tabData[0] || [];
-        const metricsData = tabData[1] || [];
-        return cashData.slice(0, limit).map((cash: any, index: number) => {
-          const metrics = metricsData[index] || {};
-          return {
-            year: new Date(cash.date).getFullYear(),
-            freeCashFlow: cash.freeCashFlow / 1000000000,
-            operatingCashFlow: cash.operatingCashFlow / 1000000000,
-            stockBasedCompensation: cash.stockBasedCompensation ? cash.stockBasedCompensation / 1000000000 : 0,
-            capitalExpenditure: Math.abs(cash.capitalExpenditure || 0) / 1000000000,
-            freeCashFlowYield: (metrics.freeCashFlowYield || 0) * 100
-          };
-        }).reverse();
-
-      case 'expenses':
-        const expensesData = tabData[0] || [];
-        return expensesData.slice(0, limit).map((income: any) => ({
-          year: new Date(income.date).getFullYear(),
-          researchAndDevelopment: (income.researchAndDevelopmentExpenses || 0) / 1000000000,
-          salesAndMarketing: (income.sellingGeneralAndAdministrativeExpenses || 0) / 1000000000,
-          operatingExpenses: (income.operatingExpenses || 0) / 1000000000
-        })).reverse();
-
-      case 'cashdebt':
-        const balanceData = tabData[0] || [];
-        return balanceData.slice(0, limit).map((balance: any) => ({
-          year: new Date(balance.date).getFullYear(),
-          totalCash: (balance.cashAndCashEquivalents || 0) / 1000000000,
-          totalDebt: (balance.totalDebt || 0) / 1000000000
-        })).reverse();
-
-      case 'margins':
-        const marginData = tabData[0] || [];
-        return marginData.slice(0, limit).map((ratio: any) => ({
-          year: new Date(ratio.date).getFullYear(),
-          grossMargin: (ratio.grossProfitMargin || 0) * 100,
-          operatingMargin: (ratio.operatingProfitMargin || 0) * 100,
-          ebitdaMargin: (ratio.ebitdaMargin || 0) * 100,
-          netProfitMargin: (ratio.netProfitMargin || 0) * 100
-        })).reverse();
-
-      case 'ratios':
-        const ratioData = tabData[0] || [];
-        const keyMetricsData = tabData[1] || [];
-        return ratioData.slice(0, limit).map((ratio: any, index: number) => {
-          const metrics = keyMetricsData[index] || {};
-          return {
-            year: new Date(ratio.date).getFullYear(),
-            pe: ratio.priceEarningsRatio || 0,
-            ps: ratio.priceToSalesRatio || 0,
-            pFcf: ratio.priceToFreeCashFlowsRatio || metrics.priceToFreeCashFlowsRatio || 0,
-            pOcf: ratio.priceCashFlowRatio || 0,
-            roe: (ratio.returnOnEquity || 0) * 100,
-            roic: (ratio.returnOnCapitalEmployed || 0) * 100
-          };
-        }).reverse();
-
-      default:
-        return [];
-    }
-  };
-
-  // Price chart data with gradient
-  const priceChartData = additionalData.priceData.map(p => ({
-    date: p.date,
-    price: p.close
-  }));
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm font-medium text-gray-900 mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center space-x-2">
-              <div 
-                className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-sm text-gray-700">
-                {entry.name}: {entry.value}
-              </span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{ticker}</h1>
-          <p className="text-xl text-gray-600">{profile?.companyName || companyName}</p>
-          {profile?.sector && <p className="text-sm text-gray-500">{profile.sector} • {profile.industry}</p>}
-        </div>
-        
-        <div className="mt-4 md:mt-0 flex items-center">
-          <span className="text-3xl font-bold mr-3">
-            ${quote.price.toFixed(2)}
-          </span>
-          <div className={`flex items-center ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {isPositive ? <ArrowUpRight className="h-5 w-5 mr-1" /> : <ArrowDownRight className="h-5 w-5 mr-1" />}
-            <span className="text-lg font-medium">
-              {isPositive ? '+' : ''}{quote.change.toFixed(2)} ({isPositive ? '+' : ''}{quote.changesPercentage.toFixed(2)}%)
-            </span>
+      {/* Company Header */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl">{ticker}</CardTitle>
+              <CardDescription>{companyName}</CardDescription>
+            </div>
+            {quote && (
+              <div className="text-right">
+                <div className="text-2xl font-bold">{formatCurrency(quote.price, 2)}</div>
+                <div className={`flex items-center ${quote.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {quote.change >= 0 ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
+                  {quote.change >= 0 ? '+' : ''}{formatCurrency(quote.change, 2)} ({quote.changesPercentage >= 0 ? '+' : ''}{quote.changesPercentage.toFixed(2)}%)
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500 flex items-center">
-              <DollarSign className="h-4 w-4 mr-1" />
-              Market Cap
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(quote.marketCap)}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500 flex items-center">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              P/E Ratio
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {quote.pe ? quote.pe.toFixed(2) : 'N/A'}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500 flex items-center">
-              <BarChart3 className="h-4 w-4 mr-1" />
-              52W High
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${quote.yearHigh.toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500 flex items-center">
-              <Building2 className="h-4 w-4 mr-1" />
-              Volume
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatAxisValue(quote.volume)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Brief Market Insight */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center text-blue-800">
-            <Info className="h-5 w-5 mr-2" />
-            Market Insight
-          </CardTitle>
         </CardHeader>
-        <CardContent>
-          {loadingSections.briefInsight ? <div className="flex items-center justify-center h-16">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            </div> : aiAnalysis.briefInsight ? <div className="text-sm text-blue-700 leading-relaxed">
-              {aiAnalysis.briefInsight.analysis}
-            </div> : <p className="text-sm text-blue-600">Generating market insight...</p>}
-        </CardContent>
       </Card>
 
-      {/* Expandable AI Analysis Sections with improved formatting */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Competitive Moat */}
-        <Collapsible open={expandedSections.moat} onOpenChange={() => handleSectionToggle('moat')}>
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Shield className="h-5 w-5 mr-2 text-blue-600" />
-                    Competitive Moat
-                  </div>
-                  {expandedSections.moat ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </CardTitle>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0">
-                {loadingSections.moat ? <div className="flex items-center justify-center h-24">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div> : aiAnalysis.moat ? <div className="space-y-2">
-                    {formatAIContent(aiAnalysis.moat.analysis)}
-                  </div> : <p className="text-sm text-gray-500">Click to generate analysis</p>}
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Investment Risks */}
-        <Collapsible open={expandedSections.risks} onOpenChange={() => handleSectionToggle('risks')}>
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
-                    Investment Risks
-                  </div>
-                  {expandedSections.risks ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </CardTitle>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0">
-                {loadingSections.risks ? <div className="flex items-center justify-center h-24">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-                  </div> : aiAnalysis.risks ? <div className="space-y-2">
-                    {formatAIContent(aiAnalysis.risks.analysis)}
-                  </div> : <p className="text-sm text-gray-500">Click to generate analysis</p>}
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Near-term Tailwinds & Headwinds */}
-        <Collapsible open={expandedSections.nearTerm} onOpenChange={() => handleSectionToggle('nearTerm')}>
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Wind className="h-5 w-5 mr-2 text-green-600" />
-                    Near-term Factors (6-12 months)
-                  </div>
-                  {expandedSections.nearTerm ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </CardTitle>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0">
-                {loadingSections.nearTerm ? <div className="flex items-center justify-center h-24">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                  </div> : aiAnalysis.nearTermTailwinds ? <div className="space-y-2">
-                    {formatAIContent(aiAnalysis.nearTermTailwinds.analysis)}
-                  </div> : <p className="text-sm text-gray-500">Click to generate analysis</p>}
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Long-term Tailwinds & Headwinds */}
-        <Collapsible open={expandedSections.longTerm} onOpenChange={() => handleSectionToggle('longTerm')}>
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Wind className="h-5 w-5 mr-2 text-purple-600" />
-                    Long-term Factors (2-5 years)
-                  </div>
-                  {expandedSections.longTerm ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </CardTitle>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0">
-                {loadingSections.longTerm ? <div className="flex items-center justify-center h-24">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                  </div> : aiAnalysis.longTermTailwinds ? <div className="space-y-2">
-                    {formatAIContent(aiAnalysis.longTermTailwinds.analysis)}
-                  </div> : <p className="text-sm text-gray-500">Click to generate analysis</p>}
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
+      {/* Global Period Toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Select value={dataType} onValueChange={(value: 'annual' | 'quarterly') => setDataType(value)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="annual">Annual</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {profile?.description && <Card>
-          <CardHeader>
-            <CardTitle>Company Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-700">{profile.description}</p>
-            {profile.website && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center mt-2 text-mindful-600 hover:text-mindful-700">
-                Visit Website <ArrowUpRight className="h-4 w-4 ml-1" />
-              </a>}
-          </CardContent>
-        </Card>}
-      
-      {/* Enhanced Financial Charts */}
-      <Tabs defaultValue="price" className="space-y-4" onValueChange={(value) => fetchTabData(value)}>
-        <TabsList className="grid grid-cols-4 lg:grid-cols-8 w-full">
-          <TabsTrigger value="price">Price</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="profitability">Profitability</TabsTrigger>
-          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
-          <TabsTrigger value="cashdebt">Cash & Debt</TabsTrigger>
-          <TabsTrigger value="margins">Margins</TabsTrigger>
-          <TabsTrigger value="ratios">Key Ratios</TabsTrigger>
-        </TabsList>
+      {/* Financial Metrics Tabs */}
+      <Card>
+        <CardContent className="p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid grid-cols-8 w-full">
+              <TabsTrigger value="price" className="flex items-center">
+                <Activity className="h-4 w-4 mr-1" />
+                Price
+              </TabsTrigger>
+              <TabsTrigger value="revenue" className="flex items-center">
+                <BarChart3 className="h-4 w-4 mr-1" />
+                Revenue
+              </TabsTrigger>
+              <TabsTrigger value="profitability" className="flex items-center">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                Profitability
+              </TabsTrigger>
+              <TabsTrigger value="cashFlow" className="flex items-center">
+                <DollarSign className="h-4 w-4 mr-1" />
+                Cash Flow
+              </TabsTrigger>
+              <TabsTrigger value="expenses" className="flex items-center">
+                <Target className="h-4 w-4 mr-1" />
+                Expenses
+              </TabsTrigger>
+              <TabsTrigger value="cashDebt" className="flex items-center">
+                <Wallet className="h-4 w-4 mr-1" />
+                Cash & Debt
+              </TabsTrigger>
+              <TabsTrigger value="margins" className="flex items-center">
+                <PieChart className="h-4 w-4 mr-1" />
+                Margins
+              </TabsTrigger>
+              <TabsTrigger value="ratios" className="flex items-center">
+                <Calculator className="h-4 w-4 mr-1" />
+                Key Ratios
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Price Chart - Enhanced */}
-        <TabsContent value="price">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock Price Movement</CardTitle>
-              <CardDescription>Historical price trend over the last year</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={priceChartData}>
-                    <defs>
-                      <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={formatCurrency} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area 
-                      type="monotone" 
-                      dataKey="price" 
-                      stroke="#0ea5e9" 
-                      strokeWidth={2}
-                      fill="url(#priceGradient)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+            {/* Price Tab */}
+            <TabsContent value="price" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Historical Price Performance</h3>
+                <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1Y">1Y</SelectItem>
+                    <SelectItem value="3Y">3Y</SelectItem>
+                    <SelectItem value="5Y">5Y</SelectItem>
+                    <SelectItem value="10Y">10Y</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              {renderChart()}
+            </TabsContent>
 
-        {/* Revenue Chart - Enhanced with Segmentation */}
-        <TabsContent value="revenue">
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue Analysis</CardTitle>
-              <CardDescription>Revenue growth and segmentation analysis</CardDescription>
-              <div className="flex justify-between items-center">
+            {/* Revenue Tab */}
+            <TabsContent value="revenue" className="space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex space-x-2">
                   <Button
-                    variant={chartToggles.revenue === 'total' ? 'default' : 'outline'}
+                    variant={activeMetric.revenue === 'total' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, revenue: 'total' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, revenue: 'total' }))}
                   >
                     Total Revenue
                   </Button>
                   <Button
-                    variant={chartToggles.revenue === 'product' ? 'default' : 'outline'}
+                    variant={activeMetric.revenue === 'productSegments' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, revenue: 'product' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, revenue: 'productSegments' }))}
                   >
                     Product Segments
                   </Button>
                   <Button
-                    variant={chartToggles.revenue === 'geographic' ? 'default' : 'outline'}
+                    variant={activeMetric.revenue === 'geographicSegments' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, revenue: 'geographic' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, revenue: 'geographicSegments' }))}
                   >
                     Geographic Segments
                   </Button>
                 </div>
-                <Select
-                  value={periodFilters.revenue.toString()}
-                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, revenue: parseInt(value) }))}
-                >
+                <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1Y</SelectItem>
-                    <SelectItem value="3">3Y</SelectItem>
-                    <SelectItem value="5">5Y</SelectItem>
+                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                {lazyLoadedData.revenue?.loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    {chartToggles.revenue === 'total' ? (
-                      <BarChart data={processFinancialData('revenue')}>
-                        <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                        <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="revenue" fill="#10b981" name="Revenue ($B)" />
-                      </BarChart>
-                    ) : (
-                      <BarChart data={processFinancialData('revenue')}>
-                        <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                        <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                        {chartToggles.revenue === 'product' && additionalData.revenueProductSegmentation.length > 0 && Object.keys(additionalData.revenueProductSegmentation[0]).filter(k => k !== 'year').map((key) => (
-                          <Bar key={key} dataKey={key} stackId="a" name={key} fill={`#${Math.floor(Math.random()*16777215).toString(16)}`} />
-                        ))}
-                        {chartToggles.revenue === 'geographic' && additionalData.revenueGeographicSegmentation.length > 0 && Object.keys(additionalData.revenueGeographicSegmentation[0]).filter(k => k !== 'year').map((key) => (
-                          <Bar key={key} dataKey={key} stackId="a" name={key} fill={`#${Math.floor(Math.random()*16777215).toString(16)}`} />
-                        ))}
-                      </BarChart>
-                    )}
-                  </ResponsiveContainer>
-                )}
-              </div>
-              {renderGrowthMetrics(additionalData.financialGrowth)}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              {renderChart()}
+              {activeMetric.revenue === 'total' && renderGrowthMetrics('revenue')}
+            </TabsContent>
 
-        {/* Profitability Chart - Enhanced as Bar Charts */}
-        <TabsContent value="profitability">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profitability Metrics</CardTitle>
-              <CardDescription>Financial performance over time</CardDescription>
-              <div className="flex justify-between items-center">
+            {/* Profitability Tab */}
+            <TabsContent value="profitability" className="space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex space-x-2">
                   <Button
-                    variant={chartToggles.profitability === 'netIncome' ? 'default' : 'outline'}
+                    variant={activeMetric.profitability === 'netIncome' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'netIncome' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, profitability: 'netIncome' }))}
                   >
                     Net Income
                   </Button>
                   <Button
-                    variant={chartToggles.profitability === 'ebitda' ? 'default' : 'outline'}
+                    variant={activeMetric.profitability === 'ebitda' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'ebitda' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, profitability: 'ebitda' }))}
                   >
                     EBITDA
                   </Button>
                   <Button
-                    variant={chartToggles.profitability === 'eps' ? 'default' : 'outline'}
+                    variant={activeMetric.profitability === 'eps' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, profitability: 'eps' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, profitability: 'eps' }))}
                   >
                     EPS
                   </Button>
                 </div>
-                <Select
-                  value={periodFilters.profitability.toString()}
-                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, profitability: parseInt(value) }))}
-                >
+                <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1Y</SelectItem>
-                    <SelectItem value="3">3Y</SelectItem>
-                    <SelectItem value="5">5Y</SelectItem>
+                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                {lazyLoadedData.profitability?.loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={processFinancialData('profitability')}>
-                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                      <YAxis 
-                        tickFormatter={chartToggles.profitability === 'eps' ? 
-                          (value) => `$${value.toFixed(2)}` : formatAxisValue} 
-                        axisLine={false} 
-                        tickLine={false} 
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey={chartToggles.profitability} 
-                        fill={chartToggles.profitability === 'netIncome' ? '#8b5cf6' : 
-                             chartToggles.profitability === 'ebitda' ? '#06b6d4' : '#f59e0b'} 
-                        name={chartToggles.profitability === 'netIncome' ? 'Net Income ($B)' :
-                             chartToggles.profitability === 'ebitda' ? 'EBITDA ($B)' : 'EPS ($)'}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              {renderChart()}
+              {renderGrowthMetrics('netIncome')}
+            </TabsContent>
 
-        {/* Enhanced Cash Flow Chart */}
-        <TabsContent value="cashflow">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cash Flow Analysis</CardTitle>
-              <CardDescription>Cash generation and capital allocation</CardDescription>
-              <div className="flex justify-between items-center">
+            {/* Cash Flow Tab */}
+            <TabsContent value="cashFlow" className="space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex space-x-2">
                   <Button
-                    variant={chartToggles.cashFlow === 'freeCashFlow' ? 'default' : 'outline'}
+                    variant={activeMetric.cashFlow === 'operatingCashFlow' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'freeCashFlow' }))}
-                  >
-                    Free Cash Flow
-                  </Button>
-                  <Button
-                    variant={chartToggles.cashFlow === 'operatingCashFlow' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'operatingCashFlow' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'operatingCashFlow' }))}
                   >
                     Operating CF
                   </Button>
                   <Button
-                    variant={chartToggles.cashFlow === 'stockBasedCompensation' ? 'default' : 'outline'}
+                    variant={activeMetric.cashFlow === 'freeCashFlow' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'stockBasedCompensation' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlow' }))}
                   >
-                    Stock-Based Comp
+                    Free CF
                   </Button>
                   <Button
-                    variant={chartToggles.cashFlow === 'capitalExpenditure' ? 'default' : 'outline'}
+                    variant={activeMetric.cashFlow === 'freeCashFlowPerShare' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'capitalExpenditure' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlowPerShare' }))}
                   >
-                    CapEx
+                    FCF Per Share
                   </Button>
                   <Button
-                    variant={chartToggles.cashFlow === 'freeCashFlowYield' ? 'default' : 'outline'}
+                    variant={activeMetric.cashFlow === 'freeCashFlowYield' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'freeCashFlowYield' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlowYield' }))}
                   >
                     FCF Yield
                   </Button>
                   <Button
-                    variant={chartToggles.cashFlow === 'fcfVsSbc' ? 'default' : 'outline'}
+                    variant={activeMetric.cashFlow === 'comparison' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, cashFlow: 'fcfVsSbc' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'comparison' }))}
                   >
                     FCF vs SBC
                   </Button>
                 </div>
-                <Select
-                  value={periodFilters.cashFlow.toString()}
-                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, cashFlow: parseInt(value) }))}
-                >
+                <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1Y</SelectItem>
-                    <SelectItem value="3">3Y</SelectItem>
-                    <SelectItem value="5">5Y</SelectItem>
+                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                {lazyLoadedData.cashflow?.loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    {chartToggles.cashFlow === 'fcfVsSbc' ? (
-                      <BarChart data={processFinancialData('cashflow')}>
-                        <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                        <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                        <Bar dataKey="freeCashFlow" fill="#22c55e" name="Free Cash Flow ($B)" />
-                        <Bar dataKey="stockBasedCompensation" fill="#ef4444" name="Stock-Based Comp ($B)" />
-                      </BarChart>
-                    ) : (
-                      <BarChart data={processFinancialData('cashflow')}>
-                        <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                        <YAxis 
-                          tickFormatter={chartToggles.cashFlow === 'freeCashFlowYield' ? 
-                            (value) => `${value.toFixed(1)}%` : formatAxisValue} 
-                          axisLine={false} 
-                          tickLine={false} 
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Bar 
-                          dataKey={chartToggles.cashFlow} 
-                          fill="#f59e0b" 
-                          name={chartToggles.cashFlow === 'freeCashFlowYield' ? 'FCF Yield (%)' : 
-                               chartToggles.cashFlow + ' ($B)'}
-                        />
-                      </BarChart>
-                    )}
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              {renderChart()}
+              {renderGrowthMetrics('operatingCF')}
+            </TabsContent>
 
-        {/* Expenses Chart */}
-        <TabsContent value="expenses">
-          <Card>
-            <CardHeader>
-              <CardTitle>Operating Expenses</CardTitle>
-              <CardDescription>R&D, Sales & Marketing, and Operating expenses (in billions)</CardDescription>
-              <div className="flex justify-between items-center">
-                <Select
-                  value={periodFilters.expenses.toString()}
-                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, expenses: parseInt(value) }))}
-                >
+            {/* Expenses Tab */}
+            <TabsContent value="expenses" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Operating Expenses</h3>
+                <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1Y</SelectItem>
-                    <SelectItem value="3">3Y</SelectItem>
-                    <SelectItem value="5">5Y</SelectItem>
+                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                {lazyLoadedData.expenses?.loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={processFinancialData('expenses')}>
-                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend />
-                      <Bar dataKey="researchAndDevelopment" fill="#ef4444" name="R&D ($B)" />
-                      <Bar dataKey="salesAndMarketing" fill="#f97316" name="Sales & Marketing ($B)" />
-                      <Bar dataKey="operatingExpenses" fill="#6366f1" name="Operating Expenses ($B)" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              {renderChart()}
+            </TabsContent>
 
-        {/* Cash & Debt Chart */}
-        <TabsContent value="cashdebt">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cash vs Debt</CardTitle>
-              <CardDescription>Balance sheet cash and debt levels (in billions)</CardDescription>
-              <div className="flex justify-between items-center">
-                <Select
-                  value={periodFilters.cashdebt.toString()}
-                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, cashdebt: parseInt(value) }))}
-                >
+            {/* Cash & Debt Tab */}
+            <TabsContent value="cashDebt" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Cash vs Debt Analysis</h3>
+                <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1Y</SelectItem>
-                    <SelectItem value="3">3Y</SelectItem>
-                    <SelectItem value="5">5Y</SelectItem>
+                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                {lazyLoadedData.cashdebt?.loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={processFinancialData('cashdebt')}>
-                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={formatAxisValue} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend />
-                      <Bar dataKey="totalCash" fill="#22c55e" name="Total Cash ($B)" />
-                      <Bar dataKey="totalDebt" fill="#dc2626" name="Total Debt ($B)" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              {renderChart()}
+            </TabsContent>
 
-        {/* Enhanced Margins Chart */}
-        <TabsContent value="margins">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profit Margins</CardTitle>
-              <CardDescription>Profitability margins over time (%)</CardDescription>
-              <div className="flex justify-between items-center">
+            {/* Margins Tab */}
+            <TabsContent value="margins" className="space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex space-x-2">
                   <Button
-                    variant={chartToggles.margins === 'grossMargin' ? 'default' : 'outline'}
+                    variant={activeMetric.margins === 'grossMargin' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, margins: 'grossMargin' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, margins: 'grossMargin' }))}
                   >
                     Gross Margin
                   </Button>
                   <Button
-                    variant={chartToggles.margins === 'operatingMargin' ? 'default' : 'outline'}
+                    variant={activeMetric.margins === 'operatingMargin' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, margins: 'operatingMargin' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, margins: 'operatingMargin' }))}
                   >
                     Operating Margin
                   </Button>
                   <Button
-                    variant={chartToggles.margins === 'ebitdaMargin' ? 'default' : 'outline'}
+                    variant={activeMetric.margins === 'netMargin' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, margins: 'ebitdaMargin' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, margins: 'netMargin' }))}
+                  >
+                    Net Margin
+                  </Button>
+                  <Button
+                    variant={activeMetric.margins === 'ebitdaMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, margins: 'ebitdaMargin' }))}
                   >
                     EBITDA Margin
                   </Button>
-                  <Button
-                    variant={chartToggles.margins === 'netProfitMargin' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, margins: 'netProfitMargin' }))}
-                  >
-                    Net Profit Margin
-                  </Button>
                 </div>
-                <Select
-                  value={periodFilters.margins.toString()}
-                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, margins: parseInt(value) }))}
-                >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1Y</SelectItem>
-                    <SelectItem value="3">3Y</SelectItem>
-                    <SelectItem value="5">5Y</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex space-x-2">
+                  <Select value={ratioType} onValueChange={(value: 'annual' | 'ttm') => setRatioType(value)}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="annual">Annual</SelectItem>
+                      <SelectItem value="ttm">TTM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {ratioType === 'annual' && (
+                    <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                        <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                        <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                {lazyLoadedData.margins?.loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={processFinancialData('margins')}>
-                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={(value) => `${value.toFixed(0)}%`} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey={chartToggles.margins} 
-                        stroke="#06b6d4" 
-                        strokeWidth={3} 
-                        dot={{ fill: '#06b6d4', strokeWidth: 2, r: 4 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              {renderChart()}
+            </TabsContent>
 
-        {/* Enhanced Ratios Chart */}
-        <TabsContent value="ratios">
-          <Card>
-            <CardHeader>
-              <CardTitle>Key Financial Ratios</CardTitle>
-              <CardDescription>Valuation and profitability ratios</CardDescription>
-              <div className="flex justify-between items-center">
-                <div className="grid grid-cols-3 gap-2">
+            {/* Key Ratios Tab */}
+            <TabsContent value="ratios" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex space-x-2 flex-wrap">
                   <Button
-                    variant={chartToggles.ratios === 'pe' ? 'default' : 'outline'}
+                    variant={activeMetric.ratios === 'pe' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'pe' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'pe' }))}
                   >
                     P/E
                   </Button>
                   <Button
-                    variant={chartToggles.ratios === 'ps' ? 'default' : 'outline'}
+                    variant={activeMetric.ratios === 'ps' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'ps' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'ps' }))}
                   >
                     P/S
                   </Button>
                   <Button
-                    variant={chartToggles.ratios === 'pFcf' ? 'default' : 'outline'}
+                    variant={activeMetric.ratios === 'pfcf' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'pFcf' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'pfcf' }))}
                   >
                     P/FCF
                   </Button>
                   <Button
-                    variant={chartToggles.ratios === 'pOcf' ? 'default' : 'outline'}
+                    variant={activeMetric.ratios === 'pocf' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'pOcf' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'pocf' }))}
                   >
                     P/OCF
                   </Button>
                   <Button
-                    variant={chartToggles.ratios === 'roe' ? 'default' : 'outline'}
+                    variant={activeMetric.ratios === 'roe' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'roe' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'roe' }))}
                   >
                     ROE
                   </Button>
                   <Button
-                    variant={chartToggles.ratios === 'roic' ? 'default' : 'outline'}
+                    variant={activeMetric.ratios === 'roic' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartToggles(prev => ({ ...prev, ratios: 'roic' }))}
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'roic' }))}
                   >
                     ROIC
                   </Button>
                 </div>
-                <Select
-                  value={periodFilters.ratios.toString()}
-                  onValueChange={(value) => setPeriodFilters(prev => ({ ...prev, ratios: parseInt(value) }))}
-                >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1Y</SelectItem>
-                    <SelectItem value="3">3Y</SelectItem>
-                    <SelectItem value="5">5Y</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex space-x-2">
+                  <Select value={ratioType} onValueChange={(value: 'annual' | 'ttm') => setRatioType(value)}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="annual">Annual</SelectItem>
+                      <SelectItem value="ttm">TTM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {ratioType === 'annual' && (
+                    <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                        <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                        <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                {lazyLoadedData.ratios?.loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={processFinancialData('ratios')}>
-                      <XAxis dataKey="year" axisLine={false} tickLine={false} />
-                      <YAxis 
-                        tickFormatter={['roe', 'roic'].includes(chartToggles.ratios) ? 
-                          (value) => `${value.toFixed(0)}%` : (value) => value.toFixed(1)} 
-                        axisLine={false} 
-                        tickLine={false} 
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey={chartToggles.ratios} 
-                        stroke="#8b5cf6" 
-                        strokeWidth={3}
-                        dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              {renderChart()}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
