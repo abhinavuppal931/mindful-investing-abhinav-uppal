@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StockCard from '@/components/cards/StockCard';
@@ -86,8 +85,8 @@ const Insights = () => {
     
     setSearchLoading(true);
     try {
-      // Use the new search API
-      const searchData = await fmpAPI.searchStock(query);
+      // Use the correct search API method
+      const searchData = await fmpAPI.searchSymbol(query);
       
       if (searchData && searchData.length > 0) {
         // Get quotes for search results to include price data
