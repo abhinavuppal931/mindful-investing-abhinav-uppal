@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { fmpAPI } from '@/services/api';
 import { useStockData } from '@/hooks/useStockData';
-import { useNews } from '@/hooks/useNews';
 import TodaysPriceDriver from './TodaysPriceDriver';
 import CompanyOverview from './CompanyOverview';
 import AIAnalysisGrid from './AIAnalysisGrid';
@@ -50,8 +47,7 @@ const formatPercentage = (value: number): string => {
 };
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
-  const { quote, profile, loading, error } = useStockData(ticker);
-  const { news } = useNews(ticker);
+  const { quote, profile, financials, loading, error } = useStockData(ticker);
   const [activeTab, setActiveTab] = useState('price');
   const [activeMetric, setActiveMetric] = useState<{[key: string]: string}>({
     revenue: 'total',
@@ -1024,7 +1020,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       <AIAnalysisGrid 
         ticker={ticker} 
         financialData={financials?.slice(0, 3)} 
-        newsData={news?.slice(0, 5)} 
+        newsData={[]} 
       />
     </div>
   );

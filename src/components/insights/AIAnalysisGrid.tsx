@@ -71,13 +71,13 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
           result = await openaiAPI.analyzeCompanyMoat(ticker, financialData);
           break;
         case 'risks':
-          result = await openaiAPI.analyzeInvestmentRisks(ticker, financialData, newsData);
+          result = await openaiAPI.analyzeInvestmentRisks(ticker, financialData, newsData || []);
           break;
         case 'near-term':
-          result = await openaiAPI.analyzeNearTermTailwinds(ticker, financialData, newsData);
+          result = await openaiAPI.analyzeNearTermTailwinds(ticker, financialData, newsData || []);
           break;
         case 'long-term':
-          result = await openaiAPI.analyzeLongTermTailwinds(ticker, financialData, newsData);
+          result = await openaiAPI.analyzeLongTermTailwinds(ticker, financialData, newsData || []);
           break;
         default:
           throw new Error('Unknown analysis type');

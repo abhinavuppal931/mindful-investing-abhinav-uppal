@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, TrendingUp } from 'lucide-react';
 import { openaiAPI } from '@/services/api';
-import { useNews } from '@/hooks/useStockData';
 
 interface TodaysPriceDriverProps {
   ticker: string;
@@ -14,7 +13,6 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
   const [insight, setInsight] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { news } = useNews(ticker);
 
   useEffect(() => {
     const fetchPriceDriver = async () => {
