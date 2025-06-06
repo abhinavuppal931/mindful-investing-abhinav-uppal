@@ -52,6 +52,8 @@ const StockSearch: React.FC<StockSearchProps> = ({
     const newValue = e.target.value.toUpperCase();
     setSearchTerm(newValue);
     setIsOpen(true);
+    // Immediately update the parent component with the typed value
+    onChange(newValue);
   };
 
   const handleSuggestionClick = (symbol: string) => {
@@ -101,7 +103,7 @@ const StockSearch: React.FC<StockSearchProps> = ({
         )}
       </div>
 
-      {isOpen && filteredSuggestions.length > 0 && (
+      {isOpen && filteredSuggestions.length > 0 && searchTerm && (
         <div
           ref={dropdownRef}
           className="absolute top-full z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover py-1 shadow-lg"

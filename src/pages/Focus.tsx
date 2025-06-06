@@ -125,7 +125,7 @@ const Focus = () => {
           // Stock-specific news from FMP
           fmpData = await fmpNewsAPI.getStockNews(tickerFilter, fromDate, toDate, 0, 50);
         } else {
-          // General news from FMP
+          // General news from FMP when no ticker selected
           fmpData = await fmpNewsAPI.getGeneralNews(fromDate, toDate, 0, 50);
         }
 
