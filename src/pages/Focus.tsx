@@ -15,6 +15,7 @@ import { finnhubAPI } from '@/services/api';
 import { fmpNewsAPI } from '@/services/fmpNewsAPI';
 import StockSearch from '@/components/ui/stock-search';
 import DateRangePicker from '@/components/ui/date-range-picker';
+import { aiNewsAnalysis } from '@/services/aiNewsAnalysis';
 
 interface NewsItem {
   id: string;
@@ -22,7 +23,7 @@ interface NewsItem {
   source: string;
   date: string;
   sentiment: 'positive' | 'negative' | 'neutral';
-  relevance: 'high' | 'medium' | 'low';
+  relevance: 'high' | 'low';
   ticker?: string;
   content: string;
   url: string;
@@ -56,6 +57,8 @@ const Focus = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
 
   // Format date for API calls (YYYY-MM-DD)
   const formatDateForAPI = (date: Date): string => {
@@ -105,8 +108,8 @@ const Focus = () => {
             title: item.headline,
             source: item.source,
             date: format(new Date(item.datetime * 1000), 'yyyy-MM-dd'),
-            sentiment: getRandomSentiment(),
-            relevance: getRandomRelevance(),
+            sentiment: 'neutral' as const, // Will be updated by AI
+            relevance: 'low' as const, // Will be updated by AI
             ticker: tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' ? tickerFilter : '',
             content: item.summary || item.headline,
             url: item.url,
@@ -118,14 +121,14 @@ const Focus = () => {
         console.warn('Finnhub API error:', finnhubError);
       }
 
-      // Fetch FMP news (new functionality)
+      // Fetch FMP news (ensure general news is included when no ticker selected)
       try {
         let fmpData;
         if (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '') {
           // Stock-specific news from FMP
           fmpData = await fmpNewsAPI.getStockNews(tickerFilter, fromDate, toDate, 0, 50);
         } else {
-          // General news from FMP when no ticker selected
+          // ALWAYS fetch general news from FMP when no ticker selected
           fmpData = await fmpNewsAPI.getGeneralNews(fromDate, toDate, 0, 50);
         }
 
@@ -135,8 +138,8 @@ const Focus = () => {
             title: item.title,
             source: item.site || item.publisher || 'FMP',
             date: item.publishedDate,
-            sentiment: getRandomSentiment(),
-            relevance: getRandomRelevance(),
+            sentiment: 'neutral' as const, // Will be updated by AI
+            relevance: 'low' as const, // Will be updated by AI
             ticker: item.symbol || (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' ? tickerFilter : ''),
             content: item.text || item.title,
             url: item.url,
@@ -155,7 +158,41 @@ const Focus = () => {
       
       uniqueNews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
-      setNews(uniqueNews);
+      // Run AI analysis on the news articles
+      if (uniqueNews.length > 0) {
+        setAiAnalysisLoading(true);
+        try {
+          const articlesForAnalysis = uniqueNews.map(item => ({
+            id: item.id,
+            title: item.title,
+            content: item.content
+          }));
+          
+          const analysisResults = await aiNewsAnalysis.analyzeArticles(articlesForAnalysis);
+          
+          // Update news items with AI analysis results
+          const newsWithAI = uniqueNews.map(newsItem => {
+            const analysis = analysisResults.find(result => result.id === newsItem.id);
+            if (analysis) {
+              return {
+                ...newsItem,
+                sentiment: analysis.sentiment,
+                relevance: analysis.relevance
+              };
+            }
+            return newsItem;
+          });
+          
+          setNews(newsWithAI);
+        } catch (aiError) {
+          console.warn('AI Analysis error, using news without AI analysis:', aiError);
+          setNews(uniqueNews);
+        } finally {
+          setAiAnalysisLoading(false);
+        }
+      } else {
+        setNews(uniqueNews);
+      }
     } catch (err) {
       console.error('Error fetching news:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch news data');
@@ -191,11 +228,14 @@ const Focus = () => {
     return true;
   });
 
-  if (loading) {
+  if (loading || aiAnalysisLoading) {
     return (
       <MainLayout>
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-mindful-600"></div>
+          {aiAnalysisLoading && (
+            <p className="ml-4 text-gray-600">Running AI analysis on news articles...</p>
+          )}
         </div>
       </MainLayout>
     );

@@ -57,7 +57,7 @@ serve(async (req) => {
 
     switch (action) {
       case 'general-news':
-        // FMP General News API
+        // Use the correct FMP General News API endpoint
         endpoint = `${BASE_URL}/fmp/articles?page=${page}&size=${limit}&apikey=${FMP_API_KEY}`;
         if (from) endpoint += `&from=${from}`;
         if (to) endpoint += `&to=${to}`;
