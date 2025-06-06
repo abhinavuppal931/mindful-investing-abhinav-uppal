@@ -29,6 +29,20 @@ interface NewsItem {
   provider: 'finnhub' | 'fmp';
 }
 
+// Helper function to generate random sentiment with proper typing
+const getRandomSentiment = (): 'positive' | 'negative' | 'neutral' => {
+  const sentiments: ('positive' | 'negative' | 'neutral')[] = ['positive', 'negative', 'neutral'];
+  const randomValue = Math.random();
+  if (randomValue > 0.6) return 'positive';
+  if (randomValue > 0.3) return 'neutral';
+  return 'negative';
+};
+
+// Helper function to generate random relevance with proper typing
+const getRandomRelevance = (): 'high' | 'medium' | 'low' => {
+  return Math.random() > 0.5 ? 'high' : 'medium';
+};
+
 const Focus = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [tickerFilter, setTickerFilter] = useState('');
@@ -91,8 +105,8 @@ const Focus = () => {
             title: item.headline,
             source: item.source,
             date: format(new Date(item.datetime * 1000), 'yyyy-MM-dd'),
-            sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative',
-            relevance: Math.random() > 0.5 ? 'high' : 'medium',
+            sentiment: getRandomSentiment(),
+            relevance: getRandomRelevance(),
             ticker: tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' ? tickerFilter : '',
             content: item.summary || item.headline,
             url: item.url,
@@ -121,8 +135,8 @@ const Focus = () => {
             title: item.title,
             source: item.site || item.publisher || 'FMP',
             date: item.publishedDate,
-            sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative',
-            relevance: Math.random() > 0.5 ? 'high' : 'medium',
+            sentiment: getRandomSentiment(),
+            relevance: getRandomRelevance(),
             ticker: item.symbol || (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' ? tickerFilter : ''),
             content: item.text || item.title,
             url: item.url,
