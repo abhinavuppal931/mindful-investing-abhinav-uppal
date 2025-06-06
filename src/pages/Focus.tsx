@@ -1,5 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
+import { format, subDays } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,51 +12,136 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { BrainCircuit, Calendar, ArrowUpRight, Filter, Info, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { finnhubAPI } from '@/services/api';
+import { fmpNewsAPI } from '@/services/fmpNewsAPI';
+import StockSearch from '@/components/ui/stock-search';
+import DateRangePicker from '@/components/ui/date-range-picker';
+
+interface NewsItem {
+  id: string;
+  title: string;
+  source: string;
+  date: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  relevance: 'high' | 'medium' | 'low';
+  ticker?: string;
+  content: string;
+  url: string;
+  provider: 'finnhub' | 'fmp';
+}
 
 const Focus = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [tickerFilter, setTickerFilter] = useState('all-stocks');
+  const [tickerFilter, setTickerFilter] = useState('');
   const [showHighRelevanceOnly, setShowHighRelevanceOnly] = useState(false);
   const [sentimentFilter, setSentimentFilter] = useState('all');
-  const [news, setNews] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  });
+  
+  const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Format date for API calls (YYYY-MM-DD)
+  const formatDateForAPI = (date: Date): string => {
+    return format(date, 'yyyy-MM-dd');
+  };
+
+  // Fix timezone issue - ensure we're displaying dates in user's timezone
+  const formatDisplayDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      // Add timezone offset to correct for UTC display issue
+      const correctedDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+      return format(correctedDate, 'M/d/yyyy');
+    } catch (error) {
+      return dateString;
+    }
+  };
+
   useEffect(() => {
     fetchNews();
-  }, [tickerFilter]);
+  }, [tickerFilter, dateRange]);
 
   const fetchNews = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      let newsData;
+      const fromDate = dateRange?.from ? formatDateForAPI(dateRange.from) : undefined;
+      const toDate = dateRange?.to ? formatDateForAPI(dateRange.to) : undefined;
       
-      if (tickerFilter && tickerFilter !== 'all-stocks') {
-        // Fetch company-specific news
-        const to = new Date().toISOString().split('T')[0];
-        const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        newsData = await finnhubAPI.getCompanyNews(tickerFilter, from, to);
-      } else {
-        // Fetch general market news
-        newsData = await finnhubAPI.getMarketNews('general');
+      const allNews: NewsItem[] = [];
+
+      // Fetch Finnhub news (existing functionality)
+      try {
+        let finnhubData;
+        if (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '') {
+          const from = fromDate || format(subDays(new Date(), 30), 'yyyy-MM-dd');
+          const to = toDate || format(new Date(), 'yyyy-MM-dd');
+          finnhubData = await finnhubAPI.getCompanyNews(tickerFilter, from, to);
+        } else {
+          finnhubData = await finnhubAPI.getMarketNews('general');
+        }
+
+        if (finnhubData && finnhubData.length > 0) {
+          const processedFinnhubNews = finnhubData.map((item: any, index: number) => ({
+            id: `finnhub_${item.id || index}`,
+            title: item.headline,
+            source: item.source,
+            date: format(new Date(item.datetime * 1000), 'yyyy-MM-dd'),
+            sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative',
+            relevance: Math.random() > 0.5 ? 'high' : 'medium',
+            ticker: tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' ? tickerFilter : '',
+            content: item.summary || item.headline,
+            url: item.url,
+            provider: 'finnhub' as const
+          }));
+          allNews.push(...processedFinnhubNews);
+        }
+      } catch (finnhubError) {
+        console.warn('Finnhub API error:', finnhubError);
       }
 
-      // Process news data and add mock sentiment/relevance scores
-      const processedNews = (newsData || []).map((item: any, index: number) => ({
-        id: item.id || index,
-        title: item.headline,
-        source: item.source,
-        date: new Date(item.datetime * 1000).toISOString().split('T')[0],
-        sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative',
-        relevance: Math.random() > 0.5 ? 'high' : 'medium',
-        ticker: tickerFilter && tickerFilter !== 'all-stocks' ? tickerFilter : '',
-        content: item.summary || item.headline,
-        url: item.url
-      }));
+      // Fetch FMP news (new functionality)
+      try {
+        let fmpData;
+        if (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '') {
+          // Stock-specific news from FMP
+          fmpData = await fmpNewsAPI.getStockNews(tickerFilter, fromDate, toDate, 0, 50);
+        } else {
+          // General news from FMP
+          fmpData = await fmpNewsAPI.getGeneralNews(fromDate, toDate, 0, 50);
+        }
 
-      setNews(processedNews);
+        if (fmpData && Array.isArray(fmpData) && fmpData.length > 0) {
+          const processedFmpNews = fmpData.map((item: any, index: number) => ({
+            id: `fmp_${item.publishedDate}_${index}`,
+            title: item.title,
+            source: item.site || item.publisher || 'FMP',
+            date: item.publishedDate,
+            sentiment: Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative',
+            relevance: Math.random() > 0.5 ? 'high' : 'medium',
+            ticker: item.symbol || (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' ? tickerFilter : ''),
+            content: item.text || item.title,
+            url: item.url,
+            provider: 'fmp' as const
+          }));
+          allNews.push(...processedFmpNews);
+        }
+      } catch (fmpError) {
+        console.warn('FMP API error:', fmpError);
+      }
+
+      // Sort by date (newest first) and remove duplicates
+      const uniqueNews = allNews.filter((item, index, self) => 
+        index === self.findIndex(t => t.title === item.title || t.url === item.url)
+      );
+      
+      uniqueNews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setNews(uniqueNews);
     } catch (err) {
       console.error('Error fetching news:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch news data');
@@ -73,7 +159,8 @@ const Focus = () => {
     }
     
     // Ticker filter
-    if (tickerFilter && tickerFilter !== 'all-stocks' && item.ticker !== tickerFilter) {
+    if (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' && 
+        item.ticker && item.ticker !== tickerFilter) {
       return false;
     }
     
@@ -147,12 +234,28 @@ const Focus = () => {
         <div className="focus-mode">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <Input
-                placeholder="Search news content..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="mb-4"
-              />
+              <div className="space-y-4 mb-4">
+                <Input
+                  placeholder="Search news content..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                
+                <div className="flex flex-col md:flex-row gap-4">
+                  <StockSearch
+                    value={tickerFilter}
+                    onChange={setTickerFilter}
+                    placeholder="Search stock symbols..."
+                    className="flex-1"
+                  />
+                  
+                  <DateRangePicker
+                    value={dateRange}
+                    onChange={setDateRange}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
               
               <Tabs defaultValue="all">
                 <div className="flex justify-between items-center mb-4">
@@ -164,7 +267,12 @@ const Focus = () => {
                   
                   <div className="flex items-center text-sm text-gray-500">
                     <Calendar className="h-4 w-4 mr-1" />
-                    <span>Latest Market News</span>
+                    <span>
+                      {filteredNews.length} articles • 
+                      {dateRange?.from && dateRange?.to && (
+                        ` ${formatDisplayDate(dateRange.from.toISOString())} - ${formatDisplayDate(dateRange.to.toISOString())}`
+                      )}
+                    </span>
                   </div>
                 </div>
                 
@@ -178,7 +286,10 @@ const Focus = () => {
                               <div className="space-y-1">
                                 <CardTitle className="text-lg">{newsItem.title}</CardTitle>
                                 <CardDescription>
-                                  {newsItem.source} • {new Date(newsItem.date).toLocaleDateString()}
+                                  {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
+                                  <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
+                                    {newsItem.provider.toUpperCase()}
+                                  </span>
                                 </CardDescription>
                               </div>
                               {newsItem.ticker && (
@@ -223,9 +334,13 @@ const Focus = () => {
                           variant="link" 
                           onClick={() => {
                             setSearchQuery('');
-                            setTickerFilter('all-stocks');
+                            setTickerFilter('');
                             setShowHighRelevanceOnly(false);
                             setSentimentFilter('all');
+                            setDateRange({
+                              from: subDays(new Date(), 7),
+                              to: new Date(),
+                            });
                           }}
                         >
                           Clear all filters
@@ -244,7 +359,10 @@ const Focus = () => {
                             <div className="space-y-1">
                               <CardTitle>{newsItem.title}</CardTitle>
                               <CardDescription>
-                                {newsItem.source} • {new Date(newsItem.date).toLocaleDateString()}
+                                {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
+                                <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
+                                  {newsItem.provider.toUpperCase()}
+                                </span>
                               </CardDescription>
                             </div>
                             {newsItem.ticker && (
@@ -288,7 +406,10 @@ const Focus = () => {
                             <div className="space-y-1">
                               <CardTitle>{newsItem.title}</CardTitle>
                               <CardDescription>
-                                {newsItem.source} • {new Date(newsItem.date).toLocaleDateString()}
+                                {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
+                                <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
+                                  {newsItem.provider.toUpperCase()}
+                                </span>
                               </CardDescription>
                             </div>
                             {newsItem.ticker && (
@@ -335,26 +456,6 @@ const Focus = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="ticker-filter">Ticker Symbol</Label>
-                    <Select 
-                      value={tickerFilter} 
-                      onValueChange={setTickerFilter}
-                    >
-                      <SelectTrigger id="ticker-filter">
-                        <SelectValue placeholder="All Stocks" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all-stocks">All Stocks</SelectItem>
-                        <SelectItem value="AAPL">AAPL</SelectItem>
-                        <SelectItem value="MSFT">MSFT</SelectItem>
-                        <SelectItem value="GOOGL">GOOGL</SelectItem>
-                        <SelectItem value="AMZN">AMZN</SelectItem>
-                        <SelectItem value="TSLA">TSLA</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
                     <Label htmlFor="sentiment-filter">Sentiment</Label>
                     <Select 
                       value={sentimentFilter} 
@@ -377,9 +478,13 @@ const Focus = () => {
                     className="w-full mt-2"
                     onClick={() => {
                       setSearchQuery('');
-                      setTickerFilter('all-stocks');
+                      setTickerFilter('');
                       setShowHighRelevanceOnly(false);
                       setSentimentFilter('all');
+                      setDateRange({
+                        from: subDays(new Date(), 7),
+                        to: new Date(),
+                      });
                     }}
                   >
                     Reset Filters
