@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +10,10 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { fmpAPI } from '@/services/api';
 import { useStockData } from '@/hooks/useStockData';
+import { useNews } from '@/hooks/useNews';
+import TodaysPriceDriver from './TodaysPriceDriver';
+import CompanyOverview from './CompanyOverview';
+import AIAnalysisGrid from './AIAnalysisGrid';
 
 interface StockDetailProps {
   ticker: string;
@@ -48,6 +51,7 @@ const formatPercentage = (value: number): string => {
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   const { quote, profile, loading, error } = useStockData(ticker);
+  const { news } = useNews(ticker);
   const [activeTab, setActiveTab] = useState('price');
   const [activeMetric, setActiveMetric] = useState<{[key: string]: string}>({
     revenue: 'total',
@@ -627,6 +631,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         </CardHeader>
       </Card>
 
+      {/* Today's Price Driver */}
+      <TodaysPriceDriver ticker={ticker} financialData={financials?.slice(0, 3)} />
+
       {/* Global Period Toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -1009,6 +1016,16 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Company Overview */}
+      <CompanyOverview profile={profile} />
+
+      {/* AI Analysis Grid */}
+      <AIAnalysisGrid 
+        ticker={ticker} 
+        financialData={financials?.slice(0, 3)} 
+        newsData={news?.slice(0, 5)} 
+      />
     </div>
   );
 };
