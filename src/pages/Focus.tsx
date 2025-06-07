@@ -10,12 +10,14 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { BrainCircuit, Calendar, ArrowUpRight, Filter, Info, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { BrainCircuit, Calendar, ArrowUpRight, Filter, Info, ThumbsUp, ThumbsDown, Loader } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { finnhubAPI } from '@/services/api';
 import { fmpNewsAPI } from '@/services/fmpNewsAPI';
 import StockSearch from '@/components/ui/stock-search';
 import DateRangePicker from '@/components/ui/date-range-picker';
 import { aiNewsAnalysis } from '@/services/aiNewsAnalysis';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface NewsItem {
   id: string;
@@ -29,6 +31,8 @@ interface NewsItem {
   url: string;
   provider: 'finnhub' | 'fmp';
 }
+
+const ITEMS_PER_PAGE = 10;
 
 // Helper function to generate random sentiment with proper typing
 const getRandomSentiment = (): 'positive' | 'negative' | 'neutral' => {
@@ -54,11 +58,15 @@ const Focus = () => {
     to: new Date(),
   });
   
-  const [news, setNews] = useState<NewsItem[]>([]);
+  const [allNews, setAllNews] = useState<NewsItem[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [processingArticleIds, setProcessingArticleIds] = useState<Set<string>>(new Set());
+
+  // Debounce ticker filter to avoid excessive API calls
+  const debouncedTickerFilter = useDebounce(tickerFilter, 500);
 
   // Format date for API calls (YYYY-MM-DD)
   const formatDateForAPI = (date: Date): string => {
@@ -69,7 +77,6 @@ const Focus = () => {
   const formatDisplayDate = (dateString: string): string => {
     try {
       const date = new Date(dateString);
-      // Add timezone offset to correct for UTC display issue
       const correctedDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
       return format(correctedDate, 'M/d/yyyy');
     } catch (error) {
@@ -77,9 +84,14 @@ const Focus = () => {
     }
   };
 
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedTickerFilter, dateRange, searchQuery, showHighRelevanceOnly, sentimentFilter]);
+
   useEffect(() => {
     fetchNews();
-  }, [tickerFilter, dateRange]);
+  }, [debouncedTickerFilter, dateRange]);
 
   const fetchNews = async () => {
     setLoading(true);
@@ -89,15 +101,15 @@ const Focus = () => {
       const fromDate = dateRange?.from ? formatDateForAPI(dateRange.from) : undefined;
       const toDate = dateRange?.to ? formatDateForAPI(dateRange.to) : undefined;
       
-      const allNews: NewsItem[] = [];
+      const allNewsData: NewsItem[] = [];
 
-      // Fetch Finnhub news (existing functionality)
+      // Fetch Finnhub news
       try {
         let finnhubData;
-        if (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '') {
+        if (debouncedTickerFilter && debouncedTickerFilter !== 'all-stocks' && debouncedTickerFilter !== '') {
           const from = fromDate || format(subDays(new Date(), 30), 'yyyy-MM-dd');
           const to = toDate || format(new Date(), 'yyyy-MM-dd');
-          finnhubData = await finnhubAPI.getCompanyNews(tickerFilter, from, to);
+          finnhubData = await finnhubAPI.getCompanyNews(debouncedTickerFilter, from, to);
         } else {
           finnhubData = await finnhubAPI.getMarketNews('general');
         }
@@ -108,27 +120,25 @@ const Focus = () => {
             title: item.headline,
             source: item.source,
             date: format(new Date(item.datetime * 1000), 'yyyy-MM-dd'),
-            sentiment: 'neutral' as const, // Will be updated by AI
-            relevance: 'low' as const, // Will be updated by AI
-            ticker: tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' ? tickerFilter : '',
+            sentiment: 'neutral' as const,
+            relevance: 'low' as const,
+            ticker: debouncedTickerFilter && debouncedTickerFilter !== 'all-stocks' && debouncedTickerFilter !== '' ? debouncedTickerFilter : '',
             content: item.summary || item.headline,
             url: item.url,
             provider: 'finnhub' as const
           }));
-          allNews.push(...processedFinnhubNews);
+          allNewsData.push(...processedFinnhubNews);
         }
       } catch (finnhubError) {
         console.warn('Finnhub API error:', finnhubError);
       }
 
-      // Fetch FMP news (ensure general news is included when no ticker selected)
+      // Fetch FMP news
       try {
         let fmpData;
-        if (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '') {
-          // Stock-specific news from FMP
-          fmpData = await fmpNewsAPI.getStockNews(tickerFilter, fromDate, toDate, 0, 50);
+        if (debouncedTickerFilter && debouncedTickerFilter !== 'all-stocks' && debouncedTickerFilter !== '') {
+          fmpData = await fmpNewsAPI.getStockNews(debouncedTickerFilter, fromDate, toDate, 0, 50);
         } else {
-          // ALWAYS fetch general news from FMP when no ticker selected
           fmpData = await fmpNewsAPI.getGeneralNews(fromDate, toDate, 0, 50);
         }
 
@@ -138,40 +148,62 @@ const Focus = () => {
             title: item.title,
             source: item.site || item.publisher || 'FMP',
             date: item.publishedDate,
-            sentiment: 'neutral' as const, // Will be updated by AI
-            relevance: 'low' as const, // Will be updated by AI
-            ticker: item.symbol || (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' ? tickerFilter : ''),
+            sentiment: 'neutral' as const,
+            relevance: 'low' as const,
+            ticker: item.symbol || (debouncedTickerFilter && debouncedTickerFilter !== 'all-stocks' && debouncedTickerFilter !== '' ? debouncedTickerFilter : ''),
             content: item.text || item.title,
             url: item.url,
             provider: 'fmp' as const
           }));
-          allNews.push(...processedFmpNews);
+          allNewsData.push(...processedFmpNews);
         }
       } catch (fmpError) {
         console.warn('FMP API error:', fmpError);
       }
 
-      // Sort by date (newest first) and remove duplicates
-      const uniqueNews = allNews.filter((item, index, self) => 
+      // Remove duplicates and sort by date
+      const uniqueNews = allNewsData.filter((item, index, self) => 
         index === self.findIndex(t => t.title === item.title || t.url === item.url)
       );
       
       uniqueNews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
-      // Run AI analysis on the news articles
-      if (uniqueNews.length > 0) {
-        setAiAnalysisLoading(true);
-        try {
-          const articlesForAnalysis = uniqueNews.map(item => ({
-            id: item.id,
-            title: item.title,
-            content: item.content
-          }));
-          
-          const analysisResults = await aiNewsAnalysis.analyzeArticles(articlesForAnalysis);
-          
-          // Update news items with AI analysis results
-          const newsWithAI = uniqueNews.map(newsItem => {
+      setAllNews(uniqueNews);
+    } catch (err) {
+      console.error('Error fetching news:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch news data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Run AI analysis on current page articles
+  useEffect(() => {
+    const runAIAnalysis = async () => {
+      if (paginatedNews.length === 0) return;
+
+      // Check if any articles need AI analysis
+      const articlesNeedingAnalysis = paginatedNews.filter(
+        item => item.sentiment === 'neutral' && item.relevance === 'low'
+      );
+
+      if (articlesNeedingAnalysis.length === 0) return;
+
+      setAiAnalysisLoading(true);
+      setProcessingArticleIds(new Set(articlesNeedingAnalysis.map(item => item.id)));
+
+      try {
+        const articlesForAnalysis = articlesNeedingAnalysis.map(item => ({
+          id: item.id,
+          title: item.title,
+          content: item.content
+        }));
+        
+        const analysisResults = await aiNewsAnalysis.analyzeArticles(articlesForAnalysis);
+        
+        // Update the news items with AI analysis results
+        setAllNews(prevNews => 
+          prevNews.map(newsItem => {
             const analysis = analysisResults.find(result => result.id === newsItem.id);
             if (analysis) {
               return {
@@ -181,46 +213,35 @@ const Focus = () => {
               };
             }
             return newsItem;
-          });
-          
-          setNews(newsWithAI);
-        } catch (aiError) {
-          console.warn('AI Analysis error, using news without AI analysis:', aiError);
-          setNews(uniqueNews);
-        } finally {
-          setAiAnalysisLoading(false);
-        }
-      } else {
-        setNews(uniqueNews);
+          })
+        );
+      } catch (aiError) {
+        console.warn('AI Analysis error:', aiError);
+      } finally {
+        setAiAnalysisLoading(false);
+        setProcessingArticleIds(new Set());
       }
-    } catch (err) {
-      console.error('Error fetching news:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch news data');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+    };
+
+    runAIAnalysis();
+  }, [currentPage, allNews.length]); // Run when page changes or new news is loaded
+
   // Filter news based on current filters
-  const filteredNews = news.filter(item => {
-    // Search query filter
+  const filteredNews = allNews.filter(item => {
     if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !item.content.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     
-    // Ticker filter
-    if (tickerFilter && tickerFilter !== 'all-stocks' && tickerFilter !== '' && 
-        item.ticker && item.ticker !== tickerFilter) {
+    if (debouncedTickerFilter && debouncedTickerFilter !== 'all-stocks' && debouncedTickerFilter !== '' && 
+        item.ticker && item.ticker !== debouncedTickerFilter) {
       return false;
     }
     
-    // Relevance filter
     if (showHighRelevanceOnly && item.relevance !== 'high') {
       return false;
     }
     
-    // Sentiment filter
     if (sentimentFilter !== 'all' && item.sentiment !== sentimentFilter) {
       return false;
     }
@@ -228,14 +249,20 @@ const Focus = () => {
     return true;
   });
 
-  if (loading || aiAnalysisLoading) {
+  // Pagination logic
+  const totalPages = Math.ceil(filteredNews.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedNews = filteredNews.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  if (loading) {
     return (
       <MainLayout>
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-mindful-600"></div>
-          {aiAnalysisLoading && (
-            <p className="ml-4 text-gray-600">Running AI analysis on news articles...</p>
-          )}
         </div>
       </MainLayout>
     );
@@ -276,15 +303,6 @@ const Focus = () => {
           </div>
         </div>
         
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-600">{error}</p>
-            <Button variant="outline" onClick={fetchNews} className="mt-2">
-              Retry
-            </Button>
-          </div>
-        )}
-        
         <div className="focus-mode">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -322,65 +340,126 @@ const Focus = () => {
                   <div className="flex items-center text-sm text-gray-500">
                     <Calendar className="h-4 w-4 mr-1" />
                     <span>
-                      {filteredNews.length} articles • 
+                      {filteredNews.length} articles • Page {currentPage} of {totalPages}
                       {dateRange?.from && dateRange?.to && (
-                        ` ${formatDisplayDate(dateRange.from.toISOString())} - ${formatDisplayDate(dateRange.to.toISOString())}`
+                        ` • ${formatDisplayDate(dateRange.from.toISOString())} - ${formatDisplayDate(dateRange.to.toISOString())}`
                       )}
                     </span>
                   </div>
                 </div>
                 
+                {aiAnalysisLoading && (
+                  <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg mb-4">
+                    <Loader className="h-5 w-5 animate-spin mr-2 text-blue-600" />
+                    <span className="text-blue-600">Running AI analysis on news articles...</span>
+                  </div>
+                )}
+                
                 <TabsContent value="all" className="mt-0">
                   <div className="space-y-4">
-                    {filteredNews.length > 0 ? (
-                      filteredNews.map(newsItem => (
-                        <Card key={newsItem.id}>
-                          <CardHeader className="pb-2">
-                            <div className="flex justify-between">
-                              <div className="space-y-1">
-                                <CardTitle className="text-lg">{newsItem.title}</CardTitle>
-                                <CardDescription>
-                                  {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
-                                  <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
-                                    {newsItem.provider.toUpperCase()}
-                                  </span>
-                                </CardDescription>
-                              </div>
-                              {newsItem.ticker && (
-                                <Badge variant="outline" className="h-fit">
-                                  {newsItem.ticker}
-                                </Badge>
-                              )}
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-gray-700">{newsItem.content}</p>
-                          </CardContent>
-                          <CardFooter className="flex justify-between pt-2">
-                            <div className="flex space-x-2">
-                              <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'}>
-                                {newsItem.sentiment === 'positive' ? (
-                                  <ThumbsUp className="h-3 w-3 mr-1" />
-                                ) : newsItem.sentiment === 'negative' ? (
-                                  <ThumbsDown className="h-3 w-3 mr-1" />
-                                ) : (
-                                  <Info className="h-3 w-3 mr-1" />
+                    {paginatedNews.length > 0 ? (
+                      <>
+                        {paginatedNews.map(newsItem => (
+                          <Card key={newsItem.id}>
+                            <CardHeader className="pb-2">
+                              <div className="flex justify-between">
+                                <div className="space-y-1">
+                                  <CardTitle className="text-lg">{newsItem.title}</CardTitle>
+                                  <CardDescription>
+                                    {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
+                                    <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
+                                      {newsItem.provider.toUpperCase()}
+                                    </span>
+                                  </CardDescription>
+                                </div>
+                                {newsItem.ticker && (
+                                  <Badge variant="outline" className="h-fit">
+                                    {newsItem.ticker}
+                                  </Badge>
                                 )}
-                                {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
-                              </Badge>
-                              <Badge variant="outline">
-                                {newsItem.relevance.charAt(0).toUpperCase() + newsItem.relevance.slice(1)} Relevance
-                              </Badge>
-                            </div>
-                            <Button variant="ghost" size="sm" className="text-xs" asChild>
-                              <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
-                                Read More
-                                <ArrowUpRight className="h-3 w-3 ml-1" />
-                              </a>
-                            </Button>
-                          </CardFooter>
-                        </Card>
-                      ))
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-gray-700">{newsItem.content}</p>
+                            </CardContent>
+                            <CardFooter className="flex justify-between pt-2">
+                              <div className="flex space-x-2">
+                                {processingArticleIds.has(newsItem.id) ? (
+                                  <Badge variant="secondary">
+                                    <Loader className="h-3 w-3 mr-1 animate-spin" />
+                                    Analyzing...
+                                  </Badge>
+                                ) : (
+                                  <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'}>
+                                    {newsItem.sentiment === 'positive' ? (
+                                      <ThumbsUp className="h-3 w-3 mr-1" />
+                                    ) : newsItem.sentiment === 'negative' ? (
+                                      <ThumbsDown className="h-3 w-3 mr-1" />
+                                    ) : (
+                                      <Info className="h-3 w-3 mr-1" />
+                                    )}
+                                    {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
+                                  </Badge>
+                                )}
+                                <Badge variant="outline">
+                                  {newsItem.relevance.charAt(0).toUpperCase() + newsItem.relevance.slice(1)} Relevance
+                                </Badge>
+                              </div>
+                              <Button variant="ghost" size="sm" className="text-xs" asChild>
+                                <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
+                                  Read More
+                                  <ArrowUpRight className="h-3 w-3 ml-1" />
+                                </a>
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        ))}
+                        
+                        {totalPages > 1 && (
+                          <Pagination className="mt-6">
+                            <PaginationContent>
+                              <PaginationItem>
+                                <PaginationPrevious 
+                                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                />
+                              </PaginationItem>
+                              
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = currentPage - 2 + i;
+                                }
+                                
+                                return (
+                                  <PaginationItem key={pageNum}>
+                                    <PaginationLink
+                                      onClick={() => handlePageChange(pageNum)}
+                                      isActive={currentPage === pageNum}
+                                      className="cursor-pointer"
+                                    >
+                                      {pageNum}
+                                    </PaginationLink>
+                                  </PaginationItem>
+                                );
+                              })}
+                              
+                              <PaginationItem>
+                                <PaginationNext 
+                                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                />
+                              </PaginationItem>
+                            </PaginationContent>
+                          </Pagination>
+                        )}
+                      </>
                     ) : (
                       <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
                         <p className="text-gray-500">No news items match your current filters</p>

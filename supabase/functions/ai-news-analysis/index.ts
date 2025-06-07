@@ -21,9 +21,12 @@ interface AnalysisResult {
   relevance: 'high' | 'low';
 }
 
-// FinBERT sentiment analysis
+// FinBERT sentiment analysis with increased timeout
 async function analyzeFinBERTSentiment(text: string): Promise<'positive' | 'negative' | 'neutral'> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+
     const response = await fetch(
       "https://api-inference.huggingface.co/models/ProsusAI/finbert",
       {
@@ -33,13 +36,16 @@ async function analyzeFinBERTSentiment(text: string): Promise<'positive' | 'nega
         },
         method: "POST",
         body: JSON.stringify({
-          inputs: text.substring(0, 500), // Limit text length for processing
+          inputs: text.substring(0, 500),
           options: {
             wait_for_model: true
           }
         }),
+        signal: controller.signal
       }
     );
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error(`FinBERT API error: ${response.status} - ${response.statusText}`);
@@ -49,7 +55,6 @@ async function analyzeFinBERTSentiment(text: string): Promise<'positive' | 'nega
     const result = await response.json();
     console.log('FinBERT response:', result);
     
-    // FinBERT returns an array with sentiment scores
     if (result && Array.isArray(result) && result.length > 0) {
       const sentiments = result[0];
       
@@ -60,7 +65,6 @@ async function analyzeFinBERTSentiment(text: string): Promise<'positive' | 'nega
         for (const sentiment of sentiments) {
           if (sentiment.score > maxScore) {
             maxScore = sentiment.score;
-            // Map FinBERT labels to our format
             if (sentiment.label === 'positive') {
               predictedSentiment = 'positive';
             } else if (sentiment.label === 'negative') {
@@ -78,31 +82,35 @@ async function analyzeFinBERTSentiment(text: string): Promise<'positive' | 'nega
     return 'neutral';
   } catch (error) {
     console.error('FinBERT analysis error:', error);
-    return 'neutral'; // Default fallback
+    return 'neutral';
   }
 }
 
-// Simplified relevance classification using keyword analysis as backup
+// Financial keyword-based relevance analysis as fallback
 function analyzeRelevanceKeywords(text: string): 'high' | 'low' {
   const financialKeywords = [
     'stock', 'market', 'trading', 'earnings', 'revenue', 'profit', 'investment', 
     'financial', 'economic', 'company', 'business', 'analyst', 'price', 'shares',
     'dividend', 'quarter', 'growth', 'loss', 'income', 'cash flow', 'debt',
-    'acquisition', 'merger', 'ipo', 'buyback', 'forecast', 'guidance'
+    'acquisition', 'merger', 'ipo', 'buyback', 'forecast', 'guidance', 'SEC',
+    'exchange', 'portfolio', 'fund', 'bond', 'equity', 'derivatives', 'hedge'
   ];
   
   const lowercaseText = text.toLowerCase();
   const keywordCount = financialKeywords.filter(keyword => lowercaseText.includes(keyword)).length;
   
-  // If 3 or more financial keywords, consider high relevance
-  return keywordCount >= 3 ? 'high' : 'low';
+  return keywordCount >= 4 ? 'high' : 'low';
 }
 
-// Alternative RoBERTa-based relevance using zero-shot classification
+// Fine-tuned RoBERTa relevance classification using FacebookAI/roberta-base
 async function analyzeRoBERTaRelevance(text: string): Promise<'high' | 'low'> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+
+    // Use text classification with financial context
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
+      "https://api-inference.huggingface.co/models/FacebookAI/roberta-base",
       {
         headers: {
           Authorization: `Bearer ${HF_API_KEY}`,
@@ -112,14 +120,17 @@ async function analyzeRoBERTaRelevance(text: string): Promise<'high' | 'low'> {
         body: JSON.stringify({
           inputs: text.substring(0, 500),
           parameters: {
-            candidate_labels: ["financial news", "business news", "irrelevant news"],
+            candidate_labels: ["financial news", "investment relevant", "market analysis", "irrelevant news"],
           },
           options: {
             wait_for_model: true
           }
         }),
+        signal: controller.signal
       }
     );
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error(`RoBERTa API error: ${response.status} - ${response.statusText}`);
@@ -129,13 +140,13 @@ async function analyzeRoBERTaRelevance(text: string): Promise<'high' | 'low'> {
     const result = await response.json();
     console.log('RoBERTa response:', result);
     
-    // Check if financial or business news has high confidence
+    // Check if financial, investment, or market analysis has high confidence
     if (result && result.labels && result.scores) {
-      const financialIndex = result.labels.findIndex((label: string) => 
-        label.includes("financial") || label.includes("business")
+      const relevantIndex = result.labels.findIndex((label: string) => 
+        label.includes("financial") || label.includes("investment") || label.includes("market")
       );
       
-      if (financialIndex !== -1 && result.scores[financialIndex] > 0.5) {
+      if (relevantIndex !== -1 && result.scores[relevantIndex] > 0.6) {
         return 'high';
       }
     }
@@ -144,12 +155,11 @@ async function analyzeRoBERTaRelevance(text: string): Promise<'high' | 'low'> {
     return analyzeRelevanceKeywords(text);
   } catch (error) {
     console.error('RoBERTa analysis error:', error);
-    // Fallback to keyword-based analysis
     return analyzeRelevanceKeywords(text);
   }
 }
 
-// Process articles with rate limiting
+// Process articles with sequential delays and proper timeout handling
 async function processArticlesBatch(articles: NewsArticle[]): Promise<AnalysisResult[]> {
   const results: AnalysisResult[] = [];
   
@@ -158,17 +168,20 @@ async function processArticlesBatch(articles: NewsArticle[]): Promise<AnalysisRe
     const combinedText = `${article.title} ${article.content}`;
     
     try {
-      // Add delay between requests to avoid rate limiting
+      console.log(`Processing article ${i + 1}/${articles.length}: ${article.id}`);
+      
+      // Add delay between requests to avoid rate limiting (except for first request)
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
       }
       
-      // Run sentiment and relevance analysis in sequence to avoid rate limits
+      // Run sentiment analysis first
       const sentiment = await analyzeFinBERTSentiment(combinedText);
       
-      // Add another small delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Add delay before relevance analysis
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Run relevance analysis
       const relevance = await analyzeRoBERTaRelevance(combinedText);
       
       results.push({
@@ -177,10 +190,10 @@ async function processArticlesBatch(articles: NewsArticle[]): Promise<AnalysisRe
         relevance
       });
       
-      console.log(`Processed article ${i + 1}/${articles.length}: ${article.id}`);
+      console.log(`Completed analysis for article ${article.id}: sentiment=${sentiment}, relevance=${relevance}`);
     } catch (error) {
       console.error(`Error processing article ${article.id}:`, error);
-      // Add fallback result
+      // Add fallback result with keyword-based analysis
       results.push({
         id: article.id,
         sentiment: 'neutral',
@@ -210,8 +223,8 @@ serve(async (req) => {
 
     console.log(`Starting AI analysis for ${articles.length} articles`);
     
-    // Process articles in smaller batches to avoid timeouts and rate limits
-    const batchSize = 5; // Reduced batch size
+    // Process articles in smaller batches to avoid timeouts
+    const batchSize = 5;
     const allResults: AnalysisResult[] = [];
     
     for (let i = 0; i < articles.length; i += batchSize) {
@@ -223,7 +236,7 @@ serve(async (req) => {
       
       // Add delay between batches
       if (i + batchSize < articles.length) {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between batches
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay between batches
       }
     }
 

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface StockSearchProps {
   value: string;
@@ -17,7 +18,7 @@ const StockSearch: React.FC<StockSearchProps> = ({
   value,
   onChange,
   placeholder = "Search stock symbols...",
-  suggestions = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX'],
+  suggestions = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'AVGO', 'ORCL', 'CRM', 'ADBE', 'IBM', 'INTC', 'AMD'],
   className
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,9 +26,19 @@ const StockSearch: React.FC<StockSearchProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Debounce the search term to avoid excessive API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   useEffect(() => {
     setSearchTerm(value);
   }, [value]);
+
+  // Only trigger onChange when debounced value changes and is different from current value
+  useEffect(() => {
+    if (debouncedSearchTerm !== value && debouncedSearchTerm.length > 0) {
+      onChange(debouncedSearchTerm);
+    }
+  }, [debouncedSearchTerm, onChange, value]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -45,15 +56,14 @@ const StockSearch: React.FC<StockSearchProps> = ({
   }, []);
 
   const filteredSuggestions = suggestions.filter(symbol =>
-    symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    symbol.toLowerCase().includes(searchTerm.toLowerCase()) && 
+    symbol.toLowerCase() !== searchTerm.toLowerCase()
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value.toUpperCase();
     setSearchTerm(newValue);
-    setIsOpen(true);
-    // Immediately update the parent component with the typed value
-    onChange(newValue);
+    setIsOpen(newValue.length > 0);
   };
 
   const handleSuggestionClick = (symbol: string) => {
@@ -64,8 +74,11 @@ const StockSearch: React.FC<StockSearchProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      onChange(searchTerm);
-      setIsOpen(false);
+      e.preventDefault();
+      if (searchTerm.length > 0) {
+        onChange(searchTerm);
+        setIsOpen(false);
+      }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
     }
@@ -87,7 +100,7 @@ const StockSearch: React.FC<StockSearchProps> = ({
           value={searchTerm}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => setIsOpen(searchTerm.length > 0)}
           placeholder={placeholder}
           className="pl-10 pr-10"
         />
@@ -103,12 +116,12 @@ const StockSearch: React.FC<StockSearchProps> = ({
         )}
       </div>
 
-      {isOpen && filteredSuggestions.length > 0 && searchTerm && (
+      {isOpen && filteredSuggestions.length > 0 && (
         <div
           ref={dropdownRef}
           className="absolute top-full z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover py-1 shadow-lg"
         >
-          {filteredSuggestions.map((symbol) => (
+          {filteredSuggestions.slice(0, 10).map((symbol) => (
             <button
               key={symbol}
               onClick={() => handleSuggestionClick(symbol)}
