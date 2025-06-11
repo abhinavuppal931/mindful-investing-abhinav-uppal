@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -34,20 +35,6 @@ interface NewsItem {
 
 const ITEMS_PER_PAGE = 10;
 
-// Helper function to generate random sentiment with proper typing
-const getRandomSentiment = (): 'positive' | 'negative' | 'neutral' => {
-  const sentiments: ('positive' | 'negative' | 'neutral')[] = ['positive', 'negative', 'neutral'];
-  const randomValue = Math.random();
-  if (randomValue > 0.6) return 'positive';
-  if (randomValue > 0.3) return 'neutral';
-  return 'negative';
-};
-
-// Helper function to generate random relevance with proper typing
-const getRandomRelevance = (): 'high' | 'medium' | 'low' => {
-  return Math.random() > 0.5 ? 'high' : 'medium';
-};
-
 const Focus = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [tickerFilter, setTickerFilter] = useState('');
@@ -66,7 +53,7 @@ const Focus = () => {
   const [processingArticleIds, setProcessingArticleIds] = useState<Set<string>>(new Set());
 
   // Debounce ticker filter to avoid excessive API calls
-  const debouncedTickerFilter = useDebounce(tickerFilter, 2000); // Updated to 2 seconds
+  const debouncedTickerFilter = useDebounce(tickerFilter, 2000);
 
   // Format date for API calls (YYYY-MM-DD)
   const formatDateForAPI = (date: Date): string => {
@@ -226,7 +213,7 @@ const Focus = () => {
     };
 
     runAIAnalysis();
-  }, [currentPage, allNews.length]); // Run when page changes or new news is loaded
+  }, [currentPage, allNews.length]);
 
   // Filter news based on current filters
   const filteredNews = allNews.filter(item => {
@@ -672,5 +659,3 @@ const Focus = () => {
 };
 
 export default Focus;
-
-</edits_to_apply>
