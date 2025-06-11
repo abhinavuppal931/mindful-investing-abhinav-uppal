@@ -9,6 +9,7 @@ const corsHeaders = {
 };
 
 const HF_API_KEY = Deno.env.get('HUGGINGFACE_API_KEY');
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -218,6 +219,110 @@ async function analyzeFinBERTSentiment(text: string): Promise<{
   }
 }
 
+// OpenAI relevance analysis with GPT-4.1 Mini
+async function analyzeOpenAIRelevance(text: string, ticker?: string): Promise<{
+  relevance: 'high' | 'low';
+  confidence: number;
+  reason: string;
+}> {
+  if (!OPENAI_API_KEY) {
+    console.warn('OpenAI API key not available, falling back to keyword analysis');
+    return analyzeRelevanceKeywords(text);
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+    const systemPrompt = `You are an expert investment analyst with over 3 decades of experience and learnings from legendary investors such as Warren Buffett and Charlie Munger, with a specialization in distinguishing high-impact news from market noise for serious investors focused on the fundamentals.
+
+CLASSIFICATION CRITERIA (reference guide):
+
+HIGH RELEVANCE (Score 0.7-1.0) - Fundamental Business Impact:
+✅ QUANTIFIABLE METRICS: Earnings, revenue, guidance with specific numbers
+✅ CONCRETE ACTIONS: Acquisitions, partnerships, product launches with data/metrics  
+✅ REGULATORY/OFFICIAL: SEC filings, FDA approvals, compliance actions, investigations
+✅ STRATEGIC CHANGES: Leadership appointments, business model shifts, major investments
+✅ MARKET EVENTS: Significant contracts, patents, dividends, buybacks with amounts
+✅ OPERATIONAL DATA: Customer growth, market share, capacity changes with figures
+
+LOW RELEVANCE (Score 0.0-0.6) - Speculation & Market Noise:
+❌ SPECULATIVE LANGUAGE: "could," "might," "potentially," "expected," "rumored"
+❌ OPINION CONTENT: "Analyst believes," "experts predict," "sources suggest"  
+❌ SOCIAL BUZZ: Trending topics, meme stocks, viral content, influencer opinions
+❌ SENSATIONAL LANGUAGE: "Shocking," "crashes," "skyrockets," emotional terms
+❌ GENERIC COMMENTARY: Market sentiment without specific company impact
+❌ CLICKBAIT: Headlines designed for engagement over information
+
+SCORING METHODOLOGY:
+- 0.9-1.0: Official earnings/financial reports with concrete data
+- 0.8-0.9: Major strategic moves (M&A, partnerships) with quantifiable impact
+- 0.7-0.8: Regulatory actions, significant contracts, leadership changes
+- 0.5-0.7: Mixed content with some concrete elements but also speculation
+- 0.3-0.5: Mostly speculation with minimal concrete information
+- 0.0-0.3: Pure speculation, rumors, or social media driven content
+
+RESPONSE FORMAT:
+RELEVANCE: [HIGH/LOW]  
+CONFIDENCE: [0.00-1.00]
+REASON: [Specific factors that determined the score]`;
+
+    const userPrompt = `Analyze this financial news article for investment relevance${ticker ? ` (ticker: ${ticker})` : ''}:
+
+"${text}"
+
+Provide your analysis in the exact format specified.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-mini-2025-04-14',
+        temperature: 0.1,
+        max_tokens: 250,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ]
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.error(`OpenAI API error: ${response.status} - ${response.statusText}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    const content = result.choices[0]?.message?.content || '';
+    
+    // Parse the response
+    const relevanceMatch = content.match(/RELEVANCE:\s*(HIGH|LOW)/i);
+    const confidenceMatch = content.match(/CONFIDENCE:\s*([\d.]+)/);
+    const reasonMatch = content.match(/REASON:\s*(.+?)(?=\n|$)/s);
+    
+    const relevance = relevanceMatch ? relevanceMatch[1].toLowerCase() as 'high' | 'low' : 'low';
+    const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0.5;
+    const reason = reasonMatch ? reasonMatch[1].trim() : 'Analysis completed';
+    
+    return {
+      relevance,
+      confidence: Math.min(Math.max(confidence, 0), 1), // Ensure confidence is between 0 and 1
+      reason
+    };
+
+  } catch (error) {
+    console.error('OpenAI relevance analysis error:', error);
+    // Fallback to keyword analysis
+    return analyzeRelevanceKeywords(text);
+  }
+}
+
 // Financial keyword-based relevance analysis as fallback
 function analyzeRelevanceKeywords(text: string): {
   relevance: 'high' | 'low';
@@ -273,17 +378,17 @@ async function processArticlesBatch(articles: NewsArticle[]): Promise<AnalysisRe
       
       // Add delay between requests to avoid rate limiting (except for first request)
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay for rate limiting
       }
       
       // Run sentiment analysis
       const sentimentResult = await analyzeFinBERTSentiment(combinedText);
       
       // Add delay before relevance analysis
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Run relevance analysis (using keyword fallback for now)
-      const relevanceResult = analyzeRelevanceKeywords(combinedText);
+      // Run OpenAI relevance analysis
+      const relevanceResult = await analyzeOpenAIRelevance(combinedText, article.ticker);
       
       // Store in cache
       await storeInCache(article, sentimentResult, relevanceResult);
@@ -341,7 +446,7 @@ serve(async (req) => {
       
       // Add delay between batches
       if (i + batchSize < articles.length) {
-        await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay between batches
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between batches
       }
     }
 

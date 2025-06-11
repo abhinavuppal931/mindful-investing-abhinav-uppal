@@ -66,7 +66,7 @@ const Focus = () => {
   const [processingArticleIds, setProcessingArticleIds] = useState<Set<string>>(new Set());
 
   // Debounce ticker filter to avoid excessive API calls
-  const debouncedTickerFilter = useDebounce(tickerFilter, 500);
+  const debouncedTickerFilter = useDebounce(tickerFilter, 2000); // Updated to 2 seconds
 
   // Format date for API calls (YYYY-MM-DD)
   const formatDateForAPI = (date: Date): string => {
@@ -177,7 +177,7 @@ const Focus = () => {
     }
   };
 
-  // Run AI analysis on current page articles
+  // Run AI analysis on current page articles with enhanced OpenAI relevance
   useEffect(() => {
     const runAIAnalysis = async () => {
       if (paginatedNews.length === 0) return;
@@ -196,7 +196,9 @@ const Focus = () => {
         const articlesForAnalysis = articlesNeedingAnalysis.map(item => ({
           id: item.id,
           title: item.title,
-          content: item.content
+          content: item.content,
+          ticker: item.ticker,
+          source: item.provider
         }));
         
         const analysisResults = await aiNewsAnalysis.analyzeArticles(articlesForAnalysis);
@@ -351,7 +353,7 @@ const Focus = () => {
                 {aiAnalysisLoading && (
                   <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg mb-4">
                     <Loader className="h-5 w-5 animate-spin mr-2 text-blue-600" />
-                    <span className="text-blue-600">Running AI analysis on news articles...</span>
+                    <span className="text-blue-600">Running OpenAI relevance analysis on news articles...</span>
                   </div>
                 )}
                 
@@ -385,25 +387,33 @@ const Focus = () => {
                             <CardFooter className="flex justify-between pt-2">
                               <div className="flex space-x-2">
                                 {processingArticleIds.has(newsItem.id) ? (
-                                  <Badge variant="secondary">
-                                    <Loader className="h-3 w-3 mr-1 animate-spin" />
-                                    Analyzing...
-                                  </Badge>
+                                  <>
+                                    <Badge variant="secondary">
+                                      <Loader className="h-3 w-3 mr-1 animate-spin" />
+                                      Analyzing...
+                                    </Badge>
+                                    <Badge variant="secondary">
+                                      <Loader className="h-3 w-3 mr-1 animate-spin" />
+                                      Analyzing...
+                                    </Badge>
+                                  </>
                                 ) : (
-                                  <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'}>
-                                    {newsItem.sentiment === 'positive' ? (
-                                      <ThumbsUp className="h-3 w-3 mr-1" />
-                                    ) : newsItem.sentiment === 'negative' ? (
-                                      <ThumbsDown className="h-3 w-3 mr-1" />
-                                    ) : (
-                                      <Info className="h-3 w-3 mr-1" />
-                                    )}
-                                    {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
-                                  </Badge>
+                                  <>
+                                    <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'}>
+                                      {newsItem.sentiment === 'positive' ? (
+                                        <ThumbsUp className="h-3 w-3 mr-1" />
+                                      ) : newsItem.sentiment === 'negative' ? (
+                                        <ThumbsDown className="h-3 w-3 mr-1" />
+                                      ) : (
+                                        <Info className="h-3 w-3 mr-1" />
+                                      )}
+                                      {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
+                                    </Badge>
+                                    <Badge variant={newsItem.relevance === 'high' ? 'default' : 'outline'} className={newsItem.relevance === 'high' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
+                                      {newsItem.relevance === 'high' ? 'High Relevance' : 'Low Relevance'}
+                                    </Badge>
+                                  </>
                                 )}
-                                <Badge variant="outline">
-                                  {newsItem.relevance.charAt(0).toUpperCase() + newsItem.relevance.slice(1)} Relevance
-                                </Badge>
                               </div>
                               <Button variant="ghost" size="sm" className="text-xs" asChild>
                                 <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
@@ -662,3 +672,5 @@ const Focus = () => {
 };
 
 export default Focus;
+
+</edits_to_apply>

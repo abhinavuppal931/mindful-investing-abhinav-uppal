@@ -42,16 +42,23 @@ function getFallbackAnalysis(articles: NewsArticle[]): AnalysisResult[] {
       sentiment = 'negative';
     }
     
-    // Enhanced keyword-based relevance
-    const financialKeywords = [
-      'stock', 'market', 'trading', 'earnings', 'revenue', 'profit', 'investment', 
-      'financial', 'economic', 'company', 'business', 'analyst', 'price', 'shares',
-      'dividend', 'quarter', 'growth', 'loss', 'income', 'cash flow', 'debt',
-      'acquisition', 'merger', 'ipo', 'buyback', 'forecast', 'guidance', 'SEC'
+    // Enhanced keyword-based relevance using OpenAI criteria
+    const highRelevanceKeywords = [
+      'earnings', 'revenue', 'guidance', 'acquisition', 'merger', 'partnership', 
+      'sec filing', 'fda approval', 'ceo', 'dividend', 'buyback', 'contract',
+      'patent', 'regulatory', 'investigation', 'leadership', 'investment'
     ];
     
-    const relevanceCount = financialKeywords.filter(keyword => combinedText.includes(keyword)).length;
-    const relevance: 'high' | 'low' = relevanceCount >= 4 ? 'high' : 'low';
+    const lowRelevanceKeywords = [
+      'could', 'might', 'potentially', 'expected', 'rumored', 'analyst believes',
+      'experts predict', 'sources suggest', 'trending', 'viral', 'shocking',
+      'crashes', 'skyrockets', 'meme'
+    ];
+    
+    const highCount = highRelevanceKeywords.filter(keyword => combinedText.includes(keyword)).length;
+    const lowCount = lowRelevanceKeywords.filter(keyword => combinedText.includes(keyword)).length;
+    
+    const relevance: 'high' | 'low' = (highCount >= 2 && lowCount <= 1) ? 'high' : 'low';
     
     return {
       id: article.id,
@@ -84,7 +91,7 @@ export const aiNewsAnalysis = {
         return cachedResults;
       }
       
-      console.log(`Sending ${uncachedArticles.length} articles for AI analysis with caching`);
+      console.log(`Sending ${uncachedArticles.length} articles for AI analysis with OpenAI relevance classification`);
       
       // Prepare articles with additional metadata for caching
       const articlesWithMetadata = uncachedArticles.map(article => ({
@@ -102,7 +109,7 @@ export const aiNewsAnalysis = {
       }
       
       if (data && data.results && Array.isArray(data.results)) {
-        console.log(`Received AI analysis results for ${data.results.length} articles (with caching)`);
+        console.log(`Received AI analysis results for ${data.results.length} articles (with OpenAI relevance)`);
         
         // Cache the new results in session cache
         data.results.forEach((result: AnalysisResult) => {
