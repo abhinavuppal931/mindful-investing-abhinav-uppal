@@ -5,6 +5,8 @@ interface NewsArticle {
   id: string;
   title: string;
   content: string;
+  ticker?: string;
+  source?: string;
 }
 
 interface AnalysisResult {
@@ -13,13 +15,12 @@ interface AnalysisResult {
   relevance: 'high' | 'low';
 }
 
-// In-memory cache for analysis results
-const analysisCache = new Map<string, AnalysisResult>();
+// In-memory cache for analysis results (session-level caching)
+const sessionCache = new Map<string, AnalysisResult>();
 
-// Generate cache key for article
-function getCacheKey(article: NewsArticle): string {
-  // Use title and first 100 chars of content for cache key
-  return `${article.title}_${article.content.substring(0, 100)}`.replace(/\s+/g, '_');
+// Generate cache key for article (session-level)
+function getSessionCacheKey(article: NewsArticle): string {
+  return `${article.title}_${article.content.substring(0, 100)}_${article.ticker || ''}`.replace(/\s+/g, '_');
 }
 
 // Fallback keyword-based analysis
@@ -63,13 +64,13 @@ function getFallbackAnalysis(articles: NewsArticle[]): AnalysisResult[] {
 export const aiNewsAnalysis = {
   analyzeArticles: async (articles: NewsArticle[]): Promise<AnalysisResult[]> => {
     try {
-      // Check cache first
+      // Check session cache first
       const cachedResults: AnalysisResult[] = [];
       const uncachedArticles: NewsArticle[] = [];
       
       articles.forEach(article => {
-        const cacheKey = getCacheKey(article);
-        const cached = analysisCache.get(cacheKey);
+        const cacheKey = getSessionCacheKey(article);
+        const cached = sessionCache.get(cacheKey);
         if (cached) {
           cachedResults.push({ ...cached, id: article.id });
         } else {
@@ -77,16 +78,22 @@ export const aiNewsAnalysis = {
         }
       });
       
-      console.log(`Found ${cachedResults.length} cached results, processing ${uncachedArticles.length} new articles`);
+      console.log(`Session cache: ${cachedResults.length} cached, ${uncachedArticles.length} uncached`);
       
       if (uncachedArticles.length === 0) {
         return cachedResults;
       }
       
-      console.log(`Sending ${uncachedArticles.length} articles for AI analysis`);
+      console.log(`Sending ${uncachedArticles.length} articles for AI analysis with caching`);
+      
+      // Prepare articles with additional metadata for caching
+      const articlesWithMetadata = uncachedArticles.map(article => ({
+        ...article,
+        source: article.source || 'unknown'
+      }));
       
       const { data, error } = await supabase.functions.invoke('ai-news-analysis', {
-        body: { articles: uncachedArticles }
+        body: { articles: articlesWithMetadata }
       });
       
       if (error) {
@@ -95,14 +102,14 @@ export const aiNewsAnalysis = {
       }
       
       if (data && data.results && Array.isArray(data.results)) {
-        console.log(`Received AI analysis results for ${data.results.length} articles`);
+        console.log(`Received AI analysis results for ${data.results.length} articles (with caching)`);
         
-        // Cache the new results
+        // Cache the new results in session cache
         data.results.forEach((result: AnalysisResult) => {
           const article = uncachedArticles.find(a => a.id === result.id);
           if (article) {
-            const cacheKey = getCacheKey(article);
-            analysisCache.set(cacheKey, result);
+            const cacheKey = getSessionCacheKey(article);
+            sessionCache.set(cacheKey, result);
           }
         });
         
@@ -127,5 +134,11 @@ export const aiNewsAnalysis = {
       console.log('Using fallback keyword-based analysis');
       return getFallbackAnalysis(articles);
     }
+  },
+
+  // Method to clear session cache if needed
+  clearSessionCache: () => {
+    sessionCache.clear();
+    console.log('Session cache cleared');
   }
 };

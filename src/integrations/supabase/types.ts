@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      news_analysis_cache: {
+        Row: {
+          article_hash: string
+          created_at: string
+          expires_at: string
+          headline: string
+          id: string
+          relevance_result: Json | null
+          sentiment_result: Json | null
+          source: string | null
+          summary: string | null
+          ticker: string | null
+        }
+        Insert: {
+          article_hash: string
+          created_at?: string
+          expires_at?: string
+          headline: string
+          id?: string
+          relevance_result?: Json | null
+          sentiment_result?: Json | null
+          source?: string | null
+          summary?: string | null
+          ticker?: string | null
+        }
+        Update: {
+          article_hash?: string
+          created_at?: string
+          expires_at?: string
+          headline?: string
+          id?: string
+          relevance_result?: Json | null
+          sentiment_result?: Json | null
+          source?: string | null
+          summary?: string | null
+          ticker?: string | null
+        }
+        Relationships: []
+      }
       portfolios: {
         Row: {
           created_at: string
@@ -71,6 +110,27 @@ export type Database = {
           subscription_status?: string
           trial_expires_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      system_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
         }
         Relationships: []
       }
@@ -158,7 +218,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_news_analysis: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

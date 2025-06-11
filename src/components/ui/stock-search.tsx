@@ -26,8 +26,8 @@ const StockSearch: React.FC<StockSearchProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Debounce the search term to avoid excessive API calls
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  // Debounce the search term to avoid excessive API calls - increased to 2 seconds
+  const debouncedSearchTerm = useDebounce(searchTerm, 2000);
 
   useEffect(() => {
     setSearchTerm(value);
