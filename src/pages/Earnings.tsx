@@ -2,184 +2,42 @@
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar as CalendarIcon, Search, Calendar, ArrowUpRight, Calendar as CalendarLogo } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Calendar, ArrowUpRight, Calendar as CalendarLogo, Sun, Moon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calendar as UICalendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-
-// Mock earnings data
-const mockEarningsData = [
-  {
-    id: 1,
-    ticker: 'AAPL',
-    companyName: 'Apple Inc.',
-    date: new Date('2025-04-30'),
-    time: 'After Close',
-    epsEstimate: 1.52,
-    epsPrior: 1.47,
-    revenueEstimate: '96.4B',
-    revenuePrior: '94.8B',
-  },
-  {
-    id: 2,
-    ticker: 'MSFT',
-    companyName: 'Microsoft Corporation',
-    date: new Date('2025-04-28'),
-    time: 'After Close',
-    epsEstimate: 2.68,
-    epsPrior: 2.48,
-    revenueEstimate: '61.2B',
-    revenuePrior: '56.5B',
-  },
-  {
-    id: 3,
-    ticker: 'AMZN',
-    companyName: 'Amazon.com, Inc.',
-    date: new Date('2025-05-02'),
-    time: 'After Close',
-    epsEstimate: 0.89,
-    epsPrior: 0.65,
-    revenueEstimate: '142.8B',
-    revenuePrior: '127.4B',
-  },
-  {
-    id: 4,
-    ticker: 'GOOGL',
-    companyName: 'Alphabet Inc.',
-    date: new Date('2025-04-25'),
-    time: 'After Close',
-    epsEstimate: 1.87,
-    epsPrior: 1.68,
-    revenueEstimate: '78.3B',
-    revenuePrior: '72.1B',
-  },
-  {
-    id: 5,
-    ticker: 'META',
-    companyName: 'Meta Platforms, Inc.',
-    date: new Date('2025-05-01'),
-    time: 'After Close',
-    epsEstimate: 4.21,
-    epsPrior: 3.85,
-    revenueEstimate: '38.6B',
-    revenuePrior: '34.2B',
-  },
-  {
-    id: 6,
-    ticker: 'NFLX',
-    companyName: 'Netflix, Inc.',
-    date: new Date('2025-04-22'),
-    time: 'After Close',
-    epsEstimate: 4.76,
-    epsPrior: 4.45,
-    revenueEstimate: '9.2B',
-    revenuePrior: '8.8B',
-  },
-  {
-    id: 7,
-    ticker: 'TSLA',
-    companyName: 'Tesla, Inc.',
-    date: new Date('2025-04-21'),
-    time: 'After Close',
-    epsEstimate: 0.78,
-    epsPrior: 0.63,
-    revenueEstimate: '25.7B',
-    revenuePrior: '23.2B',
-  },
-  {
-    id: 8,
-    ticker: 'JPM',
-    companyName: 'JPMorgan Chase & Co.',
-    date: new Date('2025-04-15'),
-    time: 'Before Open',
-    epsEstimate: 4.12,
-    epsPrior: 3.98,
-    revenueEstimate: '41.2B',
-    revenuePrior: '39.3B',
-  },
-  {
-    id: 9,
-    ticker: 'V',
-    companyName: 'Visa Inc.',
-    date: new Date('2025-04-29'),
-    time: 'After Close',
-    epsEstimate: 2.47,
-    epsPrior: 2.33,
-    revenueEstimate: '8.6B',
-    revenuePrior: '8.1B',
-  },
-  {
-    id: 10,
-    ticker: 'DIS',
-    companyName: 'The Walt Disney Company',
-    date: new Date('2025-05-08'),
-    time: 'After Close',
-    epsEstimate: 1.14,
-    epsPrior: 0.93,
-    revenueEstimate: '23.8B',
-    revenuePrior: '22.1B',
-  },
-];
-
-// Mock transcripts data
-const mockTranscripts = [
-  {
-    id: 1,
-    ticker: 'AAPL',
-    date: new Date('2025-01-31'),
-    quarter: 'Q1 2025',
-    highlights: [
-      "Record quarterly revenue of $94.8 billion",
-      "Services revenue reached all-time high of $23.1 billion",
-      "iPhone sales grew 6% year-over-year",
-      "Expansion plans in India and Southeast Asia",
-    ]
-  },
-  {
-    id: 2,
-    ticker: 'MSFT',
-    date: new Date('2025-01-28'),
-    quarter: 'Q2 FY25',
-    highlights: [
-      "Azure revenue increased 27% year-over-year",
-      "Microsoft 365 consumer subscribers surpassed 65 million",
-      "AI solutions driving enterprise growth",
-      "Gaming revenue up 22% following Activision Blizzard acquisition",
-    ]
-  },
-  {
-    id: 3,
-    ticker: 'AMZN',
-    date: new Date('2025-02-01'),
-    quarter: 'Q4 2024',
-    highlights: [
-      "AWS revenue grew 18% year-over-year",
-      "Advertising revenue exceeded $14 billion",
-      "North America retail segment operating margin improved to 5.2%",
-      "Prime membership retention rates at all-time high",
-    ]
-  },
-];
+import { useEarningsData } from '@/hooks/useEarningsData';
+import { openaiAPI } from '@/services/api';
 
 const Earnings = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTranscript, setSelectedTranscript] = useState<typeof mockTranscripts[0] | null>(null);
+  const [transcriptSearch, setTranscriptSearch] = useState('');
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedQuarter, setSelectedQuarter] = useState<number>(Math.ceil((new Date().getMonth() + 1) / 3));
+  const [transcriptHighlights, setTranscriptHighlights] = useState<string>('');
+  const [loadingHighlights, setLoadingHighlights] = useState(false);
+  const [selectedTranscript, setSelectedTranscript] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('transcript');
+  
+  const { earnings, transcripts, loading, error, fetchEarningsCalendar, fetchEarningsTranscript } = useEarningsData();
   
   // Filter earnings by search query and date
-  const filteredEarnings = mockEarningsData.filter(earning => {
+  const filteredEarnings = earnings.filter(earning => {
     const matchesSearch = 
-      earning.ticker.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      earning.companyName.toLowerCase().includes(searchQuery.toLowerCase());
+      earning.symbol.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesDate = date ? 
-      earning.date.getMonth() === date.getMonth() && 
-      earning.date.getFullYear() === date.getFullYear() 
+      new Date(earning.date).getMonth() === date.getMonth() && 
+      new Date(earning.date).getFullYear() === date.getFullYear() 
       : true;
     
     return matchesSearch && matchesDate;
@@ -190,9 +48,90 @@ const Earnings = () => {
   const nextWeek = new Date();
   nextWeek.setDate(today.getDate() + 7);
   
-  const upcomingEarnings = mockEarningsData.filter(earning => 
-    earning.date >= today && earning.date <= nextWeek
-  ).sort((a, b) => a.date.getTime() - b.date.getTime());
+  const upcomingEarnings = earnings.filter(earning => {
+    const earningDate = new Date(earning.date);
+    return earningDate >= today && earningDate <= nextWeek;
+  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const handleTranscriptSearch = async () => {
+    if (!transcriptSearch.trim()) return;
+    
+    try {
+      const transcript = await fetchEarningsTranscript(transcriptSearch.toUpperCase(), selectedYear, selectedQuarter);
+      if (transcript) {
+        setSelectedTranscript(transcript);
+        setTranscriptHighlights('');
+        setActiveTab('transcript');
+      }
+    } catch (error) {
+      console.error('Error fetching transcript:', error);
+    }
+  };
+
+  const generateHighlights = async () => {
+    if (!selectedTranscript?.transcript) return;
+    
+    setLoadingHighlights(true);
+    try {
+      const response = await openaiAPI.analyzeEarningsHighlights(selectedTranscript.symbol, selectedTranscript.transcript);
+      if (response?.analysis) {
+        setTranscriptHighlights(response.analysis);
+        setActiveTab('highlights');
+      }
+    } catch (error) {
+      console.error('Error generating highlights:', error);
+    } finally {
+      setLoadingHighlights(false);
+    }
+  };
+
+  const formatHighlights = (text: string) => {
+    if (!text) return null;
+    
+    // Remove asterisks and format sections
+    const cleanText = text.replace(/\*/g, '');
+    const sections = cleanText.split(/(?=Executive Summary|Financial Performance|Business Highlights|Outlook|Tailwinds|Caution Areas|Headwinds)/);
+    
+    return sections.map((section, index) => {
+      if (!section.trim()) return null;
+      
+      const lines = section.trim().split('\n').filter(line => line.trim());
+      if (lines.length === 0) return null;
+      
+      const title = lines[0].replace(':', '');
+      const content = lines.slice(1);
+      
+      const getIcon = (title: string) => {
+        if (title.includes('Executive Summary')) return '📊';
+        if (title.includes('Financial Performance')) return '💰';
+        if (title.includes('Business Highlights')) return '🎯';
+        if (title.includes('Outlook')) return '🔮';
+        if (title.includes('Tailwinds')) return '🌟';
+        if (title.includes('Caution')) return '⚠️';
+        if (title.includes('Headwinds')) return '🚩';
+        return '📝';
+      };
+      
+      return (
+        <div key={index} className="mb-6 p-4 bg-gray-50 rounded-lg border">
+          <div className="flex items-center mb-3">
+            <span className="text-xl mr-2">{getIcon(title)}</span>
+            <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          </div>
+          <div className="space-y-2">
+            {content.map((line, lineIndex) => (
+              <p key={lineIndex} className="text-gray-700 leading-relaxed">
+                {line.trim()}
+              </p>
+            ))}
+          </div>
+        </div>
+      );
+    }).filter(Boolean);
+  };
+
+  const currentYears = Array.from({length: 3}, (_, i) => new Date().getFullYear() - i);
+  const quarters = [1, 2, 3, 4];
 
   return (
     <MainLayout>
@@ -224,11 +163,13 @@ const Earnings = () => {
                   mode="single"
                   selected={date}
                   onSelect={(selectedDate) => {
-                    // When user selects a date, we just want to capture the month and year
                     if (selectedDate) {
-                      // Create a new date with the same month and year
                       const newDate = new Date(selectedDate);
                       setDate(newDate);
+                      // Fetch earnings for the new month
+                      const from = format(new Date(newDate.getFullYear(), newDate.getMonth(), 1), 'yyyy-MM-dd');
+                      const to = format(new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0), 'yyyy-MM-dd');
+                      fetchEarningsCalendar(from, to);
                     } else {
                       setDate(undefined);
                     }
@@ -240,7 +181,11 @@ const Earnings = () => {
             
             <Button 
               variant="ghost" 
-              onClick={() => setDate(new Date())}
+              onClick={() => {
+                const today = new Date();
+                setDate(today);
+                fetchEarningsCalendar();
+              }}
             >
               Today
             </Button>
@@ -256,7 +201,7 @@ const Earnings = () => {
                   <div className="relative w-64">
                     <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search by ticker or company..."
+                      placeholder="Search by ticker..."
                       className="pl-8"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -268,38 +213,68 @@ const Earnings = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {filteredEarnings.length > 0 ? (
+                {loading ? (
+                  <div className="space-y-3">
+                    {Array.from({length: 5}).map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-12">
+                    <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Error loading earnings</h3>
+                    <p className="text-gray-500">{error}</p>
+                  </div>
+                ) : filteredEarnings.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4">Ticker</th>
-                          <th className="text-left py-3 px-4">Company</th>
-                          <th className="text-center py-3 px-4">Date</th>
-                          <th className="text-center py-3 px-4">Time</th>
-                          <th className="text-right py-3 px-4">EPS Est.</th>
-                          <th className="text-right py-3 px-4">EPS Prior</th>
-                          <th className="text-right py-3 px-4">Rev. Est.</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredEarnings.sort((a, b) => a.date.getTime() - b.date.getTime()).map(earning => (
-                          <tr key={earning.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4 font-medium">{earning.ticker}</td>
-                            <td className="py-3 px-4">{earning.companyName}</td>
-                            <td className="py-3 px-4 text-center">{format(earning.date, 'MMM d, yyyy')}</td>
-                            <td className="py-3 px-4 text-center">
-                              <Badge variant={earning.time === 'Before Open' ? 'outline' : 'default'}>
-                                {earning.time}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4 text-right">${earning.epsEstimate.toFixed(2)}</td>
-                            <td className="py-3 px-4 text-right">${earning.epsPrior.toFixed(2)}</td>
-                            <td className="py-3 px-4 text-right">{earning.revenueEstimate}</td>
-                          </tr>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Symbol</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead className="text-right">EPS Est.</TableHead>
+                          <TableHead className="text-right">EPS Actual</TableHead>
+                          <TableHead className="text-right">Rev. Est.</TableHead>
+                          <TableHead className="text-right">Rev. Actual</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredEarnings.map((earning, index) => (
+                          <TableRow key={`${earning.symbol}-${earning.date}-${index}`} className="hover:bg-gray-50 transition-colors">
+                            <TableCell className="font-medium">{earning.symbol}</TableCell>
+                            <TableCell>{format(new Date(earning.date), 'MMM d, yyyy')}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                {earning.hour === 'bmo' ? (
+                                  <>
+                                    <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                    <span>Before Open</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Moon className="h-4 w-4 mr-1 text-blue-500" />
+                                    <span>After Close</span>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {earning.epsEstimate ? `$${earning.epsEstimate.toFixed(2)}` : '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {earning.epsActual ? `$${earning.epsActual.toFixed(2)}` : '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {earning.revenueEstimate ? `$${(earning.revenueEstimate / 1000000).toFixed(1)}M` : '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {earning.revenueActual ? `$${(earning.revenueActual / 1000000).toFixed(1)}M` : '-'}
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 ) : (
                   <div className="text-center py-12">
@@ -325,17 +300,27 @@ const Earnings = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {upcomingEarnings.length > 0 ? (
+                {loading ? (
+                  <div className="space-y-3">
+                    {Array.from({length: 3}).map((_, i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                  </div>
+                ) : upcomingEarnings.length > 0 ? (
                   <div className="space-y-4">
-                    {upcomingEarnings.map(earning => (
-                      <div key={earning.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                    {upcomingEarnings.map((earning, index) => (
+                      <div key={`${earning.symbol}-${earning.date}-${index}`} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <div>
-                          <div className="font-medium">{earning.ticker}</div>
-                          <div className="text-sm text-gray-500">{format(earning.date, 'MMM d')}</div>
+                          <div className="font-medium">{earning.symbol}</div>
+                          <div className="text-sm text-gray-500">{format(new Date(earning.date), 'MMM d')}</div>
                         </div>
-                        <Badge variant={earning.time === 'Before Open' ? 'outline' : 'default'}>
-                          {earning.time}
-                        </Badge>
+                        <div className="flex items-center">
+                          {earning.hour === 'bmo' ? (
+                            <Sun className="h-4 w-4 text-yellow-500" />
+                          ) : (
+                            <Moon className="h-4 w-4 text-blue-500" />
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -346,53 +331,129 @@ const Earnings = () => {
                 )}
               </CardContent>
             </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Earnings Transcripts</CardTitle>
-                <CardDescription>
-                  Latest conference call transcripts
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {mockTranscripts.map(transcript => (
-                    <div 
-                      key={transcript.id} 
-                      className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                      onClick={() => setSelectedTranscript(transcript === selectedTranscript ? null : transcript)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <div className="font-medium">{transcript.ticker} - {transcript.quarter}</div>
-                          <div className="text-sm text-gray-500">{format(transcript.date, 'MMM d, yyyy')}</div>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6">
-                          <ArrowUpRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      {selectedTranscript?.id === transcript.id && (
-                        <div className="mt-3 pt-3 border-t">
-                          <Label className="text-xs text-gray-500 mb-2 block">Key Highlights</Label>
-                          <ul className="space-y-2 text-sm">
-                            {transcript.highlights.map((highlight, index) => (
-                              <li key={index} className="flex items-start">
-                                <div className="h-5 w-5 rounded-full bg-mindful-100 flex items-center justify-center text-mindful-600 mr-2 flex-shrink-0 mt-0.5 text-xs">
-                                  {index + 1}
-                                </div>
-                                <span>{highlight}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </div>
+        </div>
+
+        {/* Earnings Transcripts Section - Made wider and positioned below calendar */}
+        <div className="w-full">
+          <Card>
+            <CardHeader>
+              <CardTitle>Earnings Transcripts</CardTitle>
+              <CardDescription>
+                Search and analyze earnings call transcripts
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Search Section */}
+                <div className="flex flex-col md:flex-row gap-4 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor="transcript-search">Stock Symbol</Label>
+                    <Input
+                      id="transcript-search"
+                      placeholder="e.g., AAPL"
+                      value={transcriptSearch}
+                      onChange={(e) => setTranscriptSearch(e.target.value.toUpperCase())}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="year-select">Year</Label>
+                    <select 
+                      id="year-select"
+                      className="w-full p-2 border rounded-md"
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                    >
+                      {currentYears.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="quarter-select">Quarter</Label>
+                    <select 
+                      id="quarter-select"
+                      className="w-full p-2 border rounded-md"
+                      value={selectedQuarter}
+                      onChange={(e) => setSelectedQuarter(parseInt(e.target.value))}
+                    >
+                      {quarters.map(quarter => (
+                        <option key={quarter} value={quarter}>Q{quarter}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button 
+                    onClick={handleTranscriptSearch}
+                    disabled={!transcriptSearch.trim() || loading}
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                    Search
+                  </Button>
+                </div>
+
+                {/* Transcript Display */}
+                {selectedTranscript && (
+                  <div className="border rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold">
+                        {selectedTranscript.symbol} - Q{selectedTranscript.quarter} {selectedTranscript.year}
+                      </h3>
+                      <Button 
+                        onClick={generateHighlights}
+                        disabled={loadingHighlights}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {loadingHighlights ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <ArrowUpRight className="h-4 w-4 mr-2" />
+                        )}
+                        Generate Highlights
+                      </Button>
+                    </div>
+
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="transcript">Full Transcript</TabsTrigger>
+                        <TabsTrigger value="highlights">Earnings Highlights</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="transcript" className="mt-4">
+                        <div className="max-h-96 overflow-y-auto bg-gray-50 p-4 rounded-lg">
+                          <pre className="whitespace-pre-wrap text-sm leading-relaxed">
+                            {selectedTranscript.transcript}
+                          </pre>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="highlights" className="mt-4">
+                        {loadingHighlights ? (
+                          <div className="space-y-4">
+                            {Array.from({length: 4}).map((_, i) => (
+                              <div key={i} className="space-y-2">
+                                <Skeleton className="h-6 w-32" />
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-3/4" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : transcriptHighlights ? (
+                          <div className="space-y-4">
+                            {formatHighlights(transcriptHighlights)}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            Click "Generate Highlights" to create an AI analysis of this transcript
+                          </div>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </MainLayout>
