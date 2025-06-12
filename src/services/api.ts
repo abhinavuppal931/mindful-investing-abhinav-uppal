@@ -395,4 +395,19 @@ export const openaiAPI = {
   }
 };
 
-export default { healthCheck, fmpAPI, finnhubAPI, openaiAPI };
+export const logokitAPI = {
+  getLogo: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('logokit-api', {
+        body: { symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('LogoKit error:', error);
+      throw error;
+    }
+  }
+};
+
+export default { healthCheck, fmpAPI, finnhubAPI, openaiAPI, logokitAPI };

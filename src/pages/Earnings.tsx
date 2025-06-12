@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useEarningsData } from '@/hooks/useEarningsData';
-import { openaiAPI } from '@/services/api';
+import { openaiAPI, logokitAPI } from '@/services/api';
 
 const Earnings = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -27,6 +27,7 @@ const Earnings = () => {
   const [loadingHighlights, setLoadingHighlights] = useState(false);
   const [selectedTranscript, setSelectedTranscript] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('transcript');
+  const [companyLogos, setCompanyLogos] = useState<Record<string, string>>({});
   
   // Pagination state
   const [currentCalendarPage, setCurrentCalendarPage] = useState(1);
@@ -35,21 +36,12 @@ const Earnings = () => {
   
   const { earnings, transcripts, loading, error, fetchEarningsCalendar, fetchEarningsTranscript } = useEarningsData();
   
-  // Filter earnings by search query and date
+  // Filter earnings by search query only (remove date filtering to fix the issue)
   const filteredEarnings = earnings.filter(earning => {
     const matchesSearch = 
       earning.symbol.toLowerCase().includes(searchQuery.toLowerCase());
     
-    let matchesDate = true;
-    if (date) {
-      const earningDate = new Date(earning.date);
-      const selectedDate = new Date(date);
-      
-      // Check if it's the same day (exact date match)
-      matchesDate = earningDate.toDateString() === selectedDate.toDateString();
-    }
-    
-    return matchesSearch && matchesDate;
+    return matchesSearch;
   });
   
   // Get upcoming earnings (next 7 days)
@@ -76,6 +68,21 @@ const Earnings = () => {
     currentUpcomingPage * itemsPerPage
   );
 
+  const fetchCompanyLogo = async (symbol: string) => {
+    if (companyLogos[symbol]) return companyLogos[symbol];
+    
+    try {
+      const response = await logokitAPI.getLogo(symbol);
+      if (response?.logoUrl) {
+        setCompanyLogos(prev => ({ ...prev, [symbol]: response.logoUrl }));
+        return response.logoUrl;
+      }
+    } catch (error) {
+      console.error(`Error fetching logo for ${symbol}:`, error);
+    }
+    return null;
+  };
+
   const handleTranscriptSearch = async () => {
     if (!transcriptSearch.trim()) return;
     
@@ -85,6 +92,8 @@ const Earnings = () => {
         setSelectedTranscript(transcript);
         setTranscriptHighlights('');
         setActiveTab('transcript');
+        // Fetch logo for the selected company
+        fetchCompanyLogo(transcriptSearch.toUpperCase());
       }
     } catch (error) {
       console.error('Error fetching transcript:', error);
@@ -113,40 +122,85 @@ const Earnings = () => {
     
     // Remove asterisks and format sections
     const cleanText = text.replace(/\*/g, '');
-    const sections = cleanText.split(/(?=Executive Summary|Financial Performance|Business Highlights|Outlook|Tailwinds|Caution Areas|Headwinds)/);
     
-    return sections.map((section, index) => {
-      if (!section.trim()) return null;
+    // Split by numbered points (1., 2., 3., etc.)
+    const points = cleanText.split(/(?=\d+\.\s)/).filter(point => point.trim());
+    
+    // If no numbered points found, split by sections
+    if (points.length <= 1) {
+      const sections = cleanText.split(/(?=Executive Summary|Financial Performance|Business Highlights|Outlook|Tailwinds|Caution Areas|Headwinds)/);
       
-      const lines = section.trim().split('\n').filter(line => line.trim());
-      if (lines.length === 0) return null;
-      
-      const title = lines[0].replace(':', '');
+      return sections.map((section, index) => {
+        if (!section.trim()) return null;
+        
+        const lines = section.trim().split('\n').filter(line => line.trim());
+        if (lines.length === 0) return null;
+        
+        const title = lines[0].replace(':', '');
+        const content = lines.slice(1);
+        
+        const getIcon = (title: string) => {
+          if (title.includes('Executive Summary')) return '📊';
+          if (title.includes('Financial Performance')) return '💰';
+          if (title.includes('Business Highlights')) return '🎯';
+          if (title.includes('Outlook')) return '🔮';
+          if (title.includes('Tailwinds')) return '🌟';
+          if (title.includes('Caution')) return '⚠️';
+          if (title.includes('Headwinds')) return '🚩';
+          return '📝';
+        };
+        
+        return (
+          <div key={index} className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center mb-3">
+              <span className="text-xl mr-2">{getIcon(title)}</span>
+              <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+            </div>
+            <div className="space-y-2">
+              {content.map((line, lineIndex) => (
+                <p key={lineIndex} className="text-gray-700 leading-relaxed">
+                  {line.trim()}
+                </p>
+              ))}
+            </div>
+          </div>
+        );
+      }).filter(Boolean);
+    }
+    
+    // Handle numbered points format
+    return points.map((point, index) => {
+      const lines = point.trim().split('\n');
+      const firstLine = lines[0];
       const content = lines.slice(1);
       
-      const getIcon = (title: string) => {
-        if (title.includes('Executive Summary')) return '📊';
-        if (title.includes('Financial Performance')) return '💰';
-        if (title.includes('Business Highlights')) return '🎯';
-        if (title.includes('Outlook')) return '🔮';
-        if (title.includes('Tailwinds')) return '🌟';
-        if (title.includes('Caution')) return '⚠️';
-        if (title.includes('Headwinds')) return '🚩';
-        return '📝';
+      // Extract number and title
+      const match = firstLine.match(/^(\d+)\.\s*(.+)/);
+      if (!match) return null;
+      
+      const [, number, title] = match;
+      
+      const getIcon = (index: number) => {
+        const icons = ['📈', '💼', '🎯', '🔍', '💡', '⚡', '🚀', '📊', '💰', '🌟'];
+        return icons[index % icons.length];
       };
       
       return (
-        <div key={index} className="mb-6 p-4 bg-gray-50 rounded-lg border">
-          <div className="flex items-center mb-3">
-            <span className="text-xl mr-2">{getIcon(title)}</span>
-            <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-          </div>
-          <div className="space-y-2">
-            {content.map((line, lineIndex) => (
-              <p key={lineIndex} className="text-gray-700 leading-relaxed">
-                {line.trim()}
-              </p>
-            ))}
+        <div key={index} className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start mb-3">
+            <span className="text-xl mr-3 mt-1">{getIcon(index)}</span>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">{title}</h3>
+              <div className="space-y-2">
+                {content.map((line, lineIndex) => (
+                  line.trim() && (
+                    <p key={lineIndex} className="text-gray-700 leading-relaxed">
+                      {line.trim()}
+                    </p>
+                  )
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -206,6 +260,23 @@ const Earnings = () => {
     );
   };
 
+  // Fetch logos for visible earnings
+  React.useEffect(() => {
+    paginatedCalendarEarnings.forEach(earning => {
+      if (!companyLogos[earning.symbol]) {
+        fetchCompanyLogo(earning.symbol);
+      }
+    });
+  }, [paginatedCalendarEarnings]);
+
+  React.useEffect(() => {
+    paginatedUpcomingEarnings.forEach(earning => {
+      if (!companyLogos[earning.symbol]) {
+        fetchCompanyLogo(earning.symbol);
+      }
+    });
+  }, [paginatedUpcomingEarnings]);
+
   return (
     <MainLayout>
       <div className="space-y-8">
@@ -239,9 +310,9 @@ const Earnings = () => {
                     if (selectedDate) {
                       setDate(selectedDate);
                       setCurrentCalendarPage(1); // Reset pagination
-                      // Fetch earnings for the selected date range
-                      const from = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1), 'yyyy-MM-dd');
-                      const to = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 2, 0), 'yyyy-MM-dd');
+                      // Fetch earnings for the selected month range (fix the date filtering)
+                      const from = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1), 'yyyy-MM-dd');
+                      const to = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0), 'yyyy-MM-dd');
                       fetchEarningsCalendar(from, to);
                     } else {
                       setDate(undefined);
@@ -286,7 +357,7 @@ const Earnings = () => {
                   </div>
                 </div>
                 <CardDescription>
-                  {date ? `Showing earnings for ${format(date, 'MMMM d, yyyy')}` : 'Select a date to view earnings'}
+                  {date ? `Showing earnings for ${format(date, 'MMMM yyyy')}` : 'Select a date to view earnings'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -320,7 +391,26 @@ const Earnings = () => {
                         <TableBody>
                           {paginatedCalendarEarnings.map((earning, index) => (
                             <TableRow key={`${earning.symbol}-${earning.date}-${index}`} className="hover:bg-gray-50 transition-colors">
-                              <TableCell className="font-medium">{earning.symbol}</TableCell>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center space-x-2">
+                                  {companyLogos[earning.symbol] ? (
+                                    <img 
+                                      src={companyLogos[earning.symbol]} 
+                                      alt={`${earning.symbol} logo`}
+                                      className="w-8 h-8 rounded-full shadow-sm"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
+                                      {earning.symbol.charAt(0)}
+                                    </div>
+                                  )}
+                                  <span>{earning.symbol}</span>
+                                </div>
+                              </TableCell>
                               <TableCell>{format(new Date(earning.date), 'MMM d, yyyy')}</TableCell>
                               <TableCell>
                                 <div className="flex items-center">
@@ -363,7 +453,7 @@ const Earnings = () => {
                     <p className="text-gray-500">
                       {searchQuery 
                         ? `No earnings matching "${searchQuery}"`
-                        : `No earnings scheduled for ${format(date || new Date(), 'MMMM d, yyyy')}`}
+                        : `No earnings scheduled for ${format(date || new Date(), 'MMMM yyyy')}`}
                     </p>
                   </div>
                 )}
@@ -391,9 +481,26 @@ const Earnings = () => {
                     <div className="space-y-4">
                       {paginatedUpcomingEarnings.map((earning, index) => (
                         <div key={`${earning.symbol}-${earning.date}-${index}`} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                          <div>
-                            <div className="font-medium">{earning.symbol}</div>
-                            <div className="text-sm text-gray-500">{format(new Date(earning.date), 'MMM d')}</div>
+                          <div className="flex items-center space-x-3">
+                            {companyLogos[earning.symbol] ? (
+                              <img 
+                                src={companyLogos[earning.symbol]} 
+                                alt={`${earning.symbol} logo`}
+                                className="w-10 h-10 rounded-full shadow-sm"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold text-gray-600">
+                                {earning.symbol.charAt(0)}
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-medium">{earning.symbol}</div>
+                              <div className="text-sm text-gray-500">{format(new Date(earning.date), 'MMM d')}</div>
+                            </div>
                           </div>
                           <div className="flex items-center">
                             {earning.hour === 'bmo' ? (
@@ -478,9 +585,18 @@ const Earnings = () => {
                 {selectedTranscript && (
                   <div className="border rounded-lg p-4">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold">
-                        {selectedTranscript.symbol} - Q{selectedTranscript.quarter} {selectedTranscript.year}
-                      </h3>
+                      <div className="flex items-center space-x-3">
+                        {companyLogos[selectedTranscript.symbol] && (
+                          <img 
+                            src={companyLogos[selectedTranscript.symbol]} 
+                            alt={`${selectedTranscript.symbol} logo`}
+                            className="w-12 h-12 rounded-full shadow-sm"
+                          />
+                        )}
+                        <h3 className="text-lg font-semibold">
+                          {selectedTranscript.symbol} - Q{selectedTranscript.quarter} {selectedTranscript.year}
+                        </h3>
+                      </div>
                       <Button 
                         onClick={generateHighlights}
                         disabled={loadingHighlights}
