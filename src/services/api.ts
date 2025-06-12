@@ -244,6 +244,19 @@ export const fmpAPI = {
       console.error('FMP Historical Chart error:', error);
       throw error;
     }
+  },
+
+  getEarningsTranscript: async (symbol: string, year: number, quarter: number) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'earnings-transcript', symbol, year, quarter }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Earnings Transcript error:', error);
+      throw error;
+    }
   }
 };
 
@@ -382,19 +395,4 @@ export const openaiAPI = {
   }
 };
 
-export const apiNinjasAPI = {
-  getEarningsTranscript: async (symbol: string, year?: number, quarter?: number) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('api-ninjas', {
-        body: { action: 'earnings-transcript', symbol, year, quarter }
-      });
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('API Ninjas Transcript error:', error);
-      throw error;
-    }
-  }
-};
-
-export default { healthCheck, fmpAPI, finnhubAPI, openaiAPI, apiNinjasAPI };
+export default { healthCheck, fmpAPI, finnhubAPI, openaiAPI };

@@ -52,7 +52,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, symbol, period = 'annual', statement = 'income', limit = 5, query, from, to } = await req.json();
+    const { action, symbol, period = 'annual', statement = 'income', limit = 5, query, from, to, year, quarter } = await req.json();
     
     if (!FMP_API_KEY) {
       throw new Error('FMP API key not configured');
@@ -138,11 +138,15 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/quote/${symbol}?apikey=${FMP_API_KEY}`;
         ttl = 30 * 60 * 1000; // 30 minutes
         break;
+      case 'earnings-transcript':
+        endpoint = `${BASE_URL}/earning_call_transcript/${symbol}?year=${year}&quarter=${quarter}&apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
       default:
         throw new Error('Invalid action');
     }
 
-    const cacheKey = `fmp_${action}_${symbol || query}_${period}_${statement}_${limit}_${from}_${to}`;
+    const cacheKey = `fmp_${action}_${symbol || query}_${period}_${statement}_${limit}_${from}_${to}_${year}_${quarter}`;
     const cachedEntry = cache.get(cacheKey);
 
     if (cachedEntry && isValidCache(cachedEntry)) {

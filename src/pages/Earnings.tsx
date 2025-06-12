@@ -28,6 +28,11 @@ const Earnings = () => {
   const [selectedTranscript, setSelectedTranscript] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('transcript');
   
+  // Pagination state
+  const [currentCalendarPage, setCurrentCalendarPage] = useState(1);
+  const [currentUpcomingPage, setCurrentUpcomingPage] = useState(1);
+  const itemsPerPage = 10;
+  
   const { earnings, transcripts, loading, error, fetchEarningsCalendar, fetchEarningsTranscript } = useEarningsData();
   
   // Filter earnings by search query and date
@@ -35,10 +40,14 @@ const Earnings = () => {
     const matchesSearch = 
       earning.symbol.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesDate = date ? 
-      new Date(earning.date).getMonth() === date.getMonth() && 
-      new Date(earning.date).getFullYear() === date.getFullYear() 
-      : true;
+    let matchesDate = true;
+    if (date) {
+      const earningDate = new Date(earning.date);
+      const selectedDate = new Date(date);
+      
+      // Check if it's the same day (exact date match)
+      matchesDate = earningDate.toDateString() === selectedDate.toDateString();
+    }
     
     return matchesSearch && matchesDate;
   });
@@ -52,6 +61,20 @@ const Earnings = () => {
     const earningDate = new Date(earning.date);
     return earningDate >= today && earningDate <= nextWeek;
   }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Pagination for calendar
+  const totalCalendarPages = Math.ceil(filteredEarnings.length / itemsPerPage);
+  const paginatedCalendarEarnings = filteredEarnings.slice(
+    (currentCalendarPage - 1) * itemsPerPage,
+    currentCalendarPage * itemsPerPage
+  );
+
+  // Pagination for upcoming
+  const totalUpcomingPages = Math.ceil(upcomingEarnings.length / itemsPerPage);
+  const paginatedUpcomingEarnings = upcomingEarnings.slice(
+    (currentUpcomingPage - 1) * itemsPerPage,
+    currentUpcomingPage * itemsPerPage
+  );
 
   const handleTranscriptSearch = async () => {
     if (!transcriptSearch.trim()) return;
@@ -130,8 +153,58 @@ const Earnings = () => {
     }).filter(Boolean);
   };
 
-  const currentYears = Array.from({length: 3}, (_, i) => new Date().getFullYear() - i);
+  const currentYears = Array.from({length: 11}, (_, i) => 2025 - i); // 2015-2025
   const quarters = [1, 2, 3, 4];
+
+  const renderPagination = (currentPage: number, totalPages: number, onPageChange: (page: number) => void) => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex items-center justify-center space-x-2 mt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </Button>
+        
+        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+          let pageNum;
+          if (totalPages <= 5) {
+            pageNum = i + 1;
+          } else if (currentPage <= 3) {
+            pageNum = i + 1;
+          } else if (currentPage >= totalPages - 2) {
+            pageNum = totalPages - 4 + i;
+          } else {
+            pageNum = currentPage - 2 + i;
+          }
+          
+          return (
+            <Button
+              key={pageNum}
+              variant={pageNum === currentPage ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(pageNum)}
+            >
+              {pageNum}
+            </Button>
+          );
+        })}
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <MainLayout>
@@ -155,7 +228,7 @@ const Earnings = () => {
                   className="flex items-center"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, 'MMMM yyyy') : <span>Pick a month</span>}
+                  {date ? format(date, 'MMM d, yyyy') : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -164,11 +237,11 @@ const Earnings = () => {
                   selected={date}
                   onSelect={(selectedDate) => {
                     if (selectedDate) {
-                      const newDate = new Date(selectedDate);
-                      setDate(newDate);
-                      // Fetch earnings for the new month
-                      const from = format(new Date(newDate.getFullYear(), newDate.getMonth(), 1), 'yyyy-MM-dd');
-                      const to = format(new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0), 'yyyy-MM-dd');
+                      setDate(selectedDate);
+                      setCurrentCalendarPage(1); // Reset pagination
+                      // Fetch earnings for the selected date range
+                      const from = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1), 'yyyy-MM-dd');
+                      const to = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 2, 0), 'yyyy-MM-dd');
                       fetchEarningsCalendar(from, to);
                     } else {
                       setDate(undefined);
@@ -184,6 +257,7 @@ const Earnings = () => {
               onClick={() => {
                 const today = new Date();
                 setDate(today);
+                setCurrentCalendarPage(1);
                 fetchEarningsCalendar();
               }}
             >
@@ -204,12 +278,15 @@ const Earnings = () => {
                       placeholder="Search by ticker..."
                       className="pl-8"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setCurrentCalendarPage(1); // Reset pagination on search
+                      }}
                     />
                   </div>
                 </div>
                 <CardDescription>
-                  {date ? `Showing earnings for ${format(date, 'MMMM yyyy')}` : 'Select a month to view earnings'}
+                  {date ? `Showing earnings for ${format(date, 'MMMM d, yyyy')}` : 'Select a date to view earnings'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -225,57 +302,60 @@ const Earnings = () => {
                     <h3 className="text-lg font-medium mb-2">Error loading earnings</h3>
                     <p className="text-gray-500">{error}</p>
                   </div>
-                ) : filteredEarnings.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Symbol</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Time</TableHead>
-                          <TableHead className="text-right">EPS Est.</TableHead>
-                          <TableHead className="text-right">EPS Actual</TableHead>
-                          <TableHead className="text-right">Rev. Est.</TableHead>
-                          <TableHead className="text-right">Rev. Actual</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredEarnings.map((earning, index) => (
-                          <TableRow key={`${earning.symbol}-${earning.date}-${index}`} className="hover:bg-gray-50 transition-colors">
-                            <TableCell className="font-medium">{earning.symbol}</TableCell>
-                            <TableCell>{format(new Date(earning.date), 'MMM d, yyyy')}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                {earning.hour === 'bmo' ? (
-                                  <>
-                                    <Sun className="h-4 w-4 mr-1 text-yellow-500" />
-                                    <span>Before Open</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Moon className="h-4 w-4 mr-1 text-blue-500" />
-                                    <span>After Close</span>
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {earning.epsEstimate ? `$${earning.epsEstimate.toFixed(2)}` : '-'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {earning.epsActual ? `$${earning.epsActual.toFixed(2)}` : '-'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {earning.revenueEstimate ? `$${(earning.revenueEstimate / 1000000).toFixed(1)}M` : '-'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {earning.revenueActual ? `$${(earning.revenueActual / 1000000).toFixed(1)}M` : '-'}
-                            </TableCell>
+                ) : paginatedCalendarEarnings.length > 0 ? (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Symbol</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead className="text-right">EPS Est.</TableHead>
+                            <TableHead className="text-right">EPS Actual</TableHead>
+                            <TableHead className="text-right">Rev. Est.</TableHead>
+                            <TableHead className="text-right">Rev. Actual</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedCalendarEarnings.map((earning, index) => (
+                            <TableRow key={`${earning.symbol}-${earning.date}-${index}`} className="hover:bg-gray-50 transition-colors">
+                              <TableCell className="font-medium">{earning.symbol}</TableCell>
+                              <TableCell>{format(new Date(earning.date), 'MMM d, yyyy')}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center">
+                                  {earning.hour === 'bmo' ? (
+                                    <>
+                                      <Sun className="h-4 w-4 mr-1 text-yellow-500" />
+                                      <span>Before Open</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Moon className="h-4 w-4 mr-1 text-blue-500" />
+                                      <span>After Close</span>
+                                    </>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {earning.epsEstimate ? `$${earning.epsEstimate.toFixed(2)}` : '-'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {earning.epsActual ? `$${earning.epsActual.toFixed(2)}` : '-'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {earning.revenueEstimate ? `$${(earning.revenueEstimate / 1000000).toFixed(1)}M` : '-'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {earning.revenueActual ? `$${(earning.revenueActual / 1000000).toFixed(1)}M` : '-'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {renderPagination(currentCalendarPage, totalCalendarPages, setCurrentCalendarPage)}
+                  </>
                 ) : (
                   <div className="text-center py-12">
                     <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -283,7 +363,7 @@ const Earnings = () => {
                     <p className="text-gray-500">
                       {searchQuery 
                         ? `No earnings matching "${searchQuery}"`
-                        : `No earnings scheduled for ${format(date || new Date(), 'MMMM yyyy')}`}
+                        : `No earnings scheduled for ${format(date || new Date(), 'MMMM d, yyyy')}`}
                     </p>
                   </div>
                 )}
@@ -306,24 +386,27 @@ const Earnings = () => {
                       <Skeleton key={i} className="h-16 w-full" />
                     ))}
                   </div>
-                ) : upcomingEarnings.length > 0 ? (
-                  <div className="space-y-4">
-                    {upcomingEarnings.map((earning, index) => (
-                      <div key={`${earning.symbol}-${earning.date}-${index}`} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                        <div>
-                          <div className="font-medium">{earning.symbol}</div>
-                          <div className="text-sm text-gray-500">{format(new Date(earning.date), 'MMM d')}</div>
+                ) : paginatedUpcomingEarnings.length > 0 ? (
+                  <>
+                    <div className="space-y-4">
+                      {paginatedUpcomingEarnings.map((earning, index) => (
+                        <div key={`${earning.symbol}-${earning.date}-${index}`} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                          <div>
+                            <div className="font-medium">{earning.symbol}</div>
+                            <div className="text-sm text-gray-500">{format(new Date(earning.date), 'MMM d')}</div>
+                          </div>
+                          <div className="flex items-center">
+                            {earning.hour === 'bmo' ? (
+                              <Sun className="h-4 w-4 text-yellow-500" />
+                            ) : (
+                              <Moon className="h-4 w-4 text-blue-500" />
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          {earning.hour === 'bmo' ? (
-                            <Sun className="h-4 w-4 text-yellow-500" />
-                          ) : (
-                            <Moon className="h-4 w-4 text-blue-500" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    {renderPagination(currentUpcomingPage, totalUpcomingPages, setCurrentUpcomingPage)}
+                  </>
                 ) : (
                   <div className="text-center py-6">
                     <p className="text-gray-500">No upcoming earnings in the next 7 days</p>

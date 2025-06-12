@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { finnhubAPI, apiNinjasAPI, openaiAPI } from '@/services/api';
+import { finnhubAPI, fmpAPI, openaiAPI } from '@/services/api';
 
 export interface EarningsEvent {
   symbol: string;
@@ -69,17 +69,17 @@ export const useEarningsData = () => {
     try {
       console.log(`Fetching earnings transcript for ${symbol} ${year}Q${quarter}`);
       
-      const transcriptData = await apiNinjasAPI.getEarningsTranscript(symbol, year, quarter);
+      const transcriptData = await fmpAPI.getEarningsTranscript(symbol, year || new Date().getFullYear(), quarter || Math.ceil((new Date().getMonth() + 1) / 3));
       
-      if (transcriptData?.transcript) {
+      if (transcriptData && transcriptData.length > 0 && transcriptData[0]?.content) {
         // Generate highlights using OpenAI
-        const highlightsData = await openaiAPI.analyzeEarningsHighlights(symbol, transcriptData.transcript);
+        const highlightsData = await openaiAPI.analyzeEarningsHighlights(symbol, transcriptData[0].content);
         
         const transcript: EarningsTranscript = {
           symbol,
           year: year || new Date().getFullYear(),
           quarter: quarter || Math.ceil((new Date().getMonth() + 1) / 3),
-          transcript: transcriptData.transcript,
+          transcript: transcriptData[0].content,
           highlights: highlightsData?.analysis ? highlightsData.analysis.split('\n').filter((line: string) => line.trim()) : []
         };
         
@@ -89,6 +89,8 @@ export const useEarningsData = () => {
         });
         
         return transcript;
+      } else {
+        throw new Error('No transcript data found for this company and quarter');
       }
     } catch (err) {
       console.error('Error fetching earnings transcript:', err);
