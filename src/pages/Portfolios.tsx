@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,7 +20,7 @@ const Portfolios = () => {
   const [isAddPortfolioOpen, setIsAddPortfolioOpen] = useState(false);
   const [isAddTradeOpen, setIsAddTradeOpen] = useState(false);
 
-  // Get holdings with real-time prices for active portfolio
+  // Get holdings with real-time prices, logos, and sector info for active portfolio
   const { holdings, createTrade, loading: holdingsLoading } = usePortfolioWithPrices(activePortfolio || undefined);
   
   // Set first portfolio as active when portfolios load

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fmpAPI, logokitAPI } from '@/services/api';
 
 export interface Portfolio {
   id: string;
@@ -187,7 +188,7 @@ export const useTrades = (portfolioId?: string) => {
   };
 };
 
-// New hook to fetch real-time stock prices for portfolio holdings
+// Enhanced hook with real-time prices, logos, and sector info
 export const usePortfolioWithPrices = (portfolioId?: string) => {
   const { trades, loading: tradesLoading, error, createTrade, deleteTrade, refetch } = useTrades(portfolioId);
   const [holdings, setHoldings] = useState<any[]>([]);
@@ -195,13 +196,13 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
 
   useEffect(() => {
     if (trades.length > 0) {
-      calculateHoldingsWithRealPrices();
+      calculateHoldingsWithEnhancedData();
     } else {
       setHoldings([]);
     }
   }, [trades]);
 
-  const calculateHoldingsWithRealPrices = async () => {
+  const calculateHoldingsWithEnhancedData = async () => {
     setPricesLoading(true);
     try {
       // Group trades by ticker
@@ -223,7 +224,7 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
         if (trade.action === 'buy') {
           holding.totalShares += trade.shares;
           holding.totalCost += trade.shares * trade.price_per_share;
-        } else {
+        } else if (trade.action === 'sell') {
           holding.totalShares -= trade.shares;
           holding.totalCost -= trade.shares * trade.price_per_share;
         }
@@ -233,13 +234,21 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
       // Filter out positions with zero or negative shares
       const validHoldings = Array.from(holdingsMap.values()).filter(h => h.totalShares > 0);
 
-      // Fetch current prices for each ticker
-      const holdingsWithPrices = await Promise.all(
+      // Fetch enhanced data for each ticker
+      const holdingsWithEnhancedData = await Promise.all(
         validHoldings.map(async (holding) => {
           try {
-            const { fmpAPI } = await import('@/services/api');
-            const quoteData = await fmpAPI.getQuote(holding.ticker);
+            // Fetch current price, profile, and logo in parallel
+            const [quoteData, profileData, logoData] = await Promise.all([
+              fmpAPI.getQuote(holding.ticker),
+              fmpAPI.getProfile(holding.ticker),
+              logokitAPI.getLogo(holding.ticker)
+            ]);
+
             const currentPrice = quoteData?.[0]?.price || holding.totalCost / holding.totalShares;
+            const profile = profileData?.[0];
+            const sector = profile?.sector || 'Unknown';
+            const logoUrl = logoData?.logoUrl || null;
             
             const avgPrice = holding.totalCost / holding.totalShares;
             const totalValue = holding.totalShares * currentPrice;
@@ -252,11 +261,12 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
               avgPrice,
               currentPrice,
               totalValue,
-              return: returnPct
+              return: returnPct,
+              sector,
+              logoUrl
             };
           } catch (error) {
-            console.error(`Error fetching price for ${holding.ticker}:`, error);
-            // Fallback to average price if API fails
+            console.error(`Error fetching enhanced data for ${holding.ticker}:`, error);
             const avgPrice = holding.totalCost / holding.totalShares;
             return {
               ticker: holding.ticker,
@@ -265,15 +275,17 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
               avgPrice,
               currentPrice: avgPrice,
               totalValue: holding.totalShares * avgPrice,
-              return: 0
+              return: 0,
+              sector: 'Unknown',
+              logoUrl: null
             };
           }
         })
       );
 
-      setHoldings(holdingsWithPrices);
+      setHoldings(holdingsWithEnhancedData);
     } catch (error) {
-      console.error('Error calculating holdings with real prices:', error);
+      console.error('Error calculating holdings with enhanced data:', error);
     } finally {
       setPricesLoading(false);
     }
