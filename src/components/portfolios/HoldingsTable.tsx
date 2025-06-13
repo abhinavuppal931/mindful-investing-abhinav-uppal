@@ -13,7 +13,7 @@ interface Holding {
   currentPrice: number;
   totalValue: number;
   return: number;
-  sector?: string;
+  industry?: string;
   logoUrl?: string | null;
 }
 
@@ -58,7 +58,7 @@ const HoldingsTable = ({ holdings, portfolioName, onAddTrade }: HoldingsTablePro
             <thead>
               <tr className="border-b">
                 <th className="text-left py-3 px-4">Stock</th>
-                <th className="text-left py-3 px-4">Company & Sector</th>
+                <th className="text-left py-3 px-4">Company & Industry</th>
                 <th className="text-right py-3 px-4">Shares</th>
                 <th className="text-right py-3 px-4">Avg. Price</th>
                 <th className="text-right py-3 px-4">Current Price</th>
@@ -81,9 +81,9 @@ const HoldingsTable = ({ holdings, portfolioName, onAddTrade }: HoldingsTablePro
                     <td className="py-3 px-4">
                       <div className="flex flex-col">
                         <span className="font-medium text-sm">{holding.companyName}</span>
-                        {holding.sector && holding.sector !== 'Unknown' && (
+                        {holding.industry && holding.industry !== 'Unknown' && (
                           <Badge variant="outline" className="text-xs mt-1 w-fit">
-                            {holding.sector}
+                            {holding.industry}
                           </Badge>
                         )}
                       </div>

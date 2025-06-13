@@ -12,6 +12,8 @@ import HoldingsTable from '@/components/portfolios/HoldingsTable';
 import TradeDialog from '@/components/portfolios/TradeDialog';
 import PortfolioDialog from '@/components/portfolios/PortfolioDialog';
 import EmptyPortfolioState from '@/components/portfolios/EmptyPortfolioState';
+import PortfolioPerformanceChart from '@/components/portfolios/PortfolioPerformanceChart';
+import PortfolioDonutChart from '@/components/portfolios/PortfolioDonutChart';
 
 const Portfolios = () => {
   const { user } = useAuth();
@@ -20,8 +22,8 @@ const Portfolios = () => {
   const [isAddPortfolioOpen, setIsAddPortfolioOpen] = useState(false);
   const [isAddTradeOpen, setIsAddTradeOpen] = useState(false);
 
-  // Get holdings with real-time prices, logos, and sector info for active portfolio
-  const { holdings, createTrade, loading: holdingsLoading } = usePortfolioWithPrices(activePortfolio || undefined);
+  // Get holdings with real-time prices, logos, and industry info for active portfolio
+  const { holdings, trades, createTrade, loading: holdingsLoading } = usePortfolioWithPrices(activePortfolio || undefined);
   
   // Set first portfolio as active when portfolios load
   React.useEffect(() => {
@@ -110,11 +112,27 @@ const Portfolios = () => {
                 ) : holdings.length > 0 ? (
                   <>
                     <PortfolioMetrics holdings={holdings} />
-                    <HoldingsTable 
+                    
+                    {/* Portfolio Performance Chart */}
+                    <PortfolioPerformanceChart 
                       holdings={holdings}
+                      trades={trades}
                       portfolioName={portfolio.name}
-                      onAddTrade={() => setIsAddTradeOpen(true)}
                     />
+                    
+                    {/* Portfolio Layout with Holdings Table and Donut Chart */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                      <div className="lg:col-span-2">
+                        <HoldingsTable 
+                          holdings={holdings}
+                          portfolioName={portfolio.name}
+                          onAddTrade={() => setIsAddTradeOpen(true)}
+                        />
+                      </div>
+                      <div className="lg:col-span-1">
+                        <PortfolioDonutChart holdings={holdings} />
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <EmptyPortfolioState

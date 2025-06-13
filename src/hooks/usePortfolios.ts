@@ -188,7 +188,7 @@ export const useTrades = (portfolioId?: string) => {
   };
 };
 
-// Enhanced hook with real-time prices, logos, and sector info
+// Enhanced hook with real-time prices, logos, and industry info
 export const usePortfolioWithPrices = (portfolioId?: string) => {
   const { trades, loading: tradesLoading, error, createTrade, deleteTrade, refetch } = useTrades(portfolioId);
   const [holdings, setHoldings] = useState<any[]>([]);
@@ -205,29 +205,35 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
   const calculateHoldingsWithEnhancedData = async () => {
     setPricesLoading(true);
     try {
-      // Group trades by ticker
+      // Group trades by ticker and calculate holdings properly
       const holdingsMap = new Map();
       
-      trades.forEach(trade => {
+      // Sort trades by date to process them chronologically
+      const sortedTrades = [...trades].sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
+      
+      sortedTrades.forEach(trade => {
         const key = trade.ticker_symbol;
         if (!holdingsMap.has(key)) {
           holdingsMap.set(key, {
             ticker: trade.ticker_symbol,
             companyName: trade.company_name || trade.ticker_symbol,
             totalShares: 0,
-            totalCost: 0,
+            totalCostBasis: 0,
             trades: []
           });
         }
         
         const holding = holdingsMap.get(key);
+        
         if (trade.action === 'buy') {
           holding.totalShares += trade.shares;
-          holding.totalCost += trade.shares * trade.price_per_share;
+          holding.totalCostBasis += trade.shares * trade.price_per_share;
         } else if (trade.action === 'sell') {
+          // Only reduce shares, don't change cost basis for average price calculation
           holding.totalShares -= trade.shares;
-          holding.totalCost -= trade.shares * trade.price_per_share;
+          // Don't reduce cost basis - this maintains correct average price
         }
+        
         holding.trades.push(trade);
       });
 
@@ -245,12 +251,13 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
               logokitAPI.getLogo(holding.ticker)
             ]);
 
-            const currentPrice = quoteData?.[0]?.price || holding.totalCost / holding.totalShares;
+            const currentPrice = quoteData?.[0]?.price || holding.totalCostBasis / holding.totalShares;
             const profile = profileData?.[0];
-            const sector = profile?.sector || 'Unknown';
+            const industry = profile?.industry || 'Unknown';
             const logoUrl = logoData?.logoUrl || null;
             
-            const avgPrice = holding.totalCost / holding.totalShares;
+            // Average price calculation: only based on cost basis of remaining shares
+            const avgPrice = holding.totalCostBasis / holding.totalShares;
             const totalValue = holding.totalShares * currentPrice;
             const returnPct = ((currentPrice - avgPrice) / avgPrice) * 100;
 
@@ -258,16 +265,16 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
               ticker: holding.ticker,
               companyName: holding.companyName,
               shares: holding.totalShares,
-              avgPrice,
+              avgPrice: Math.max(0, avgPrice), // Ensure never negative
               currentPrice,
               totalValue,
               return: returnPct,
-              sector,
+              industry,
               logoUrl
             };
           } catch (error) {
             console.error(`Error fetching enhanced data for ${holding.ticker}:`, error);
-            const avgPrice = holding.totalCost / holding.totalShares;
+            const avgPrice = Math.max(0, holding.totalCostBasis / holding.totalShares);
             return {
               ticker: holding.ticker,
               companyName: holding.companyName,
@@ -276,7 +283,7 @@ export const usePortfolioWithPrices = (portfolioId?: string) => {
               currentPrice: avgPrice,
               totalValue: holding.totalShares * avgPrice,
               return: 0,
-              sector: 'Unknown',
+              industry: 'Unknown',
               logoUrl: null
             };
           }
