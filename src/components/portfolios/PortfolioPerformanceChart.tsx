@@ -11,6 +11,11 @@ interface PerformanceDataPoint {
   portfolioReturn: number;
 }
 
+interface HistoricalDataPoint {
+  date: string;
+  close: number;
+}
+
 interface PortfolioPerformanceChartProps {
   holdings: any[];
   trades: any[];
@@ -63,20 +68,38 @@ const PortfolioPerformanceChart = ({ holdings, trades, portfolioName }: Portfoli
 
       const tickers = [...new Set(trades.map(t => t.ticker_symbol))];
       
-      // Fetch historical data for all tickers
-      const tickerDataPromises = await Promise.all(tickers.map(ticker => 
-        fmpAPI.getHistoricalChart(ticker, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0])
-      ));
+      // Fetch historical data for all tickers with proper error handling
+      const tickerDataPromises = tickers.map(async (ticker) => {
+        try {
+          const data = await fmpAPI.getHistoricalChart(ticker, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]);
+          return { ticker, data: Array.isArray(data) ? data : [] };
+        } catch (error) {
+          console.error(`Error fetching data for ${ticker}:`, error);
+          return { ticker, data: [] };
+        }
+      });
 
-      const tickerHistoricalData = Object.fromEntries(
-        tickers.map((ticker, index) => [ticker, tickerDataPromises[index] || []])
-      );
+      const tickerDataResults = await Promise.all(tickerDataPromises);
+      
+      const tickerHistoricalData: Record<string, HistoricalDataPoint[]> = {};
+      tickerDataResults.forEach(result => {
+        if (result && result.ticker && Array.isArray(result.data)) {
+          tickerHistoricalData[result.ticker] = result.data;
+        }
+      });
 
       // Get all unique dates and sort them
       const allDates = new Set<string>();
       Object.values(tickerHistoricalData).forEach(data => {
-        data.forEach(d => allDates.add(d.date));
+        if (Array.isArray(data)) {
+          data.forEach(d => {
+            if (d && d.date) {
+              allDates.add(d.date);
+            }
+          });
+        }
       });
+      
       const sortedDates = Array.from(allDates).sort().map(d => new Date(d));
 
       // Calculate portfolio value over time
@@ -102,12 +125,15 @@ const PortfolioPerformanceChart = ({ holdings, trades, portfolioName }: Portfoli
           });
 
           if (sharesOwned > 0) {
-            const historicalPrice = tickerHistoricalData[ticker]?.find(
-              h => new Date(h.date).toDateString() === date.toDateString()
-            )?.close;
-            
-            if (historicalPrice) {
-              portfolioValue += sharesOwned * historicalPrice;
+            const historicalData = tickerHistoricalData[ticker];
+            if (Array.isArray(historicalData)) {
+              const historicalPrice = historicalData.find(
+                h => h && h.date && new Date(h.date).toDateString() === date.toDateString()
+              )?.close;
+              
+              if (historicalPrice && typeof historicalPrice === 'number') {
+                portfolioValue += sharesOwned * historicalPrice;
+              }
             }
           }
         });
