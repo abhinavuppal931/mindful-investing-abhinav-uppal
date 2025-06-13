@@ -113,13 +113,6 @@ const Portfolios = () => {
                   <>
                     <PortfolioMetrics holdings={holdings} />
                     
-                    {/* Portfolio Performance Chart */}
-                    <PortfolioPerformanceChart 
-                      holdings={holdings}
-                      trades={trades}
-                      portfolioName={portfolio.name}
-                    />
-                    
                     {/* Portfolio Layout with Holdings Table and Donut Chart */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                       <div className="lg:col-span-2">
@@ -133,6 +126,13 @@ const Portfolios = () => {
                         <PortfolioDonutChart holdings={holdings} />
                       </div>
                     </div>
+                    
+                    {/* Portfolio Performance Chart - positioned below holdings and allocation */}
+                    <PortfolioPerformanceChart 
+                      holdings={holdings}
+                      trades={trades}
+                      portfolioName={portfolio.name}
+                    />
                   </>
                 ) : (
                   <EmptyPortfolioState

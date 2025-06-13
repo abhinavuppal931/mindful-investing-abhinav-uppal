@@ -17,8 +17,8 @@ interface PortfolioDonutChartProps {
 const PortfolioDonutChart = ({ holdings }: PortfolioDonutChartProps) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const width = 400;
-  const height = 400;
-  const radius = Math.min(width, height) / 2;
+  const height = 350;
+  const radius = Math.min(width, height) / 2.5;
   const innerRadius = radius * 0.6;
 
   const colorScale = d3.scaleOrdinal([
@@ -49,20 +49,16 @@ const PortfolioDonutChart = ({ holdings }: PortfolioDonutChartProps) => {
       .innerRadius(innerRadius)
       .outerRadius(radius);
 
-    const labelArc = d3.arc<d3.PieArcDatum<AllocationData>>()
-      .innerRadius(radius * 1.1)
-      .outerRadius(radius * 1.1);
-
     const chart = svg
       .attr('width', width)
       .attr('height', height)
       .append('g')
-      .attr('transform', `translate(${width / 2},${height / 2})`);
+      .attr('transform', `translate(${width / 2},${height / 2 - 20})`);
 
     // Create tooltip
     const tooltip = d3.select('body')
       .append('div')
-      .attr('class', 'absolute bg-white p-2 rounded shadow-lg text-xs hidden border')
+      .attr('class', 'absolute bg-white p-2 rounded shadow-lg text-xs hidden border z-50')
       .style('pointer-events', 'none');
 
     // Create pie slices
@@ -94,7 +90,7 @@ const PortfolioDonutChart = ({ holdings }: PortfolioDonutChartProps) => {
         d3.select(event.currentTarget)
           .transition()
           .duration(200)
-          .attr('transform', 'scale(1.05)');
+          .attr('transform', 'scale(1.02)');
       })
       .on('mouseout', (event) => {
         tooltip.classed('hidden', true);
@@ -106,14 +102,14 @@ const PortfolioDonutChart = ({ holdings }: PortfolioDonutChartProps) => {
           .attr('transform', 'scale(1)');
       });
 
-    // Add percentage labels
+    // Add percentage labels for larger slices
     slices.append('text')
       .attr('transform', d => `translate(${arc.centroid(d)})`)
       .attr('text-anchor', 'middle')
       .attr('font-size', '12px')
       .attr('font-weight', 'bold')
       .attr('fill', '#fff')
-      .text(d => d.data.percentage > 5 ? `${d.data.percentage.toFixed(1)}%` : '');
+      .text(d => d.data.percentage > 8 ? `${d.data.percentage.toFixed(1)}%` : '');
 
     // Add center text showing total value
     chart.append('text')
@@ -126,7 +122,7 @@ const PortfolioDonutChart = ({ holdings }: PortfolioDonutChartProps) => {
 
     chart.append('text')
       .attr('text-anchor', 'middle')
-      .attr('font-size', '20px')
+      .attr('font-size', '18px')
       .attr('font-weight', 'bold')
       .attr('fill', '#111827')
       .attr('y', 15)
@@ -139,12 +135,12 @@ const PortfolioDonutChart = ({ holdings }: PortfolioDonutChartProps) => {
 
   if (!holdings.length) {
     return (
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
           <CardTitle>Portfolio Allocation</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-96 text-gray-500">
+          <div className="flex items-center justify-center h-64 text-gray-500">
             No holdings to display
           </div>
         </CardContent>
@@ -155,24 +151,24 @@ const PortfolioDonutChart = ({ holdings }: PortfolioDonutChartProps) => {
   const totalValue = holdings.reduce((sum, holding) => sum + holding.totalValue, 0);
 
   return (
-    <Card>
+    <Card className="h-fit">
       <CardHeader>
         <CardTitle>Portfolio Allocation</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
-          <svg ref={svgRef} className="flex-shrink-0" />
-          <div className="ml-6 space-y-2">
+        <div className="flex flex-col items-center">
+          <svg ref={svgRef} className="mb-4" />
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full">
             {holdings.map((holding, index) => {
               const percentage = (holding.totalValue / totalValue) * 100;
               return (
                 <div key={holding.ticker} className="flex items-center space-x-2">
                   <div 
-                    className="w-3 h-3 rounded-full"
+                    className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: colorScale(index.toString()) }}
                   />
-                  <span className="text-sm font-medium">{holding.ticker}</span>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm font-medium truncate">{holding.ticker}</span>
+                  <span className="text-sm text-gray-600 ml-auto">
                     {percentage.toFixed(1)}%
                   </span>
                 </div>

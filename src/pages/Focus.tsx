@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -31,6 +30,7 @@ interface NewsItem {
   content: string;
   url: string;
   provider: 'finnhub' | 'fmp';
+  image?: string;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -112,7 +112,8 @@ const Focus = () => {
             ticker: debouncedTickerFilter && debouncedTickerFilter !== 'all-stocks' && debouncedTickerFilter !== '' ? debouncedTickerFilter : '',
             content: item.summary || item.headline,
             url: item.url,
-            provider: 'finnhub' as const
+            provider: 'finnhub' as const,
+            image: item.image || undefined
           }));
           allNewsData.push(...processedFinnhubNews);
         }
@@ -140,7 +141,8 @@ const Focus = () => {
             ticker: item.symbol || (debouncedTickerFilter && debouncedTickerFilter !== 'all-stocks' && debouncedTickerFilter !== '' ? debouncedTickerFilter : ''),
             content: item.text || item.title,
             url: item.url,
-            provider: 'fmp' as const
+            provider: 'fmp' as const,
+            image: item.image || undefined
           }));
           allNewsData.push(...processedFmpNews);
         }
@@ -247,6 +249,85 @@ const Focus = () => {
     setCurrentPage(page);
   };
 
+  // Component for rendering news item with image
+  const NewsItemCard = ({ newsItem }: { newsItem: NewsItem }) => (
+    <Card key={newsItem.id}>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between">
+          <div className="space-y-1 flex-1">
+            <CardTitle className="text-lg">{newsItem.title}</CardTitle>
+            <CardDescription>
+              {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
+              <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
+                {newsItem.provider.toUpperCase()}
+              </span>
+            </CardDescription>
+          </div>
+          {newsItem.ticker && (
+            <Badge variant="outline" className="h-fit ml-2">
+              {newsItem.ticker}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-4">
+          {newsItem.image && (
+            <div className="flex-shrink-0">
+              <img 
+                src={newsItem.image} 
+                alt={newsItem.title}
+                className="w-24 h-24 object-cover rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          <p className="text-gray-700 flex-1">{newsItem.content}</p>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between pt-2">
+        <div className="flex space-x-2">
+          {processingArticleIds.has(newsItem.id) ? (
+            <>
+              <Badge variant="secondary">
+                <Loader className="h-3 w-3 mr-1 animate-spin" />
+                Analyzing...
+              </Badge>
+              <Badge variant="secondary">
+                <Loader className="h-3 w-3 mr-1 animate-spin" />
+                Analyzing...
+              </Badge>
+            </>
+          ) : (
+            <>
+              <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'}>
+                {newsItem.sentiment === 'positive' ? (
+                  <ThumbsUp className="h-3 w-3 mr-1" />
+                ) : newsItem.sentiment === 'negative' ? (
+                  <ThumbsDown className="h-3 w-3 mr-1" />
+                ) : (
+                  <Info className="h-3 w-3 mr-1" />
+                )}
+                {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
+              </Badge>
+              <Badge variant={newsItem.relevance === 'high' ? 'default' : 'outline'} className={newsItem.relevance === 'high' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
+                {newsItem.relevance === 'high' ? 'High Relevance' : 'Low Relevance'}
+              </Badge>
+            </>
+          )}
+        </div>
+        <Button variant="ghost" size="sm" className="text-xs" asChild>
+          <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
+            Read More
+            <ArrowUpRight className="h-3 w-3 ml-1" />
+          </a>
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+
   if (loading) {
     return (
       <MainLayout>
@@ -349,67 +430,7 @@ const Focus = () => {
                     {paginatedNews.length > 0 ? (
                       <>
                         {paginatedNews.map(newsItem => (
-                          <Card key={newsItem.id}>
-                            <CardHeader className="pb-2">
-                              <div className="flex justify-between">
-                                <div className="space-y-1">
-                                  <CardTitle className="text-lg">{newsItem.title}</CardTitle>
-                                  <CardDescription>
-                                    {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
-                                    <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
-                                      {newsItem.provider.toUpperCase()}
-                                    </span>
-                                  </CardDescription>
-                                </div>
-                                {newsItem.ticker && (
-                                  <Badge variant="outline" className="h-fit">
-                                    {newsItem.ticker}
-                                  </Badge>
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-gray-700">{newsItem.content}</p>
-                            </CardContent>
-                            <CardFooter className="flex justify-between pt-2">
-                              <div className="flex space-x-2">
-                                {processingArticleIds.has(newsItem.id) ? (
-                                  <>
-                                    <Badge variant="secondary">
-                                      <Loader className="h-3 w-3 mr-1 animate-spin" />
-                                      Analyzing...
-                                    </Badge>
-                                    <Badge variant="secondary">
-                                      <Loader className="h-3 w-3 mr-1 animate-spin" />
-                                      Analyzing...
-                                    </Badge>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'}>
-                                      {newsItem.sentiment === 'positive' ? (
-                                        <ThumbsUp className="h-3 w-3 mr-1" />
-                                      ) : newsItem.sentiment === 'negative' ? (
-                                        <ThumbsDown className="h-3 w-3 mr-1" />
-                                      ) : (
-                                        <Info className="h-3 w-3 mr-1" />
-                                      )}
-                                      {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
-                                    </Badge>
-                                    <Badge variant={newsItem.relevance === 'high' ? 'default' : 'outline'} className={newsItem.relevance === 'high' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
-                                      {newsItem.relevance === 'high' ? 'High Relevance' : 'Low Relevance'}
-                                    </Badge>
-                                  </>
-                                )}
-                              </div>
-                              <Button variant="ghost" size="sm" className="text-xs" asChild>
-                                <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
-                                  Read More
-                                  <ArrowUpRight className="h-3 w-3 ml-1" />
-                                </a>
-                              </Button>
-                            </CardFooter>
-                          </Card>
+                          <NewsItemCard key={newsItem.id} newsItem={newsItem} />
                         ))}
                         
                         {totalPages > 1 && (
@@ -483,46 +504,7 @@ const Focus = () => {
                 <TabsContent value="positive" className="mt-0">
                   <div className="space-y-4">
                     {filteredNews.filter(newsItem => newsItem.sentiment === 'positive').map(newsItem => (
-                      <Card key={newsItem.id}>
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between">
-                            <div className="space-y-1">
-                              <CardTitle>{newsItem.title}</CardTitle>
-                              <CardDescription>
-                                {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
-                                <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
-                                  {newsItem.provider.toUpperCase()}
-                                </span>
-                              </CardDescription>
-                            </div>
-                            {newsItem.ticker && (
-                              <Badge variant="outline" className="h-fit">
-                                {newsItem.ticker}
-                              </Badge>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p>{newsItem.content}</p>
-                        </CardContent>
-                        <CardFooter className="flex justify-between pt-2">
-                          <div className="flex space-x-2">
-                            <Badge>
-                              <ThumbsUp className="h-3 w-3 mr-1" />
-                              Positive
-                            </Badge>
-                            <Badge variant="outline">
-                              {newsItem.relevance.charAt(0).toUpperCase() + newsItem.relevance.slice(1)} Relevance
-                            </Badge>
-                          </div>
-                          <Button variant="ghost" size="sm" className="text-xs" asChild>
-                            <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
-                              Read More
-                              <ArrowUpRight className="h-3 w-3 ml-1" />
-                            </a>
-                          </Button>
-                        </CardFooter>
-                      </Card>
+                      <NewsItemCard key={newsItem.id} newsItem={newsItem} />
                     ))}
                   </div>
                 </TabsContent>
@@ -530,46 +512,7 @@ const Focus = () => {
                 <TabsContent value="negative" className="mt-0">
                   <div className="space-y-4">
                     {filteredNews.filter(newsItem => newsItem.sentiment === 'negative').map(newsItem => (
-                      <Card key={newsItem.id}>
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between">
-                            <div className="space-y-1">
-                              <CardTitle>{newsItem.title}</CardTitle>
-                              <CardDescription>
-                                {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
-                                <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
-                                  {newsItem.provider.toUpperCase()}
-                                </span>
-                              </CardDescription>
-                            </div>
-                            {newsItem.ticker && (
-                              <Badge variant="outline" className="h-fit">
-                                {newsItem.ticker}
-                              </Badge>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p>{newsItem.content}</p>
-                        </CardContent>
-                        <CardFooter className="flex justify-between pt-2">
-                          <div className="flex space-x-2">
-                            <Badge variant="destructive">
-                              <ThumbsDown className="h-3 w-3 mr-1" />
-                              Negative
-                            </Badge>
-                            <Badge variant="outline">
-                              {newsItem.relevance.charAt(0).toUpperCase() + newsItem.relevance.slice(1)} Relevance
-                            </Badge>
-                          </div>
-                          <Button variant="ghost" size="sm" className="text-xs" asChild>
-                            <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
-                              Read More
-                              <ArrowUpRight className="h-3 w-3 ml-1" />
-                            </a>
-                          </Button>
-                        </CardFooter>
-                      </Card>
+                      <NewsItemCard key={newsItem.id} newsItem={newsItem} />
                     ))}
                   </div>
                 </TabsContent>
