@@ -24,14 +24,32 @@ interface PortfolioPerformanceChartProps {
 
 const PortfolioPerformanceChart = ({ holdings, trades, portfolioName }: PortfolioPerformanceChartProps) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [data, setData] = useState<PerformanceDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewType, setViewType] = useState<'dollar' | 'percent'>('percent');
   const [timePeriod, setTimePeriod] = useState('1year');
+  const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
 
-  const width = 800;
-  const height = 400;
   const margin = { top: 20, right: 30, bottom: 60, left: 80 };
+
+  // Update dimensions when container resizes
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const containerHeight = 400; // Fixed height for consistency
+        setDimensions({
+          width: containerWidth,
+          height: containerHeight
+        });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
 
   useEffect(() => {
     if (holdings.length > 0 && trades.length > 0) {
@@ -168,8 +186,12 @@ const PortfolioPerformanceChart = ({ holdings, trades, portfolioName }: Portfoli
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
+    const { width, height } = dimensions;
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
+
+    // Set SVG dimensions
+    svg.attr('width', width).attr('height', height);
 
     // Create gradient for line fill
     const defs = svg.append('defs');
@@ -311,7 +333,7 @@ const PortfolioPerformanceChart = ({ holdings, trades, portfolioName }: Portfoli
     return () => {
       tooltip.remove();
     };
-  }, [data, viewType, loading, portfolioName]);
+  }, [data, viewType, loading, portfolioName, dimensions]);
 
   return (
     <Card className="mb-6">
@@ -344,14 +366,14 @@ const PortfolioPerformanceChart = ({ holdings, trades, portfolioName }: Portfoli
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         {loading ? (
           <div className="flex items-center justify-center h-96">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mindful-600"></div>
           </div>
         ) : (
-          <div className="w-full">
-            <svg ref={svgRef} width={width} height={height} className="w-full h-auto" />
+          <div ref={containerRef} className="w-full h-96">
+            <svg ref={svgRef} className="w-full h-full" />
           </div>
         )}
       </CardContent>

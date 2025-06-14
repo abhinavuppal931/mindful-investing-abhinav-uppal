@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target } from 'lucide-react';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
@@ -11,6 +12,7 @@ import { useStockData } from '@/hooks/useStockData';
 import TodaysPriceDriver from './TodaysPriceDriver';
 import CompanyOverview from './CompanyOverview';
 import AIAnalysisGrid from './AIAnalysisGrid';
+import StockLogo from './StockLogo';
 
 interface StockDetailProps {
   ticker: string;
@@ -44,6 +46,20 @@ const formatYAxis = (value: number): string => {
 // Helper function for percentage formatting
 const formatPercentage = (value: number): string => {
   return `${(value * 100).toFixed(1)}%`;
+};
+
+// Helper function for X-axis date formatting
+const formatXAxisDate = (tickItem: any, period: string): string => {
+  const date = new Date(tickItem);
+  
+  // For shorter timeframes (1Y and below), use monthly format
+  if (period === '1Y' || period === '6months' || period === '3months' || period === '1month') {
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  }
+  
+  // For longer timeframes, use quarterly format
+  const quarter = Math.ceil((date.getMonth() + 1) / 3);
+  return `Q${quarter} ${date.getFullYear()}`;
 };
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
@@ -82,7 +98,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     }
   };
 
-  // Load chart data when tab/metric changes
+  // Load chart data when tab/metric changes (except for Today's Price Driver)
   useEffect(() => {
     if (activeTab !== 'price') {
       loadChartData(activeTab, activeMetric[activeTab]);
@@ -137,6 +153,41 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       setChartLoading(prev => ({ ...prev, price: false }));
     }
   };
+
+  // Load growth data
+  useEffect(() => {
+    const loadGrowthData = async () => {
+      try {
+        const data = await fmpAPI.getFinancialGrowth(ticker, 'annual', 10);
+        if (data && data.length > 0) {
+          const latest = data[0];
+          setGrowthData({
+            revenue: {
+              threeYear: latest.revenueGrowth || 0,
+              fiveYear: latest.fiveYRevenueGrowthPerShare || 0,
+              tenYear: latest.tenYRevenueGrowthPerShare || 0
+            },
+            netIncome: {
+              threeYear: latest.netIncomeGrowth || 0,
+              fiveYear: latest.fiveYNetIncomeGrowthPerShare || 0,
+              tenYear: latest.tenYNetIncomeGrowthPerShare || 0
+            },
+            operatingCF: {
+              threeYear: latest.operatingCashFlowGrowth || 0,
+              fiveYear: latest.fiveYOperatingCFGrowthPerShare || 0,
+              tenYear: latest.tenYOperatingCFGrowthPerShare || 0
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error loading growth data:', error);
+      }
+    };
+
+    if (ticker) {
+      loadGrowthData();
+    }
+  }, [ticker]);
 
   const loadChartData = async (tab: string, metric: string) => {
     setChartLoading(prev => ({ ...prev, [tab]: true }));
@@ -273,41 +324,6 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     }
   };
 
-  // Load growth data
-  useEffect(() => {
-    const loadGrowthData = async () => {
-      try {
-        const data = await fmpAPI.getFinancialGrowth(ticker, 'annual', 10);
-        if (data && data.length > 0) {
-          const latest = data[0];
-          setGrowthData({
-            revenue: {
-              threeYear: latest.revenueGrowth || 0,
-              fiveYear: latest.fiveYRevenueGrowthPerShare || 0,
-              tenYear: latest.tenYRevenueGrowthPerShare || 0
-            },
-            netIncome: {
-              threeYear: latest.netIncomeGrowth || 0,
-              fiveYear: latest.fiveYNetIncomeGrowthPerShare || 0,
-              tenYear: latest.tenYNetIncomeGrowthPerShare || 0
-            },
-            operatingCF: {
-              threeYear: latest.operatingCashFlowGrowth || 0,
-              fiveYear: latest.fiveYOperatingCFGrowthPerShare || 0,
-              tenYear: latest.tenYOperatingCFGrowthPerShare || 0
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error loading growth data:', error);
-      }
-    };
-
-    if (ticker) {
-      loadGrowthData();
-    }
-  }, [ticker]);
-
   const renderChart = () => {
     if (chartLoading[activeTab]) {
       return (
@@ -364,7 +380,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                <XAxis dataKey="date" stroke="#6b7280" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#6b7280"
+                  tickFormatter={(tickItem) => formatXAxisDate(tickItem, period)}
+                />
                 <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
                 <ChartTooltip content={<CustomTooltip />} />
                 <Area 
@@ -552,31 +572,26 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     if (!growthData || !growthData[type]) return null;
 
     const data = growthData[type];
-    const titles = {
-      revenue: 'Revenue Growth',
-      netIncome: 'Net Income Growth', 
-      operatingCF: 'Operating CF Growth'
-    };
 
     return (
-      <div className="grid grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-3 gap-2 mt-4">
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">10Y Growth</div>
-          <div className={`text-sm font-medium ${data.tenYear >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <Badge variant={data.tenYear >= 0 ? "default" : "destructive"} className="rounded-full">
             {data.tenYear >= 0 ? '+' : ''}{(data.tenYear * 100).toFixed(1)}%
-          </div>
+          </Badge>
         </div>
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">5Y Growth</div>
-          <div className={`text-sm font-medium ${data.fiveYear >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <Badge variant={data.fiveYear >= 0 ? "default" : "destructive"} className="rounded-full">
             {data.fiveYear >= 0 ? '+' : ''}{(data.fiveYear * 100).toFixed(1)}%
-          </div>
+          </Badge>
         </div>
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">3Y Growth</div>
-          <div className={`text-sm font-medium ${data.threeYear >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <Badge variant={data.threeYear >= 0 ? "default" : "destructive"} className="rounded-full">
             {data.threeYear >= 0 ? '+' : ''}{(data.threeYear * 100).toFixed(1)}%
-          </div>
+          </Badge>
         </div>
       </div>
     );
@@ -610,9 +625,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">{ticker}</CardTitle>
-              <CardDescription>{companyName}</CardDescription>
+            <div className="flex items-center space-x-3">
+              <StockLogo ticker={ticker} size={40} />
+              <div>
+                <CardTitle className="text-2xl">{ticker}</CardTitle>
+                <CardDescription>{companyName}</CardDescription>
+              </div>
             </div>
             {quote && (
               <div className="text-right">
@@ -627,7 +645,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         </CardHeader>
       </Card>
 
-      {/* Today's Price Driver */}
+      {/* Today's Price Driver - only loads once per stock */}
       <TodaysPriceDriver ticker={ticker} financialData={financials?.slice(0, 3)} />
 
       {/* Global Period Toggle */}
