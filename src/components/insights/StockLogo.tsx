@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { logokitAPI } from '@/services/api';
 
 interface StockLogoProps {
   ticker: string;
@@ -10,29 +11,24 @@ interface StockLogoProps {
 const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24 }) => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchLogo = async () => {
       if (!ticker) return;
       
       setLoading(true);
+      setError(false);
       try {
-        const response = await fetch('/api/logokit-api', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ symbol: ticker }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.logoUrl) {
-            setLogoUrl(data.logoUrl);
-          }
+        const data = await logokitAPI.getLogo(ticker);
+        if (data && data.logoUrl) {
+          setLogoUrl(data.logoUrl);
+        } else {
+          setError(true);
         }
       } catch (error) {
         console.error('Error fetching logo:', error);
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -50,7 +46,7 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
     );
   }
 
-  if (!logoUrl) {
+  if (error || !logoUrl) {
     return (
       <div 
         className={`bg-gray-100 rounded flex items-center justify-center text-xs font-semibold text-gray-600 ${className}`}
@@ -67,7 +63,10 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
       alt={`${ticker} logo`}
       className={`rounded ${className}`}
       style={{ width: size, height: size }}
-      onError={() => setLogoUrl(null)}
+      onError={() => {
+        setError(true);
+        setLogoUrl(null);
+      }}
     />
   );
 };

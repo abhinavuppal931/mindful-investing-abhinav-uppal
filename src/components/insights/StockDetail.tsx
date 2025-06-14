@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { fmpAPI } from '@/services/api';
@@ -577,19 +579,19 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       <div className="grid grid-cols-3 gap-2 mt-4">
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">10Y Growth</div>
-          <Badge variant={data.tenYear >= 0 ? "default" : "destructive"} className="rounded-full">
+          <Badge variant={data.tenYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.tenYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
             {data.tenYear >= 0 ? '+' : ''}{(data.tenYear * 100).toFixed(1)}%
           </Badge>
         </div>
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">5Y Growth</div>
-          <Badge variant={data.fiveYear >= 0 ? "default" : "destructive"} className="rounded-full">
+          <Badge variant={data.fiveYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.fiveYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
             {data.fiveYear >= 0 ? '+' : ''}{(data.fiveYear * 100).toFixed(1)}%
           </Badge>
         </div>
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">3Y Growth</div>
-          <Badge variant={data.threeYear >= 0 ? "default" : "destructive"} className="rounded-full">
+          <Badge variant={data.threeYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.threeYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
             {data.threeYear >= 0 ? '+' : ''}{(data.threeYear * 100).toFixed(1)}%
           </Badge>
         </div>
@@ -649,17 +651,24 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       <TodaysPriceDriver ticker={ticker} financialData={financials?.slice(0, 3)} />
 
       {/* Global Period Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Select value={dataType} onValueChange={(value: 'annual' | 'quarterly') => setDataType(value)}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="annual">Annual</SelectItem>
-              <SelectItem value="quarterly">Quarterly</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="flex justify-center">
+        <div className="flex items-center bg-muted rounded-lg p-1">
+          <Button
+            variant={dataType === 'annual' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setDataType('annual')}
+            className="rounded-md"
+          >
+            Annual
+          </Button>
+          <Button
+            variant={dataType === 'quarterly' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setDataType('quarterly')}
+            className="rounded-md"
+          >
+            Quarterly
+          </Button>
         </div>
       </div>
 

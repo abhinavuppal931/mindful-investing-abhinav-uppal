@@ -1,156 +1,178 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Shield, AlertTriangle, Calendar, TrendingUp, Loader2 } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp, Shield, AlertTriangle, TrendingUp, Target } from 'lucide-react';
 import { openaiAPI } from '@/services/api';
+import { Badge } from '@/components/ui/badge';
+
 interface AIAnalysisGridProps {
   ticker: string;
-  financialData: any;
-  newsData: any;
+  financialData: any[];
+  newsData: any[];
 }
-interface AnalysisCard {
-  id: string;
-  title: string;
-  icon: React.ReactNode;
-  content: string;
-  loading: boolean;
-  expanded: boolean;
-}
-const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({
-  ticker,
-  financialData,
-  newsData
-}) => {
-  const [cards, setCards] = useState<AnalysisCard[]>([{
-    id: 'moat',
-    title: 'Competitive Moat',
-    icon: <Shield className="h-5 w-5" />,
-    content: '',
-    loading: false,
-    expanded: false
-  }, {
-    id: 'risks',
-    title: 'Investment Risks',
-    icon: <AlertTriangle className="h-5 w-5" />,
-    content: '',
-    loading: false,
-    expanded: false
-  }, {
-    id: 'near-term',
-    title: 'Near-term Outlook (6-12M)',
-    icon: <Calendar className="h-5 w-5" />,
-    content: '',
-    loading: false,
-    expanded: false
-  }, {
-    id: 'long-term',
-    title: 'Long-term Outlook (5Y+)',
-    icon: <TrendingUp className="h-5 w-5" />,
-    content: '',
-    loading: false,
-    expanded: false
-  }]);
-  const loadAnalysis = async (cardId: string) => {
-    if (!ticker) return;
-    setCards(prev => prev.map(card => card.id === cardId ? {
-      ...card,
-      loading: true
-    } : card));
-    try {
-      let result;
-      switch (cardId) {
-        case 'moat':
-          result = await openaiAPI.analyzeCompanyMoat(ticker, financialData);
-          break;
-        case 'risks':
-          result = await openaiAPI.analyzeInvestmentRisks(ticker, financialData, newsData || []);
-          break;
-        case 'near-term':
-          result = await openaiAPI.analyzeNearTermTailwinds(ticker, financialData, newsData || []);
-          break;
-        case 'long-term':
-          result = await openaiAPI.analyzeLongTermTailwinds(ticker, financialData, newsData || []);
-          break;
-        default:
-          throw new Error('Unknown analysis type');
-      }
-      setCards(prev => prev.map(card => card.id === cardId ? {
-        ...card,
-        content: result.analysis,
-        loading: false,
-        expanded: true
-      } : card));
-    } catch (error) {
-      console.error(`Error loading ${cardId} analysis:`, error);
-      setCards(prev => prev.map(card => card.id === cardId ? {
-        ...card,
-        content: 'Failed to load analysis. Please try again.',
-        loading: false,
-        expanded: true
-      } : card));
-    }
-  };
-  const toggleCard = (cardId: string) => {
-    const card = cards.find(c => c.id === cardId);
-    if (!card) return;
-    if (!card.expanded && !card.content && !card.loading) {
-      loadAnalysis(cardId);
-    } else {
-      setCards(prev => prev.map(c => c.id === cardId ? {
-        ...c,
-        expanded: !c.expanded
-      } : c));
-    }
-  };
-  const formatContent = (content: string) => {
-    if (!content) return null;
 
-    // Split content into lines and format as bullet points
-    const lines = content.split('\n').filter(line => line.trim());
-    return <div className="space-y-2">
-        {lines.map((line, index) => {
-        const cleanLine = line.replace(/^[-•*]\s*/, '').trim();
-        if (!cleanLine) return null;
-        return <div key={index} className="flex items-start space-x-2">
-              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0" />
-              <p className="text-sm text-foreground leading-relaxed">{cleanLine}</p>
-            </div>;
-      })}
-      </div>;
+const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, newsData }) => {
+  const [analyses, setAnalyses] = useState<{
+    moat: string | null;
+    risks: string | null;
+    nearTermTailwinds: string | null;
+    longTermTailwinds: string | null;
+  }>({
+    moat: null,
+    risks: null,
+    nearTermTailwinds: null,
+    longTermTailwinds: null
+  });
+  
+  const [loading, setLoading] = useState<{[key: string]: boolean}>({});
+  const [openSections, setOpenSections] = useState<{[key: string]: boolean}>({
+    moat: false,
+    risks: false,
+    nearTermTailwinds: false,
+    longTermTailwinds: false
+  });
+
+  useEffect(() => {
+    if (ticker && financialData?.length > 0) {
+      loadAnalyses();
+    }
+  }, [ticker, financialData]);
+
+  const loadAnalyses = async () => {
+    const analysisTypes = [
+      { key: 'moat', func: () => openaiAPI.analyzeCompanyMoat(ticker, financialData) },
+      { key: 'risks', func: () => openaiAPI.analyzeInvestmentRisks(ticker, financialData, newsData) },
+      { key: 'nearTermTailwinds', func: () => openaiAPI.analyzeNearTermTailwinds(ticker, financialData, newsData) },
+      { key: 'longTermTailwinds', func: () => openaiAPI.analyzeLongTermTailwinds(ticker, financialData, newsData) }
+    ];
+
+    for (const analysis of analysisTypes) {
+      setLoading(prev => ({ ...prev, [analysis.key]: true }));
+      try {
+        const result = await analysis.func();
+        if (result?.analysis) {
+          setAnalyses(prev => ({ ...prev, [analysis.key]: result.analysis }));
+        }
+      } catch (error) {
+        console.error(`Error loading ${analysis.key} analysis:`, error);
+      } finally {
+        setLoading(prev => ({ ...prev, [analysis.key]: false }));
+      }
+    }
   };
-  return <div className="mb-6">
-      <h3 className="text-xl font-semibold mb-4">Comprehensive Fundamentals</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {cards.map(card => <Card key={card.id} className="transition-all duration-200 hover:shadow-md">
-            <Collapsible open={card.expanded} onOpenChange={() => toggleCard(card.id)}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full p-0 h-auto hover:bg-transparent">
-                  <CardHeader className="w-full">
-                    <CardTitle className="flex items-center justify-between text-left">
-                      <div className="flex items-center space-x-2">
-                        {card.icon}
-                        <span className="text-sm font-medium">{card.title}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {card.loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {card.expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      </div>
+
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const formatAnalysisContent = (content: string) => {
+    if (!content) return null;
+    
+    // Split content into sections and format as bullet points
+    const lines = content.split('\n').filter(line => line.trim());
+    return lines.map((line, index) => {
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+        return (
+          <div key={index} className="flex items-start mb-2">
+            <span className="text-primary mr-2 mt-1">•</span>
+            <span className="text-sm">{trimmedLine.replace(/^[•\-*]\s*/, '')}</span>
+          </div>
+        );
+      }
+      return (
+        <p key={index} className="text-sm mb-2 font-medium">
+          {trimmedLine}
+        </p>
+      );
+    });
+  };
+
+  const analysisCards = [
+    {
+      key: 'moat',
+      title: '🏰 Company Moat Analysis',
+      description: 'Competitive advantages and defensive strategies',
+      bgGradient: 'bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900',
+      borderColor: 'border-blue-200 dark:border-blue-800'
+    },
+    {
+      key: 'risks',
+      title: '⚠️ Investment Risk Assessment',
+      description: 'Potential challenges and risk factors',
+      bgGradient: 'bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-950 dark:to-rose-900',
+      borderColor: 'border-red-200 dark:border-red-800'
+    },
+    {
+      key: 'nearTermTailwinds',
+      title: '🚀 Near-Term Growth Drivers',
+      description: 'Short-term opportunities and catalysts',
+      bgGradient: 'bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-900',
+      borderColor: 'border-green-200 dark:border-green-800'
+    },
+    {
+      key: 'longTermTailwinds',
+      title: '🎯 Long-Term Strategic Advantages',
+      description: 'Sustainable growth opportunities',
+      bgGradient: 'bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-950 dark:to-violet-900',
+      borderColor: 'border-purple-200 dark:border-purple-800'
+    }
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {analysisCards.map((card) => (
+        <Card key={card.key} className={`${card.bgGradient} ${card.borderColor} border-2 transition-all duration-200 hover:shadow-lg`}>
+          <Collapsible 
+            open={openSections[card.key]} 
+            onOpenChange={() => toggleSection(card.key)}
+          >
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-bold flex items-center">
+                      {card.title}
                     </CardTitle>
-                  </CardHeader>
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0">
-                  {card.loading ? <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span className="text-muted-foreground">Generating analysis...</span>
-                    </div> : card.content ? formatContent(card.content) : null}
-                </CardContent>
-              </CollapsibleContent>
-            </Collapsible>
-          </Card>)}
-      </div>
-    </div>;
+                    <CardDescription className="text-sm mt-1">
+                      {card.description}
+                    </CardDescription>
+                  </div>
+                  <Button variant="ghost" size="sm">
+                    {openSections[card.key] ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                {loading[card.key] ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : analyses[card.key as keyof typeof analyses] ? (
+                  <div className="space-y-2">
+                    {formatAnalysisContent(analyses[card.key as keyof typeof analyses] || '')}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground italic">
+                    Click to load {card.title.toLowerCase()} analysis
+                  </p>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
 };
+
 export default AIAnalysisGrid;

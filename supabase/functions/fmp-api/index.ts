@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
@@ -15,6 +14,7 @@ const supabase = createClient(
 
 const FMP_API_KEY = Deno.env.get('FMP_API_KEY');
 const BASE_URL = 'https://financialmodelingprep.com/api/v3';
+const STABLE_BASE_URL = 'https://financialmodelingprep.com/stable';
 
 interface CacheEntry {
   data: any;
@@ -127,11 +127,11 @@ serve(async (req) => {
         ttl = 60 * 60 * 1000; // 1 hour
         break;
       case 'revenue-product-segmentation':
-        endpoint = `${BASE_URL}/revenue-product-segmentation/${symbol}?period=${period}&structure=flat&apikey=${FMP_API_KEY}`;
+        endpoint = `${STABLE_BASE_URL}/revenue-product-segmentation/${symbol}?period=${period}&structure=flat&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       case 'revenue-geographic-segmentation':
-        endpoint = `${BASE_URL}/revenue-geographic-segmentation/${symbol}?period=${period}&structure=flat&apikey=${FMP_API_KEY}`;
+        endpoint = `${STABLE_BASE_URL}/revenue-geographic-segmentation/${symbol}?period=${period}&structure=flat&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       case 'index-quote':

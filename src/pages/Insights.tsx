@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StockCard from '@/components/cards/StockCard';
@@ -201,6 +202,70 @@ const Insights = () => {
           <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
           <MarketIndices />
         </div>
+
+        {/* Search Bar - moved to top */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
+          <Input
+            placeholder="Search stocks by ticker or company name..."
+            className="pl-10 bg-background border-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchLoading && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          )}
+        </div>
+
+        {/* Search Results */}
+        {showSearchResults && searchQuery.length >= 2 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Search Results for "{searchQuery}"</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {searchResults.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {searchResults.map((stock) => (
+                    <div key={stock.ticker} className="relative">
+                      <StockCard
+                        ticker={stock.ticker}
+                        companyName={stock.companyName}
+                        price={stock.price}
+                        change={stock.change}
+                        changePercent={stock.changePercent}
+                        onClick={() => handleStockSelect(stock)}
+                      />
+                      {user && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWatchlistToggle(stock.ticker);
+                          }}
+                        >
+                          {isInWatchlist(stock.ticker) ? (
+                            <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                          ) : (
+                            <StarOff className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">
+                  No stocks found matching "{searchQuery}"
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
         
         {selectedStock ? (
           <div className="mb-8">
@@ -258,110 +323,45 @@ const Insights = () => {
                 </CardContent>
               </Card>
             )}
-          </div>
-        )}
-        
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
-          <Input
-            placeholder="Search stocks by ticker or company name..."
-            className="pl-10 bg-background border-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {searchLoading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-            </div>
-          )}
-        </div>
 
-        {/* Search Results */}
-        {showSearchResults && searchQuery.length >= 2 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Search Results for "{searchQuery}"</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {searchResults.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {searchResults.map((stock) => (
-                    <div key={stock.ticker} className="relative">
-                      <StockCard
-                        ticker={stock.ticker}
-                        companyName={stock.companyName}
-                        price={stock.price}
-                        change={stock.change}
-                        changePercent={stock.changePercent}
-                        onClick={() => handleStockSelect(stock)}
-                      />
-                      {user && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute top-2 right-2 h-6 w-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleWatchlistToggle(stock.ticker);
-                          }}
-                        >
-                          {isInWatchlist(stock.ticker) ? (
-                            <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-                          ) : (
-                            <StarOff className="h-4 w-4 text-gray-400" />
-                          )}
-                        </Button>
+            {/* Popular Stocks */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {stocksList.map((stock) => (
+                <div key={stock.ticker} className="relative">
+                  <StockCard
+                    ticker={stock.ticker}
+                    companyName={stock.companyName}
+                    price={stock.price}
+                    change={stock.change}
+                    changePercent={stock.changePercent}
+                    onClick={() => handleStockSelect(stock)}
+                  />
+                  {user && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleWatchlistToggle(stock.ticker);
+                      }}
+                    >
+                      {isInWatchlist(stock.ticker) ? (
+                        <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                      ) : (
+                        <StarOff className="h-4 w-4 text-gray-400" />
                       )}
-                    </div>
-                  ))}
+                    </Button>
+                  )}
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">
-                  No stocks found matching "{searchQuery}"
-                </p>
+              ))}
+              
+              {stocksList.length === 0 && (
+                <div className="col-span-full py-12 text-center">
+                  <p className="text-muted-foreground">No stocks available</p>
+                </div>
               )}
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Popular Stocks */}
-        {!selectedStock && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stocksList.map((stock) => (
-              <div key={stock.ticker} className="relative">
-                <StockCard
-                  ticker={stock.ticker}
-                  companyName={stock.companyName}
-                  price={stock.price}
-                  change={stock.change}
-                  changePercent={stock.changePercent}
-                  onClick={() => handleStockSelect(stock)}
-                />
-                {user && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 h-6 w-6"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleWatchlistToggle(stock.ticker);
-                    }}
-                  >
-                    {isInWatchlist(stock.ticker) ? (
-                      <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-                    ) : (
-                      <StarOff className="h-4 w-4 text-gray-400" />
-                    )}
-                  </Button>
-                )}
-              </div>
-            ))}
-            
-            {stocksList.length === 0 && (
-              <div className="col-span-full py-12 text-center">
-                <p className="text-muted-foreground">No stocks available</p>
-              </div>
-            )}
+            </div>
           </div>
         )}
       </div>
