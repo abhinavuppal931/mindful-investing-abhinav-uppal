@@ -411,7 +411,10 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             {payload.map((entry: any, index: number) => (
               <p key={index} style={{ color: entry.color }} className="text-sm">
                 {entry.name}: {
-                  entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt')
+                  // Special formatting for segmentation data (always currency values)
+                  (activeTab === 'revenue' && (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments'))
+                    ? formatCurrency(entry.value, 2)
+                    : entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt')
                     ? formatCurrency(entry.value)
                     : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield')
                     ? formatPercentage(entry.value)
