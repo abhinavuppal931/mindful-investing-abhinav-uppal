@@ -81,14 +81,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   // Segment filtering states
   const [visibleSegments, setVisibleSegments] = useState<{[key: string]: boolean}>({});
   
-  // Multi-metric selection states
+  // Multi-metric selection states for different tabs
   const [visibleMetrics, setVisibleMetrics] = useState<{[key: string]: {[key: string]: boolean}}>({
-    profitability: { netIncome: true, ebitda: false, eps: false },
-    cashFlow: { operatingCashFlow: true, freeCashFlow: false, freeCashFlowPerShare: false, freeCashFlowYield: false },
-    margins: { grossMargin: true, operatingMargin: false, netMargin: false, ebitdaMargin: false },
-    ratios: { pe: true, ps: false, pfcf: false, pocf: false, roe: false, roic: false }
+    profitability: { netIncome: true, ebitda: true, eps: true },
+    cashFlow: { operatingCashFlow: true, freeCashFlow: true, freeCashFlowPerShare: true, freeCashFlowYield: true },
+    margins: { grossMargin: true, operatingMargin: true, netMargin: true, ebitdaMargin: true },
+    ratios: { pe: true, ps: true, pfcf: true, pocf: true, roe: true, roic: true }
   });
-  
+
   // Data states
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartLoading, setChartLoading] = useState<{[key: string]: boolean}>({});
@@ -353,7 +353,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           }).reverse();
           
           // Initialize visible segments for FCF vs SBC comparison
-          if (metric === 'comparison' && data.length > 0) {
+          if (activeMetric.cashFlow === 'comparison' && data.length > 0) {
             const initialVisibility: {[key: string]: boolean} = {};
             initialVisibility['freeCashFlow'] = true;
             initialVisibility['stockBasedCompensation'] = true;
@@ -437,14 +437,6 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     }
   };
 
-  // Function to toggle segment visibility
-  const toggleSegmentVisibility = (segment: string) => {
-    setVisibleSegments(prev => ({
-      ...prev,
-      [segment]: !prev[segment]
-    }));
-  };
-
   // Function to toggle metric visibility for multi-metric tabs
   const toggleMetricVisibility = (tab: string, metric: string) => {
     setVisibleMetrics(prev => ({
@@ -453,6 +445,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         ...prev[tab],
         [metric]: !prev[tab][metric]
       }
+    }));
+  };
+
+  // Function to toggle segment visibility
+  const toggleSegmentVisibility = (segment: string) => {
+    setVisibleSegments(prev => ({
+      ...prev,
+      [segment]: !prev[segment]
     }));
   };
 
@@ -483,7 +483,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     );
   };
 
-  // Function to render multi-metric legend
+  // Function to render multi-metric legend for tabs with multiple metrics
   const renderMultiMetricLegend = (tab: string, metrics: {key: string, name: string, color: string}[]) => {
     return (
       <div className="flex flex-wrap gap-2 mb-4">
@@ -492,41 +492,16 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             key={metric.key}
             onClick={() => toggleMetricVisibility(tab, metric.key)}
             className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-all ${
-              visibleMetrics[tab][metric.key]
+              visibleMetrics[tab]?.[metric.key]
                 ? 'bg-white border-2 text-gray-700 shadow-sm hover:shadow-md'
                 : 'bg-gray-200 border-2 border-gray-300 text-gray-400'
             }`}
           >
             <div
-              className={`w-3 h-3 rounded-full ${visibleMetrics[tab][metric.key] ? '' : 'opacity-30'}`}
+              className={`w-3 h-3 rounded-full ${visibleMetrics[tab]?.[metric.key] ? '' : 'opacity-30'}`}
               style={{ backgroundColor: metric.color }}
             />
-            <span className={visibleMetrics[tab][metric.key] ? '' : 'line-through'}>{metric.name}</span>
-          </button>
-        ))}
-      </div>
-    );
-  };
-
-  // Function to render metric legend for non-segmentation charts
-  const renderMetricLegend = (metrics: {key: string, name: string, color: string}[]) => {
-    return (
-      <div className="flex flex-wrap gap-2 mb-4">
-        {metrics.map((metric) => (
-          <button
-            key={metric.key}
-            onClick={() => toggleSegmentVisibility(metric.key)}
-            className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-all ${
-              visibleSegments[metric.key]
-                ? 'bg-white border-2 text-gray-700 shadow-sm hover:shadow-md'
-                : 'bg-gray-200 border-2 border-gray-300 text-gray-400'
-            }`}
-          >
-            <div
-              className={`w-3 h-3 rounded-full ${visibleSegments[metric.key] ? '' : 'opacity-30'}`}
-              style={{ backgroundColor: metric.color }}
-            />
-            <span className={visibleSegments[metric.key] ? '' : 'line-through'}>{metric.name}</span>
+            <span className={visibleMetrics[tab]?.[metric.key] ? '' : 'line-through'}>{metric.name}</span>
           </button>
         ))}
       </div>
@@ -567,7 +542,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                     ? formatCurrency(entry.value, 2)
                     : entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt') || entry.dataKey.includes('Expenses') || entry.dataKey.includes('Cash') || entry.dataKey.includes('Debt') || entry.dataKey.includes('Compensation')
                     ? formatCurrency(entry.value, 2)
-                    : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield') || entry.dataKey === 'roe' || entry.dataKey === 'roic'
+                    : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield')
                     ? formatPercentage(entry.value)
                     : entry.value.toFixed(2)
                 }
@@ -675,7 +650,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           { key: 'ebitda', name: 'EBITDA', color: '#8b5cf6' },
           { key: 'eps', name: 'EPS', color: '#f59e0b' }
         ];
-        const visibleProfitabilityMetrics = profitabilityMetrics.filter(metric => visibleMetrics.profitability[metric.key]);
+        const visibleProfitabilityKeys = profitabilityMetrics.filter(metric => visibleMetrics.profitability?.[metric.key]);
         
         return (
           <div className="space-y-4">
@@ -687,7 +662,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   <XAxis dataKey="year" stroke="#6b7280" />
                   <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
                   <ChartTooltip content={<CustomTooltip />} />
-                  {visibleProfitabilityMetrics.map((metric) => (
+                  {visibleProfitabilityKeys.map((metric) => (
                     <Bar 
                       key={metric.key}
                       dataKey={metric.key} 
@@ -740,10 +715,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           { key: 'freeCashFlowPerShare', name: 'FCF Per Share', color: '#8b5cf6' },
           { key: 'freeCashFlowYield', name: 'FCF Yield', color: '#f59e0b' }
         ];
-        const visibleCashFlowMetrics = cashFlowMetrics.filter(metric => visibleMetrics.cashFlow[metric.key]);
-        
-        // Check if FCF Yield is the only visible metric for special Y-axis formatting
-        const isOnlyFCFYield = visibleCashFlowMetrics.length === 1 && visibleCashFlowMetrics[0].key === 'freeCashFlowYield';
+        const visibleCashFlowKeys = cashFlowMetrics.filter(metric => visibleMetrics.cashFlow?.[metric.key]);
         
         return (
           <div className="space-y-4">
@@ -753,12 +725,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                   <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis 
-                    tickFormatter={isOnlyFCFYield ? (value) => `${(value * 100).toFixed(0)}%` : formatYAxis} 
-                    stroke="#6b7280" 
-                  />
+                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
                   <ChartTooltip content={<CustomTooltip />} />
-                  {visibleCashFlowMetrics.map((metric) => (
+                  {visibleCashFlowKeys.map((metric) => (
                     <Bar 
                       key={metric.key}
                       dataKey={metric.key} 
@@ -836,17 +805,17 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         );
 
       case 'margins':
-        const marginMetrics = [
+        const marginsMetrics = [
           { key: 'grossMargin', name: 'Gross Margin', color: '#22c55e' },
           { key: 'operatingMargin', name: 'Operating Margin', color: '#3b82f6' },
           { key: 'netMargin', name: 'Net Margin', color: '#8b5cf6' },
           { key: 'ebitdaMargin', name: 'EBITDA Margin', color: '#f59e0b' }
         ];
-        const visibleMarginMetrics = marginMetrics.filter(metric => visibleMetrics.margins[metric.key]);
+        const visibleMarginsKeys = marginsMetrics.filter(metric => visibleMetrics.margins?.[metric.key]);
         
         return (
           <div className="space-y-4">
-            {renderMultiMetricLegend('margins', marginMetrics)}
+            {renderMultiMetricLegend('margins', marginsMetrics)}
             <ChartContainer config={{}} className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
@@ -854,7 +823,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   <XAxis dataKey="year" stroke="#6b7280" />
                   <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} stroke="#6b7280" />
                   <ChartTooltip content={<CustomTooltip />} />
-                  {visibleMarginMetrics.map((metric) => (
+                  {visibleMarginsKeys.map((metric) => (
                     <Line 
                       key={metric.key}
                       type="monotone" 
@@ -871,7 +840,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         );
 
       case 'ratios':
-        const ratioMetrics = [
+        const ratiosMetrics = [
           { key: 'pe', name: 'P/E Ratio', color: '#3b82f6' },
           { key: 'ps', name: 'P/S Ratio', color: '#22c55e' },
           { key: 'pfcf', name: 'P/FCF Ratio', color: '#f59e0b' },
@@ -879,25 +848,19 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           { key: 'roe', name: 'ROE', color: '#ef4444' },
           { key: 'roic', name: 'ROIC', color: '#06b6d4' }
         ];
-        const visibleRatioMetrics = ratioMetrics.filter(metric => visibleMetrics.ratios[metric.key]);
-        
-        // Check if only ROE and/or ROIC are visible for percentage formatting
-        const onlyPercentageRatios = visibleRatioMetrics.every(metric => metric.key === 'roe' || metric.key === 'roic');
+        const visibleRatiosKeys = ratiosMetrics.filter(metric => visibleMetrics.ratios?.[metric.key]);
         
         return (
           <div className="space-y-4">
-            {renderMultiMetricLegend('ratios', ratioMetrics)}
+            {renderMultiMetricLegend('ratios', ratiosMetrics)}
             <ChartContainer config={{}} className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={ratiosData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                   <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis 
-                    tickFormatter={onlyPercentageRatios ? (value) => `${(value * 100).toFixed(0)}%` : undefined} 
-                    stroke="#6b7280" 
-                  />
+                  <YAxis stroke="#6b7280" />
                   <ChartTooltip content={<CustomTooltip />} />
-                  {visibleRatioMetrics.map((metric) => (
+                  {visibleRatiosKeys.map((metric) => (
                     <Line 
                       key={metric.key}
                       type="monotone" 
@@ -1143,39 +1106,18 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               <div className="flex items-center justify-between">
                 <div className="flex space-x-2">
                   <Button
-                    variant={activeMetric.cashFlow === 'operatingCashFlow' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'operatingCashFlow' }))}
-                  >
-                    Operating CF
-                  </Button>
-                  <Button
-                    variant={activeMetric.cashFlow === 'freeCashFlow' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlow' }))}
-                  >
-                    Free CF
-                  </Button>
-                  <Button
-                    variant={activeMetric.cashFlow === 'freeCashFlowPerShare' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlowPerShare' }))}
-                  >
-                    FCF Per Share
-                  </Button>
-                  <Button
-                    variant={activeMetric.cashFlow === 'freeCashFlowYield' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlowYield' }))}
-                  >
-                    FCF Yield
-                  </Button>
-                  <Button
                     variant={activeMetric.cashFlow === 'comparison' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'comparison' }))}
                   >
                     FCF vs SBC
+                  </Button>
+                  <Button
+                    variant={activeMetric.cashFlow !== 'comparison' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'operatingCashFlow' }))}
+                  >
+                    All Metrics
                   </Button>
                 </div>
                 <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
