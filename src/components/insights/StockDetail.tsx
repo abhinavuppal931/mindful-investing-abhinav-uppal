@@ -85,6 +85,8 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   const [visibleMetrics, setVisibleMetrics] = useState<{[key: string]: {[key: string]: boolean}}>({
     profitability: { netIncome: true, ebitda: true, eps: true },
     cashFlow: { operatingCashFlow: true, freeCashFlow: true, freeCashFlowPerShare: true, freeCashFlowYield: true },
+    expenses: { rdExpenses: true, sgaExpenses: true, operatingExpenses: true },
+    cashDebt: { totalCash: true, totalDebt: true },
     margins: { grossMargin: true, operatingMargin: true, netMargin: true, ebitdaMargin: true },
     ratios: { pe: true, ps: true, pfcf: true, pocf: true, roe: true, roic: true }
   });
