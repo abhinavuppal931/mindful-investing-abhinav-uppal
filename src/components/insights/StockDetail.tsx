@@ -525,7 +525,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                     ? formatCurrency(entry.value, 2)
                     : entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt') || entry.dataKey.includes('Expenses') || entry.dataKey.includes('Cash') || entry.dataKey.includes('Debt') || entry.dataKey.includes('Compensation')
                     ? formatCurrency(entry.value, 2)
-                    : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield')
+                    : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield') || entry.dataKey.includes('roe') || entry.dataKey.includes('roic')
                     ? formatPercentage(entry.value)
                     : entry.value.toFixed(2)
                 }
@@ -682,7 +682,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                 <XAxis dataKey="year" stroke="#6b7280" />
-                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <YAxis 
+                  tickFormatter={activeMetric.cashFlow === 'freeCashFlowYield' ? 
+                    (value) => `${(value * 100).toFixed(0)}%` : formatYAxis} 
+                  stroke="#6b7280" 
+                />
                 <ChartTooltip content={<CustomTooltip />} />
                 {activeMetric.cashFlow === 'operatingCashFlow' && <Bar dataKey="operatingCashFlow" fill="#06b6d4" name="Operating Cash Flow ($)" />}
                 {activeMetric.cashFlow === 'freeCashFlow' && <Bar dataKey="freeCashFlow" fill="#22c55e" name="Free Cash Flow ($)" />}
@@ -781,7 +785,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               <LineChart data={ratiosData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                 <XAxis dataKey="year" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" />
+                <YAxis 
+                  tickFormatter={
+                    (activeMetric.ratios === 'roe' || activeMetric.ratios === 'roic') ? 
+                    (value) => `${(value * 100).toFixed(0)}%` : 
+                    (value) => value.toFixed(1)
+                  } 
+                  stroke="#6b7280" 
+                />
                 <ChartTooltip content={<CustomTooltip />} />
                 {activeMetric.ratios === 'pe' && <Line type="monotone" dataKey="pe" stroke="#3b82f6" strokeWidth={2} name="P/E Ratio" />}
                 {activeMetric.ratios === 'ps' && <Line type="monotone" dataKey="ps" stroke="#22c55e" strokeWidth={2} name="P/S Ratio" />}
