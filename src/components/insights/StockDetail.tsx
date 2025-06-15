@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { fmpAPI } from '@/services/api';
@@ -81,14 +83,6 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   // Segment filtering states
   const [visibleSegments, setVisibleSegments] = useState<{[key: string]: boolean}>({});
   
-  // Multi-metric selection states for different tabs
-  const [visibleMetrics, setVisibleMetrics] = useState<{[key: string]: {[key: string]: boolean}}>({
-    profitability: { netIncome: true, ebitda: true, eps: true },
-    cashFlow: { operatingCashFlow: true, freeCashFlow: true, freeCashFlowPerShare: true, freeCashFlowYield: true },
-    margins: { grossMargin: true, operatingMargin: true, netMargin: true, ebitdaMargin: true },
-    ratios: { pe: true, ps: true, pfcf: true, pocf: true, roe: true, roic: true }
-  });
-
   // Data states
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartLoading, setChartLoading] = useState<{[key: string]: boolean}>({});
@@ -353,7 +347,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           }).reverse();
           
           // Initialize visible segments for FCF vs SBC comparison
-          if (activeMetric.cashFlow === 'comparison' && data.length > 0) {
+          if (metric === 'comparison' && data.length > 0) {
             const initialVisibility: {[key: string]: boolean} = {};
             initialVisibility['freeCashFlow'] = true;
             initialVisibility['stockBasedCompensation'] = true;
@@ -437,17 +431,6 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     }
   };
 
-  // Function to toggle metric visibility for multi-metric tabs
-  const toggleMetricVisibility = (tab: string, metric: string) => {
-    setVisibleMetrics(prev => ({
-      ...prev,
-      [tab]: {
-        ...prev[tab],
-        [metric]: !prev[tab][metric]
-      }
-    }));
-  };
-
   // Function to toggle segment visibility
   const toggleSegmentVisibility = (segment: string) => {
     setVisibleSegments(prev => ({
@@ -483,25 +466,25 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     );
   };
 
-  // Function to render multi-metric legend for tabs with multiple metrics
-  const renderMultiMetricLegend = (tab: string, metrics: {key: string, name: string, color: string}[]) => {
+  // Function to render metric legend for non-segmentation charts
+  const renderMetricLegend = (metrics: {key: string, name: string, color: string}[]) => {
     return (
       <div className="flex flex-wrap gap-2 mb-4">
         {metrics.map((metric) => (
           <button
             key={metric.key}
-            onClick={() => toggleMetricVisibility(tab, metric.key)}
+            onClick={() => toggleSegmentVisibility(metric.key)}
             className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-all ${
-              visibleMetrics[tab]?.[metric.key]
+              visibleSegments[metric.key]
                 ? 'bg-white border-2 text-gray-700 shadow-sm hover:shadow-md'
                 : 'bg-gray-200 border-2 border-gray-300 text-gray-400'
             }`}
           >
             <div
-              className={`w-3 h-3 rounded-full ${visibleMetrics[tab]?.[metric.key] ? '' : 'opacity-30'}`}
+              className={`w-3 h-3 rounded-full ${visibleSegments[metric.key] ? '' : 'opacity-30'}`}
               style={{ backgroundColor: metric.color }}
             />
-            <span className={visibleMetrics[tab]?.[metric.key] ? '' : 'line-through'}>{metric.name}</span>
+            <span className={visibleSegments[metric.key] ? '' : 'line-through'}>{metric.name}</span>
           </button>
         ))}
       </div>
@@ -645,35 +628,20 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         );
 
       case 'profitability':
-        const profitabilityMetrics = [
-          { key: 'netIncome', name: 'Net Income', color: '#3b82f6' },
-          { key: 'ebitda', name: 'EBITDA', color: '#8b5cf6' },
-          { key: 'eps', name: 'EPS', color: '#f59e0b' }
-        ];
-        const visibleProfitabilityKeys = profitabilityMetrics.filter(metric => visibleMetrics.profitability?.[metric.key]);
-        
         return (
-          <div className="space-y-4">
-            {renderMultiMetricLegend('profitability', profitabilityMetrics)}
-            <ChartContainer config={{}} className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                  <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                  <ChartTooltip content={<CustomTooltip />} />
-                  {visibleProfitabilityKeys.map((metric) => (
-                    <Bar 
-                      key={metric.key}
-                      dataKey={metric.key} 
-                      fill={metric.color} 
-                      name={metric.name}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </div>
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                {activeMetric.profitability === 'netIncome' && <Bar dataKey="netIncome" fill="#3b82f6" name="Net Income ($)" />}
+                {activeMetric.profitability === 'ebitda' && <Bar dataKey="ebitda" fill="#8b5cf6" name="EBITDA ($)" />}
+                {activeMetric.profitability === 'eps' && <Bar dataKey="eps" fill="#f59e0b" name="EPS ($)" />}
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
         );
 
       case 'cashFlow':
@@ -708,37 +676,21 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             </div>
           );
         }
-        
-        const cashFlowMetrics = [
-          { key: 'operatingCashFlow', name: 'Operating Cash Flow', color: '#06b6d4' },
-          { key: 'freeCashFlow', name: 'Free Cash Flow', color: '#22c55e' },
-          { key: 'freeCashFlowPerShare', name: 'FCF Per Share', color: '#8b5cf6' },
-          { key: 'freeCashFlowYield', name: 'FCF Yield', color: '#f59e0b' }
-        ];
-        const visibleCashFlowKeys = cashFlowMetrics.filter(metric => visibleMetrics.cashFlow?.[metric.key]);
-        
         return (
-          <div className="space-y-4">
-            {renderMultiMetricLegend('cashFlow', cashFlowMetrics)}
-            <ChartContainer config={{}} className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                  <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                  <ChartTooltip content={<CustomTooltip />} />
-                  {visibleCashFlowKeys.map((metric) => (
-                    <Bar 
-                      key={metric.key}
-                      dataKey={metric.key} 
-                      fill={metric.color} 
-                      name={metric.name}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </div>
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                {activeMetric.cashFlow === 'operatingCashFlow' && <Bar dataKey="operatingCashFlow" fill="#06b6d4" name="Operating Cash Flow ($)" />}
+                {activeMetric.cashFlow === 'freeCashFlow' && <Bar dataKey="freeCashFlow" fill="#22c55e" name="Free Cash Flow ($)" />}
+                {activeMetric.cashFlow === 'freeCashFlowPerShare' && <Bar dataKey="freeCashFlowPerShare" fill="#8b5cf6" name="FCF Per Share ($)" />}
+                {activeMetric.cashFlow === 'freeCashFlowYield' && <Bar dataKey="freeCashFlowYield" fill="#f59e0b" name="FCF Yield (%)" />}
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
         );
 
       case 'expenses':
@@ -805,75 +757,41 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         );
 
       case 'margins':
-        const marginsMetrics = [
-          { key: 'grossMargin', name: 'Gross Margin', color: '#22c55e' },
-          { key: 'operatingMargin', name: 'Operating Margin', color: '#3b82f6' },
-          { key: 'netMargin', name: 'Net Margin', color: '#8b5cf6' },
-          { key: 'ebitdaMargin', name: 'EBITDA Margin', color: '#f59e0b' }
-        ];
-        const visibleMarginsKeys = marginsMetrics.filter(metric => visibleMetrics.margins?.[metric.key]);
-        
         return (
-          <div className="space-y-4">
-            {renderMultiMetricLegend('margins', marginsMetrics)}
-            <ChartContainer config={{}} className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                  <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} stroke="#6b7280" />
-                  <ChartTooltip content={<CustomTooltip />} />
-                  {visibleMarginsKeys.map((metric) => (
-                    <Line 
-                      key={metric.key}
-                      type="monotone" 
-                      dataKey={metric.key} 
-                      stroke={metric.color} 
-                      strokeWidth={2} 
-                      name={metric.name}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </div>
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                {activeMetric.margins === 'grossMargin' && <Line type="monotone" dataKey="grossMargin" stroke="#22c55e" strokeWidth={2} name="Gross Margin (%)" />}
+                {activeMetric.margins === 'operatingMargin' && <Line type="monotone" dataKey="operatingMargin" stroke="#3b82f6" strokeWidth={2} name="Operating Margin (%)" />}
+                {activeMetric.margins === 'netMargin' && <Line type="monotone" dataKey="netMargin" stroke="#8b5cf6" strokeWidth={2} name="Net Margin (%)" />}
+                {activeMetric.margins === 'ebitdaMargin' && <Line type="monotone" dataKey="ebitdaMargin" stroke="#f59e0b" strokeWidth={2} name="EBITDA Margin (%)" />}
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartContainer>
         );
 
       case 'ratios':
-        const ratiosMetrics = [
-          { key: 'pe', name: 'P/E Ratio', color: '#3b82f6' },
-          { key: 'ps', name: 'P/S Ratio', color: '#22c55e' },
-          { key: 'pfcf', name: 'P/FCF Ratio', color: '#f59e0b' },
-          { key: 'pocf', name: 'P/OCF Ratio', color: '#8b5cf6' },
-          { key: 'roe', name: 'ROE', color: '#ef4444' },
-          { key: 'roic', name: 'ROIC', color: '#06b6d4' }
-        ];
-        const visibleRatiosKeys = ratiosMetrics.filter(metric => visibleMetrics.ratios?.[metric.key]);
-        
         return (
-          <div className="space-y-4">
-            {renderMultiMetricLegend('ratios', ratiosMetrics)}
-            <ChartContainer config={{}} className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={ratiosData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                  <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <ChartTooltip content={<CustomTooltip />} />
-                  {visibleRatiosKeys.map((metric) => (
-                    <Line 
-                      key={metric.key}
-                      type="monotone" 
-                      dataKey={metric.key} 
-                      stroke={metric.color} 
-                      strokeWidth={2} 
-                      name={metric.name}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </div>
+          <ChartContainer config={{}} className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={ratiosData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <XAxis dataKey="year" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" />
+                <ChartTooltip content={<CustomTooltip />} />
+                {activeMetric.ratios === 'pe' && <Line type="monotone" dataKey="pe" stroke="#3b82f6" strokeWidth={2} name="P/E Ratio" />}
+                {activeMetric.ratios === 'ps' && <Line type="monotone" dataKey="ps" stroke="#22c55e" strokeWidth={2} name="P/S Ratio" />}
+                {activeMetric.ratios === 'pfcf' && <Line type="monotone" dataKey="pfcf" stroke="#f59e0b" strokeWidth={2} name="P/FCF Ratio" />}
+                {activeMetric.ratios === 'pocf' && <Line type="monotone" dataKey="pocf" stroke="#8b5cf6" strokeWidth={2} name="P/OCF Ratio" />}
+                {activeMetric.ratios === 'roe' && <Line type="monotone" dataKey="roe" stroke="#ef4444" strokeWidth={2} name="ROE (%)" />}
+                {activeMetric.ratios === 'roic' && <Line type="monotone" dataKey="roic" stroke="#06b6d4" strokeWidth={2} name="ROIC (%)" />}
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartContainer>
         );
 
       default:
@@ -1085,7 +1003,29 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             {/* Profitability Tab */}
             <TabsContent value="profitability" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Profitability Metrics</h3>
+                <div className="flex space-x-2">
+                  <Button
+                    variant={activeMetric.profitability === 'netIncome' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, profitability: 'netIncome' }))}
+                  >
+                    Net Income
+                  </Button>
+                  <Button
+                    variant={activeMetric.profitability === 'ebitda' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, profitability: 'ebitda' }))}
+                  >
+                    EBITDA
+                  </Button>
+                  <Button
+                    variant={activeMetric.profitability === 'eps' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, profitability: 'eps' }))}
+                  >
+                    EPS
+                  </Button>
+                </div>
                 <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
                   <SelectTrigger className="w-20">
                     <SelectValue />
@@ -1106,18 +1046,39 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               <div className="flex items-center justify-between">
                 <div className="flex space-x-2">
                   <Button
+                    variant={activeMetric.cashFlow === 'operatingCashFlow' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'operatingCashFlow' }))}
+                  >
+                    Operating CF
+                  </Button>
+                  <Button
+                    variant={activeMetric.cashFlow === 'freeCashFlow' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlow' }))}
+                  >
+                    Free CF
+                  </Button>
+                  <Button
+                    variant={activeMetric.cashFlow === 'freeCashFlowPerShare' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlowPerShare' }))}
+                  >
+                    FCF Per Share
+                  </Button>
+                  <Button
+                    variant={activeMetric.cashFlow === 'freeCashFlowYield' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'freeCashFlowYield' }))}
+                  >
+                    FCF Yield
+                  </Button>
+                  <Button
                     variant={activeMetric.cashFlow === 'comparison' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'comparison' }))}
                   >
                     FCF vs SBC
-                  </Button>
-                  <Button
-                    variant={activeMetric.cashFlow !== 'comparison' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveMetric(prev => ({ ...prev, cashFlow: 'operatingCashFlow' }))}
-                  >
-                    All Metrics
                   </Button>
                 </div>
                 <Select value={period} onValueChange={(value: '1Y' | '3Y' | '5Y' | '10Y') => setPeriod(value)}>
@@ -1174,7 +1135,36 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             {/* Margins Tab */}
             <TabsContent value="margins" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Margin Analysis</h3>
+                <div className="flex space-x-2">
+                  <Button
+                    variant={activeMetric.margins === 'grossMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, margins: 'grossMargin' }))}
+                  >
+                    Gross Margin
+                  </Button>
+                  <Button
+                    variant={activeMetric.margins === 'operatingMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, margins: 'operatingMargin' }))}
+                  >
+                    Operating Margin
+                  </Button>
+                  <Button
+                    variant={activeMetric.margins === 'netMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, margins: 'netMargin' }))}
+                  >
+                    Net Margin
+                  </Button>
+                  <Button
+                    variant={activeMetric.margins === 'ebitdaMargin' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, margins: 'ebitdaMargin' }))}
+                  >
+                    EBITDA Margin
+                  </Button>
+                </div>
                 <div className="flex space-x-2">
                   <Select value={ratioType} onValueChange={(value: 'annual' | 'ttm') => setRatioType(value)}>
                     <SelectTrigger className="w-24">
@@ -1205,7 +1195,50 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             {/* Key Ratios Tab */}
             <TabsContent value="ratios" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Key Financial Ratios</h3>
+                <div className="flex space-x-2 flex-wrap">
+                  <Button
+                    variant={activeMetric.ratios === 'pe' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'pe' }))}
+                  >
+                    P/E
+                  </Button>
+                  <Button
+                    variant={activeMetric.ratios === 'ps' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'ps' }))}
+                  >
+                    P/S
+                  </Button>
+                  <Button
+                    variant={activeMetric.ratios === 'pfcf' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'pfcf' }))}
+                  >
+                    P/FCF
+                  </Button>
+                  <Button
+                    variant={activeMetric.ratios === 'pocf' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'pocf' }))}
+                  >
+                    P/OCF
+                  </Button>
+                  <Button
+                    variant={activeMetric.ratios === 'roe' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'roe' }))}
+                  >
+                    ROE
+                  </Button>
+                  <Button
+                    variant={activeMetric.ratios === 'roic' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveMetric(prev => ({ ...prev, ratios: 'roic' }))}
+                  >
+                    ROIC
+                  </Button>
+                </div>
                 <div className="flex space-x-2">
                   <Select value={ratioType} onValueChange={(value: 'annual' | 'ttm') => setRatioType(value)}>
                     <SelectTrigger className="w-24">
