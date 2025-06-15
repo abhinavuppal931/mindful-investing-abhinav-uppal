@@ -686,7 +686,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           
           return (
             <div className="space-y-4">
-              {renderMetricLegend(metrics)}
+              {renderMultiMetricLegend('cashFlow', metrics)}
               <ChartContainer config={{}} className="h-[400px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data}>
@@ -751,7 +751,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         
         return (
           <div className="space-y-4">
-            {renderMetricLegend(expenseMetrics)}
+            {renderMultiMetricLegend('expenses', expenseMetrics)}
             <ChartContainer config={{}} className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
@@ -782,7 +782,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         
         return (
           <div className="space-y-4">
-            {renderMetricLegend(cashDebtMetrics)}
+            {renderMultiMetricLegend('cashDebt', cashDebtMetrics)}
             <ChartContainer config={{}} className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
