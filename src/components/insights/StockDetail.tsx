@@ -218,9 +218,16 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   year: item.date ? new Date(item.date).getFullYear() : 'N/A'
                 };
                 
-                // Handle the stable API response format
-                if (item.segmentValues && Array.isArray(item.segmentValues)) {
-                  // Format: { date: "2023-12-31", segmentValues: [{ segment: "Product A", value: 1000 }] }
+                // Handle the stable API response format - data is nested in 'data' property
+                if (item.data && typeof item.data === 'object') {
+                  // Format: { date: "2024-12-31", data: { "Automotive": 77070000000, "Energy Generation And Storage Segment": 10086000000, "Services And Other": 10534000000 } }
+                  Object.keys(item.data).forEach(key => {
+                    if (typeof item.data[key] === 'number') {
+                      result[key] = item.data[key];
+                    }
+                  });
+                } else if (item.segmentValues && Array.isArray(item.segmentValues)) {
+                  // Fallback format: { date: "2023-12-31", segmentValues: [{ segment: "Product A", value: 1000 }] }
                   item.segmentValues.forEach((segment: any) => {
                     if (segment.segment && segment.value !== undefined) {
                       result[segment.segment] = segment.value;
@@ -255,8 +262,16 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   year: item.date ? new Date(item.date).getFullYear() : 'N/A'
                 };
                 
-                // Handle the stable API response format
-                if (item.segmentValues && Array.isArray(item.segmentValues)) {
+                // Handle the stable API response format - data is nested in 'data' property
+                if (item.data && typeof item.data === 'object') {
+                  // Format: { date: "2024-09-28", data: { "Americas Segment": 167045000000, "Europe Segment": 101328000000, "Greater China Segment": 66952000000, "Japan Segment": 25052000000, "Rest of Asia Pacific Segment": 30658000000 } }
+                  Object.keys(item.data).forEach(key => {
+                    if (typeof item.data[key] === 'number') {
+                      result[key] = item.data[key];
+                    }
+                  });
+                } else if (item.segmentValues && Array.isArray(item.segmentValues)) {
+                  // Fallback format
                   item.segmentValues.forEach((segment: any) => {
                     if (segment.segment && segment.value !== undefined) {
                       result[segment.segment] = segment.value;
