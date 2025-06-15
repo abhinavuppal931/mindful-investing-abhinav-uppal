@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -344,6 +345,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               freeCashFlowYield: metrics.freeCashFlowYield || 0
             };
           }).reverse();
+          
+          // Initialize visible segments for FCF vs SBC comparison
+          if (metric === 'comparison' && data.length > 0) {
+            const initialVisibility: {[key: string]: boolean} = {};
+            initialVisibility['freeCashFlow'] = true;
+            initialVisibility['stockBasedCompensation'] = true;
+            setVisibleSegments(initialVisibility);
+          }
           break;
 
         case 'expenses':
@@ -354,6 +363,15 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             sgaExpenses: item.sellingGeneralAndAdministrativeExpenses || 0,
             operatingExpenses: item.operatingExpenses || 0
           })).reverse();
+          
+          // Initialize visible segments for expenses
+          if (data.length > 0) {
+            const initialVisibility: {[key: string]: boolean} = {};
+            initialVisibility['rdExpenses'] = true;
+            initialVisibility['sgaExpenses'] = true;
+            initialVisibility['operatingExpenses'] = true;
+            setVisibleSegments(initialVisibility);
+          }
           break;
 
         case 'cashDebt':
@@ -363,6 +381,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             totalCash: item.cashAndCashEquivalents || 0,
             totalDebt: item.totalDebt || 0
           })).reverse();
+          
+          // Initialize visible segments for cash vs debt
+          if (data.length > 0) {
+            const initialVisibility: {[key: string]: boolean} = {};
+            initialVisibility['totalCash'] = true;
+            initialVisibility['totalDebt'] = true;
+            setVisibleSegments(initialVisibility);
+          }
           break;
 
         case 'margins':
@@ -440,6 +466,31 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     );
   };
 
+  // Function to render metric legend for non-segmentation charts
+  const renderMetricLegend = (metrics: {key: string, name: string, color: string}[]) => {
+    return (
+      <div className="flex flex-wrap gap-2 mb-4">
+        {metrics.map((metric) => (
+          <button
+            key={metric.key}
+            onClick={() => toggleSegmentVisibility(metric.key)}
+            className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-all ${
+              visibleSegments[metric.key]
+                ? 'bg-white border-2 text-gray-700 shadow-sm hover:shadow-md'
+                : 'bg-gray-200 border-2 border-gray-300 text-gray-400'
+            }`}
+          >
+            <div
+              className={`w-3 h-3 rounded-full ${visibleSegments[metric.key] ? '' : 'opacity-30'}`}
+              style={{ backgroundColor: metric.color }}
+            />
+            <span className={visibleSegments[metric.key] ? '' : 'line-through'}>{metric.name}</span>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   const renderChart = () => {
     if (chartLoading[activeTab]) {
       return (
@@ -472,8 +523,8 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   // Special formatting for segmentation data (always currency values)
                   (activeTab === 'revenue' && (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments'))
                     ? formatCurrency(entry.value, 2)
-                    : entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt')
-                    ? formatCurrency(entry.value)
+                    : entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt') || entry.dataKey.includes('Expenses') || entry.dataKey.includes('Cash') || entry.dataKey.includes('Debt') || entry.dataKey.includes('Compensation')
+                    ? formatCurrency(entry.value, 2)
                     : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield')
                     ? formatPercentage(entry.value)
                     : entry.value.toFixed(2)
@@ -595,19 +646,34 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
       case 'cashFlow':
         if (activeMetric.cashFlow === 'comparison') {
+          const metrics = [
+            { key: 'freeCashFlow', name: 'Free Cash Flow', color: '#22c55e' },
+            { key: 'stockBasedCompensation', name: 'Stock-Based Compensation', color: '#f59e0b' }
+          ];
+          const visibleKeys = metrics.filter(metric => visibleSegments[metric.key] !== false);
+          
           return (
-            <ChartContainer config={{}} className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                  <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                  <ChartTooltip content={<CustomTooltip />} />
-                  <Bar dataKey="freeCashFlow" fill="#22c55e" name="Free Cash Flow ($)" />
-                  <Bar dataKey="stockBasedCompensation" fill="#f59e0b" name="Stock-Based Compensation ($)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            <div className="space-y-4">
+              {renderMetricLegend(metrics)}
+              <ChartContainer config={{}} className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                    <XAxis dataKey="year" stroke="#6b7280" />
+                    <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                    <ChartTooltip content={<CustomTooltip />} />
+                    {visibleKeys.map((metric) => (
+                      <Bar 
+                        key={metric.key}
+                        dataKey={metric.key} 
+                        fill={metric.color} 
+                        name={metric.name}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
           );
         }
         return (
@@ -628,36 +694,66 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         );
 
       case 'expenses':
+        const expenseMetrics = [
+          { key: 'rdExpenses', name: 'R&D', color: '#ef4444' },
+          { key: 'sgaExpenses', name: 'Sales & Marketing', color: '#f59e0b' },
+          { key: 'operatingExpenses', name: 'Operating Expenses', color: '#8b5cf6' }
+        ];
+        const visibleExpenseKeys = expenseMetrics.filter(metric => visibleSegments[metric.key] !== false);
+        
         return (
-          <ChartContainer config={{}} className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                <XAxis dataKey="year" stroke="#6b7280" />
-                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                <ChartTooltip content={<CustomTooltip />} />
-                <Bar dataKey="rdExpenses" fill="#ef4444" name="R&D ($)" />
-                <Bar dataKey="sgaExpenses" fill="#f59e0b" name="Sales & Marketing ($)" />
-                <Bar dataKey="operatingExpenses" fill="#8b5cf6" name="Operating Expenses ($)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+          <div className="space-y-4">
+            {renderMetricLegend(expenseMetrics)}
+            <ChartContainer config={{}} className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                  <XAxis dataKey="year" stroke="#6b7280" />
+                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                  <ChartTooltip content={<CustomTooltip />} />
+                  {visibleExpenseKeys.map((metric) => (
+                    <Bar 
+                      key={metric.key}
+                      dataKey={metric.key} 
+                      fill={metric.color} 
+                      name={metric.name}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
         );
 
       case 'cashDebt':
+        const cashDebtMetrics = [
+          { key: 'totalCash', name: 'Total Cash', color: '#22c55e' },
+          { key: 'totalDebt', name: 'Total Debt', color: '#ef4444' }
+        ];
+        const visibleCashDebtKeys = cashDebtMetrics.filter(metric => visibleSegments[metric.key] !== false);
+        
         return (
-          <ChartContainer config={{}} className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                <XAxis dataKey="year" stroke="#6b7280" />
-                <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                <ChartTooltip content={<CustomTooltip />} />
-                <Bar dataKey="totalCash" fill="#22c55e" name="Total Cash ($)" />
-                <Bar dataKey="totalDebt" fill="#ef4444" name="Total Debt ($)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+          <div className="space-y-4">
+            {renderMetricLegend(cashDebtMetrics)}
+            <ChartContainer config={{}} className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                  <XAxis dataKey="year" stroke="#6b7280" />
+                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                  <ChartTooltip content={<CustomTooltip />} />
+                  {visibleCashDebtKeys.map((metric) => (
+                    <Bar 
+                      key={metric.key}
+                      dataKey={metric.key} 
+                      fill={metric.color} 
+                      name={metric.name}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
         );
 
       case 'margins':
