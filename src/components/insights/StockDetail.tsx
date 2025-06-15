@@ -79,6 +79,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   const [dataType, setDataType] = useState<'annual' | 'quarterly'>('annual');
   const [ratioType, setRatioType] = useState<'annual' | 'ttm'>('annual');
   
+  // Segment filtering states
+  const [visibleSegments, setVisibleSegments] = useState<{[key: string]: boolean}>({});
+  
   // Data states
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartLoading, setChartLoading] = useState<{[key: string]: boolean}>({});
@@ -246,6 +249,16 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               
               console.log('Processed product segmentation data:', data);
               setRevenueSegmentData(data);
+              
+              // Initialize visible segments for product segments
+              if (data.length > 0) {
+                const segments = Object.keys(data[0]).filter(k => k !== 'year' && k !== 'date');
+                const initialVisibility: {[key: string]: boolean} = {};
+                segments.forEach(segment => {
+                  initialVisibility[segment] = true;
+                });
+                setVisibleSegments(initialVisibility);
+              }
             } else {
               console.log('No product segmentation data available or incorrect format');
               data = [];
@@ -289,6 +302,16 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               
               console.log('Processed geographic segmentation data:', data);
               setRevenueSegmentData(data);
+              
+              // Initialize visible segments for geographic segments
+              if (data.length > 0) {
+                const segments = Object.keys(data[0]).filter(k => k !== 'year' && k !== 'date');
+                const initialVisibility: {[key: string]: boolean} = {};
+                segments.forEach(segment => {
+                  initialVisibility[segment] = true;
+                });
+                setVisibleSegments(initialVisibility);
+              }
             } else {
               console.log('No geographic segmentation data available or incorrect format');
               data = [];
@@ -380,6 +403,41 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     } finally {
       setChartLoading(prev => ({ ...prev, [tab]: false }));
     }
+  };
+
+  // Function to toggle segment visibility
+  const toggleSegmentVisibility = (segment: string) => {
+    setVisibleSegments(prev => ({
+      ...prev,
+      [segment]: !prev[segment]
+    }));
+  };
+
+  // Function to render segment legend
+  const renderSegmentLegend = (segments: string[]) => {
+    const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#10b981'];
+    
+    return (
+      <div className="flex flex-wrap gap-2 mb-4">
+        {segments.map((segment, index) => (
+          <button
+            key={segment}
+            onClick={() => toggleSegmentVisibility(segment)}
+            className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-all ${
+              visibleSegments[segment]
+                ? 'bg-white border-2 text-gray-700 shadow-sm hover:shadow-md'
+                : 'bg-gray-200 border-2 border-gray-300 text-gray-400'
+            }`}
+          >
+            <div
+              className={`w-3 h-3 rounded-full ${visibleSegments[segment] ? '' : 'opacity-30'}`}
+              style={{ backgroundColor: colors[index % colors.length] }}
+            />
+            <span className={visibleSegments[segment] ? '' : 'line-through'}>{segment}</span>
+          </button>
+        ))}
+      </div>
+    );
   };
 
   const renderChart = () => {
@@ -476,26 +534,32 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             );
           }
           
+          // Filter visible keys based on segment visibility
+          const visibleKeys = keys.filter(key => visibleSegments[key] !== false);
+          
           return (
-            <ChartContainer config={{}} className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                  <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                  <ChartTooltip content={<CustomTooltip />} />
-                  {keys.map((key, index) => (
-                    <Bar 
-                      key={key} 
-                      dataKey={key} 
-                      stackId="segments" 
-                      fill={colors[index % colors.length]}
-                      name={key}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            <div className="space-y-4">
+              {renderSegmentLegend(keys)}
+              <ChartContainer config={{}} className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                    <XAxis dataKey="year" stroke="#6b7280" />
+                    <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
+                    <ChartTooltip content={<CustomTooltip />} />
+                    {visibleKeys.map((key, index) => (
+                      <Bar 
+                        key={key} 
+                        dataKey={key} 
+                        stackId="segments" 
+                        fill={colors[keys.indexOf(key) % colors.length]}
+                        name={key}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
           );
         }
         return (
