@@ -160,6 +160,11 @@ serve(async (req) => {
     const response = await retryRequest(endpoint);
     const data = await response.json();
 
+    // Log the response for debugging segmentation data
+    if (action.includes('segmentation')) {
+      console.log(`Segmentation data for ${symbol}:`, JSON.stringify(data, null, 2));
+    }
+
     // Store in cache
     cache.set(cacheKey, {
       data,

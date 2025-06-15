@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -207,35 +206,72 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               revenue: item.revenue || 0
             })).reverse();
           } else if (metric === 'productSegments') {
+            console.log('Fetching product segmentation data for:', ticker);
             const segmentData = await fmpAPI.getRevenueProductSegmentation(ticker, dataType);
-            if (segmentData && segmentData.length > 0) {
-              // Process product segmentation data
+            console.log('Product segmentation response:', segmentData);
+            
+            if (segmentData && Array.isArray(segmentData) && segmentData.length > 0) {
+              // Take the most recent data points based on the limit
               const latestData = segmentData.slice(0, limit);
               data = latestData.map((item: any) => {
-                const result: any = { year: new Date(item.date).getFullYear() };
-                if (item.data) {
+                const result: any = { 
+                  year: item.date ? new Date(item.date).getFullYear() : 'N/A'
+                };
+                
+                // Handle different possible data structures
+                if (item.data && typeof item.data === 'object') {
+                  // Structure: { date: "2023-12-31", data: { "Product A": 1000, "Product B": 2000 } }
                   Object.keys(item.data).forEach(key => {
                     result[key] = item.data[key] || 0;
+                  });
+                } else {
+                  // Handle direct structure or flatten nested objects
+                  Object.keys(item).forEach(key => {
+                    if (key !== 'date' && key !== 'year' && typeof item[key] === 'number') {
+                      result[key] = item[key];
+                    }
                   });
                 }
                 return result;
               }).reverse();
+              
+              console.log('Processed product segmentation data:', data);
               setRevenueSegmentData(data);
+            } else {
+              console.log('No product segmentation data available');
+              data = [];
             }
           } else if (metric === 'geographicSegments') {
+            console.log('Fetching geographic segmentation data for:', ticker);
             const geoData = await fmpAPI.getRevenueGeographicSegmentation(ticker, dataType);
-            if (geoData && geoData.length > 0) {
+            console.log('Geographic segmentation response:', geoData);
+            
+            if (geoData && Array.isArray(geoData) && geoData.length > 0) {
               const latestData = geoData.slice(0, limit);
               data = latestData.map((item: any) => {
-                const result: any = { year: new Date(item.date).getFullYear() };
-                if (item.data) {
+                const result: any = { 
+                  year: item.date ? new Date(item.date).getFullYear() : 'N/A'
+                };
+                
+                if (item.data && typeof item.data === 'object') {
                   Object.keys(item.data).forEach(key => {
                     result[key] = item.data[key] || 0;
+                  });
+                } else {
+                  Object.keys(item).forEach(key => {
+                    if (key !== 'date' && key !== 'year' && typeof item[key] === 'number') {
+                      result[key] = item[key];
+                    }
                   });
                 }
                 return result;
               }).reverse();
+              
+              console.log('Processed geographic segmentation data:', data);
               setRevenueSegmentData(data);
+            } else {
+              console.log('No geographic segmentation data available');
+              data = [];
             }
           }
           break;
@@ -341,7 +377,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     if (!data || data.length === 0) {
       return (
         <div className="flex items-center justify-center h-64 text-muted-foreground">
-          No data available
+          No data available for this metric
         </div>
       );
     }
@@ -404,13 +440,23 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
       case 'revenue':
         if (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments') {
-          const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'year') : [];
-          const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
+          const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'year' && k !== 'date') : [];
+          const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#10b981'];
+          
+          console.log('Rendering segmentation chart with keys:', keys, 'data:', data);
+          
+          if (keys.length === 0) {
+            return (
+              <div className="flex items-center justify-center h-64 text-muted-foreground">
+                No segmentation data available
+              </div>
+            );
+          }
           
           return (
             <ChartContainer config={{}} className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
+                <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                   <XAxis dataKey="year" stroke="#6b7280" />
                   <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
