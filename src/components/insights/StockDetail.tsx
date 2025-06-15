@@ -211,21 +211,23 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             console.log('Product segmentation response:', segmentData);
             
             if (segmentData && Array.isArray(segmentData) && segmentData.length > 0) {
-              // Take the most recent data points based on the limit
+              // Process the correct stable API response format
               const latestData = segmentData.slice(0, limit);
               data = latestData.map((item: any) => {
                 const result: any = { 
                   year: item.date ? new Date(item.date).getFullYear() : 'N/A'
                 };
                 
-                // Handle different possible data structures
-                if (item.data && typeof item.data === 'object') {
-                  // Structure: { date: "2023-12-31", data: { "Product A": 1000, "Product B": 2000 } }
-                  Object.keys(item.data).forEach(key => {
-                    result[key] = item.data[key] || 0;
+                // Handle the stable API response format
+                if (item.segmentValues && Array.isArray(item.segmentValues)) {
+                  // Format: { date: "2023-12-31", segmentValues: [{ segment: "Product A", value: 1000 }] }
+                  item.segmentValues.forEach((segment: any) => {
+                    if (segment.segment && segment.value !== undefined) {
+                      result[segment.segment] = segment.value;
+                    }
                   });
-                } else {
-                  // Handle direct structure or flatten nested objects
+                } else if (typeof item === 'object') {
+                  // Handle alternative formats
                   Object.keys(item).forEach(key => {
                     if (key !== 'date' && key !== 'year' && typeof item[key] === 'number') {
                       result[key] = item[key];
@@ -238,7 +240,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               console.log('Processed product segmentation data:', data);
               setRevenueSegmentData(data);
             } else {
-              console.log('No product segmentation data available');
+              console.log('No product segmentation data available or incorrect format');
               data = [];
             }
           } else if (metric === 'geographicSegments') {
@@ -253,11 +255,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   year: item.date ? new Date(item.date).getFullYear() : 'N/A'
                 };
                 
-                if (item.data && typeof item.data === 'object') {
-                  Object.keys(item.data).forEach(key => {
-                    result[key] = item.data[key] || 0;
+                // Handle the stable API response format
+                if (item.segmentValues && Array.isArray(item.segmentValues)) {
+                  item.segmentValues.forEach((segment: any) => {
+                    if (segment.segment && segment.value !== undefined) {
+                      result[segment.segment] = segment.value;
+                    }
                   });
-                } else {
+                } else if (typeof item === 'object') {
                   Object.keys(item).forEach(key => {
                     if (key !== 'date' && key !== 'year' && typeof item[key] === 'number') {
                       result[key] = item[key];
@@ -270,7 +275,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               console.log('Processed geographic segmentation data:', data);
               setRevenueSegmentData(data);
             } else {
-              console.log('No geographic segmentation data available');
+              console.log('No geographic segmentation data available or incorrect format');
               data = [];
             }
           }

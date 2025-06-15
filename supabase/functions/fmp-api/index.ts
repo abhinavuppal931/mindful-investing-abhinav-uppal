@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
@@ -127,11 +128,13 @@ serve(async (req) => {
         ttl = 60 * 60 * 1000; // 1 hour
         break;
       case 'revenue-product-segmentation':
-        endpoint = `${STABLE_BASE_URL}/revenue-product-segmentation/${symbol}?period=${period}&structure=flat&apikey=${FMP_API_KEY}`;
+        // Use stable endpoint as per API documentation
+        endpoint = `${STABLE_BASE_URL}/revenue-product-segmentation?symbol=${symbol}&period=${period}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       case 'revenue-geographic-segmentation':
-        endpoint = `${STABLE_BASE_URL}/revenue-geographic-segmentation/${symbol}?period=${period}&structure=flat&apikey=${FMP_API_KEY}`;
+        // Use stable endpoint as per API documentation
+        endpoint = `${STABLE_BASE_URL}/revenue-geographic-segmentation?symbol=${symbol}&period=${period}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       case 'index-quote':
