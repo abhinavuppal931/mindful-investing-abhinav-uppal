@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendingUp, TrendingDown, DollarSign, BarChart3, PieChart, Calculator, Brain, MessageSquare } from 'lucide-react';
-import LineChart from '@/components/charts/LineChart';
+import MultiLineChart from '@/components/charts/MultiLineChart';
 import CompanyOverview from '@/components/insights/CompanyOverview';
 import TodaysPriceDriver from '@/components/insights/TodaysPriceDriver';
 import AIAnalysisGrid from '@/components/insights/AIAnalysisGrid';
@@ -63,15 +63,10 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     );
   }
 
-  const financialData = {
-    incomeStatement,
-    balanceSheet,
-    cashFlow,
-    keyMetrics,
-    keyMetricsTTM,
-    ratios,
-    ratiosTTM
-  };
+  // Convert financialData object to array format for AIAnalysisGrid
+  const financialDataArray = [
+    { incomeStatement, balanceSheet, cashFlow, keyMetrics, keyMetricsTTM, ratios, ratiosTTM }
+  ];
 
   const prepareChartData = (data: any[], fields: string[], labels: string[]) => {
     if (!data || data.length === 0) return [];
@@ -165,7 +160,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       <CompanyOverview profile={profile} />
 
       {/* Today's Price Driver */}
-      <TodaysPriceDriver ticker={ticker} financialData={financialData} />
+      <TodaysPriceDriver ticker={ticker} financialData={financialDataArray[0]} />
 
       {/* Charts Section */}
       <div className="space-y-6">
@@ -204,7 +199,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
               <CardContent>
                 {revenueData.length > 0 ? (
-                  <LineChart
+                  <MultiLineChart
                     data={revenueData}
                     lines={[
                       { key: 'Revenue', color: '#3b82f6', name: 'Revenue' },
@@ -235,7 +230,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
               <CardContent>
                 {cashFlowData.length > 0 ? (
-                  <LineChart
+                  <MultiLineChart
                     data={cashFlowData}
                     lines={[
                       { key: 'Operating Cash Flow', color: '#3b82f6', name: 'Operating Cash Flow' },
@@ -264,7 +259,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
               <CardContent>
                 {balanceSheetData.length > 0 ? (
-                  <LineChart
+                  <MultiLineChart
                     data={balanceSheetData}
                     lines={[
                       { key: 'Cash', color: '#10b981', name: 'Cash' },
@@ -293,7 +288,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
               <CardContent>
                 {marginData.length > 0 ? (
-                  <LineChart
+                  <MultiLineChart
                     data={marginData}
                     lines={[
                       { key: 'Gross Margin', color: '#3b82f6', name: 'Gross Margin' },
@@ -323,7 +318,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </CardHeader>
               <CardContent>
                 {keyRatiosData.length > 0 ? (
-                  <LineChart
+                  <MultiLineChart
                     data={keyRatiosData}
                     lines={[
                       { key: 'P/E', color: '#3b82f6', name: 'P/E Ratio' },
@@ -351,7 +346,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       {/* AI Analysis Grid */}
       <AIAnalysisGrid 
         ticker={ticker} 
-        financialData={financialData}
+        financialData={financialDataArray}
         newsData={news || []}
       />
     </div>
