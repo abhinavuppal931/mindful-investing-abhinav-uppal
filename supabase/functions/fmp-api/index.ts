@@ -89,11 +89,6 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/key-metrics-ttm/${symbol}?apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
-      case 'metrics-ttm-stable':
-        // Use stable URL for TTM metrics
-        endpoint = `${STABLE_BASE_URL}/key-metrics-ttm?symbol=${symbol}&apikey=${FMP_API_KEY}`;
-        ttl = 24 * 60 * 60 * 1000; // 24 hours
-        break;
       case 'ratios':
         endpoint = `${BASE_URL}/ratios/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
@@ -102,10 +97,15 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/ratios-ttm/${symbol}?apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
-      case 'ratios-ttm-stable':
-        // Use stable URL for TTM ratios
-        endpoint = `${STABLE_BASE_URL}/ratios-ttm?symbol=${symbol}&apikey=${FMP_API_KEY}`;
-        ttl = 24 * 60 * 60 * 1000; // 24 hours
+      case 'historical-prices':
+        const fromDate = from || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const toDate = to || new Date().toISOString().split('T')[0];
+        endpoint = `${BASE_URL}/historical-price-full/${symbol}?from=${fromDate}&to=${toDate}&apikey=${FMP_API_KEY}`;
+        ttl = 30 * 60 * 1000; // 30 minutes
+        break;
+      case 'historical-chart':
+        endpoint = `${BASE_URL}/historical-chart/1day/${symbol}?from=${from}&to=${to}&apikey=${FMP_API_KEY}`;
+        ttl = 30 * 60 * 1000; // 30 minutes
         break;
       case 'enterprise-values':
         endpoint = `${BASE_URL}/enterprise-values/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
@@ -144,16 +144,6 @@ serve(async (req) => {
       case 'earnings-transcript':
         endpoint = `${BASE_URL}/earning_call_transcript/${symbol}?year=${year}&quarter=${quarter}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
-        break;
-      case 'historical-prices':
-        const fromDate = from || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const toDate = to || new Date().toISOString().split('T')[0];
-        endpoint = `${BASE_URL}/historical-price-full/${symbol}?from=${fromDate}&to=${toDate}&apikey=${FMP_API_KEY}`;
-        ttl = 30 * 60 * 1000; // 30 minutes
-        break;
-      case 'historical-chart':
-        endpoint = `${BASE_URL}/historical-chart/1day/${symbol}?from=${from}&to=${to}&apikey=${FMP_API_KEY}`;
-        ttl = 30 * 60 * 1000; // 30 minutes
         break;
       default:
         throw new Error('Invalid action');
