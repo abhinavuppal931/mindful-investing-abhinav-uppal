@@ -1,4 +1,6 @@
 
+import React from 'react';
+
 export const formatAIContent = (content: string): JSX.Element[] => {
   if (!content) return [];
 
