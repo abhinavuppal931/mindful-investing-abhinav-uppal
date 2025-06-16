@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar as CalendarIcon, Search, Calendar, ArrowUpRight, Calendar as CalendarLogo, Sun, Moon, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Calendar, ArrowUpRight, Calendar as CalendarLogo, Sun, Moon, Loader2, Grid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,9 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { useEarningsData } from '@/hooks/useEarningsData';
+import { format, addDays } from 'date-fns';
+import { useEarningsData, EarningsEvent } from '@/hooks/useEarningsData';
 import { openaiAPI, logokitAPI } from '@/services/api';
+import EarningsCalendarGrid from '@/components/earnings/EarningsCalendarGrid';
+import EarningsSidebar from '@/components/earnings/EarningsSidebar';
 
 const Earnings = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -28,15 +29,23 @@ const Earnings = () => {
   const [selectedTranscript, setSelectedTranscript] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('transcript');
   const [companyLogos, setCompanyLogos] = useState<Record<string, string>>({});
+  const [viewMode, setViewMode] = useState<'7days' | 'month'>('7days');
+  const [calendarViewType, setCalendarViewType] = useState<'calendar' | 'list'>('calendar');
   
-  // Pagination state
+  // Sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<EarningsEvent | undefined>();
+  const [overflowCompanies, setOverflowCompanies] = useState<EarningsEvent[]>([]);
+  const [overflowDate, setOverflowDate] = useState<Date | undefined>();
+  
+  // Pagination state for list view
   const [currentCalendarPage, setCurrentCalendarPage] = useState(1);
   const [currentUpcomingPage, setCurrentUpcomingPage] = useState(1);
   const itemsPerPage = 10;
   
   const { earnings, transcripts, loading, error, fetchEarningsCalendar, fetchEarningsTranscript } = useEarningsData();
   
-  // Filter earnings by search query only (remove date filtering to fix the issue)
+  // Filter earnings by search query
   const filteredEarnings = earnings.filter(earning => {
     const matchesSearch = 
       earning.symbol.toLowerCase().includes(searchQuery.toLowerCase());
@@ -81,6 +90,27 @@ const Earnings = () => {
       console.error(`Error fetching logo for ${symbol}:`, error);
     }
     return null;
+  };
+
+  const handleCompanyClick = (company: EarningsEvent) => {
+    setSelectedCompany(company);
+    setOverflowCompanies([]);
+    setOverflowDate(undefined);
+    setSidebarOpen(true);
+  };
+
+  const handleOverflowClick = (companies: EarningsEvent[], date: Date) => {
+    setSelectedCompany(undefined);
+    setOverflowCompanies(companies);
+    setOverflowDate(date);
+    setSidebarOpen(true);
+  };
+
+  const handleCloseSidebar = () => {
+    setSidebarOpen(false);
+    setSelectedCompany(undefined);
+    setOverflowCompanies([]);
+    setOverflowDate(undefined);
   };
 
   const handleTranscriptSearch = async () => {
@@ -309,8 +339,7 @@ const Earnings = () => {
                   onSelect={(selectedDate) => {
                     if (selectedDate) {
                       setDate(selectedDate);
-                      setCurrentCalendarPage(1); // Reset pagination
-                      // Fetch earnings for the selected month range (fix the date filtering)
+                      setCurrentCalendarPage(1);
                       const from = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1), 'yyyy-MM-dd');
                       const to = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0), 'yyyy-MM-dd');
                       fetchEarningsCalendar(from, to);
@@ -342,22 +371,65 @@ const Earnings = () => {
             <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle>Earnings Calendar</CardTitle>
-                  <div className="relative w-64">
-                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search by ticker..."
-                      className="pl-8"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setCurrentCalendarPage(1); // Reset pagination on search
-                      }}
-                    />
+                  <div className="flex items-center space-x-4">
+                    <CardTitle>Earnings Calendar</CardTitle>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant={calendarViewType === 'calendar' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCalendarViewType('calendar')}
+                      >
+                        <Grid className="h-4 w-4 mr-2" />
+                        Calendar
+                      </Button>
+                      <Button
+                        variant={calendarViewType === 'list' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCalendarViewType('list')}
+                      >
+                        <List className="h-4 w-4 mr-2" />
+                        List
+                      </Button>
+                    </div>
                   </div>
+                  
+                  {calendarViewType === 'calendar' ? (
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant={viewMode === '7days' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('7days')}
+                      >
+                        Next 7 Days
+                      </Button>
+                      <Button
+                        variant={viewMode === 'month' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('month')}
+                      >
+                        Full Month
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="relative w-64">
+                      <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Search by ticker..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setCurrentCalendarPage(1);
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <CardDescription>
-                  {date ? `Showing earnings for ${format(date, 'MMMM yyyy')}` : 'Select a date to view earnings'}
+                  {calendarViewType === 'calendar' 
+                    ? `Showing ${viewMode === '7days' ? 'next 7 days' : format(date || new Date(), 'MMMM yyyy')}`
+                    : `Showing earnings for ${format(date || new Date(), 'MMMM yyyy')}`
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -373,6 +445,14 @@ const Earnings = () => {
                     <h3 className="text-lg font-medium mb-2">Error loading earnings</h3>
                     <p className="text-gray-500">{error}</p>
                   </div>
+                ) : calendarViewType === 'calendar' ? (
+                  <EarningsCalendarGrid
+                    earnings={filteredEarnings}
+                    viewMode={viewMode}
+                    selectedDate={date || new Date()}
+                    onCompanyClick={handleCompanyClick}
+                    onOverflowClick={handleOverflowClick}
+                  />
                 ) : paginatedCalendarEarnings.length > 0 ? (
                   <>
                     <div className="overflow-x-auto">
@@ -524,7 +604,7 @@ const Earnings = () => {
           </div>
         </div>
 
-        {/* Earnings Transcripts Section - Made wider and positioned below calendar */}
+        {/* Earnings Transcripts Section - Keep existing code unchanged */}
         <div className="w-full">
           <Card>
             <CardHeader>
@@ -655,6 +735,15 @@ const Earnings = () => {
           </Card>
         </div>
       </div>
+
+      {/* Sidebar */}
+      <EarningsSidebar
+        isOpen={sidebarOpen}
+        onClose={handleCloseSidebar}
+        selectedCompany={selectedCompany}
+        overflowCompanies={overflowCompanies}
+        overflowDate={overflowDate}
+      />
     </MainLayout>
   );
 };
