@@ -1,6 +1,6 @@
 
 export const formatCurrency = (value: number | null | undefined): string => {
-  if (value === null || value === undefined || isNaN(value)) {
+  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
     return 'N/A';
   }
   
@@ -18,7 +18,7 @@ export const formatCurrency = (value: number | null | undefined): string => {
 };
 
 export const formatNumber = (value: number | null | undefined, decimals: number = 2): string => {
-  if (value === null || value === undefined || isNaN(value)) {
+  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
     return 'N/A';
   }
   
@@ -34,7 +34,7 @@ export const formatNumber = (value: number | null | undefined, decimals: number 
 };
 
 export const formatLargeNumber = (value: number | null | undefined): string => {
-  if (value === null || value === undefined || isNaN(value)) {
+  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
     return 'N/A';
   }
   
@@ -55,7 +55,7 @@ export const formatLargeNumber = (value: number | null | undefined): string => {
 };
 
 export const formatPercentage = (value: number | null | undefined): string => {
-  if (value === null || value === undefined || isNaN(value)) {
+  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
     return 'N/A';
   }
   
@@ -63,6 +63,19 @@ export const formatPercentage = (value: number | null | undefined): string => {
     return `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
   } catch (error) {
     console.warn('Error formatting percentage:', error);
+    return 'N/A';
+  }
+};
+
+export const formatPercent = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+    return 'N/A';
+  }
+  
+  try {
+    return `${(value * 100).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
+  } catch (error) {
+    console.warn('Error formatting percent:', error);
     return 'N/A';
   }
 };
