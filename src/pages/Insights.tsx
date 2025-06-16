@@ -163,6 +163,11 @@ const Insights = () => {
       } else {
         await addToWatchlist(tickerSymbol);
         toast({ title: "Added", description: `${tickerSymbol} added to watchlist` });
+        
+        // Force a refetch of the watchlist to ensure UI updates
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       }
     } catch (error) {
       toast({ 

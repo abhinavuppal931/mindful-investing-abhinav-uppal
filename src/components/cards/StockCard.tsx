@@ -2,6 +2,7 @@
 import React from 'react';
 import { ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import StockLogo from '@/components/insights/StockLogo';
 
 interface StockCardProps {
   ticker: string;
@@ -25,9 +26,12 @@ const StockCard: React.FC<StockCardProps> = ({
   return (
     <div className="stock-card group">
       <div className="flex justify-between items-start mb-2">
-        <div>
-          <h3 className="text-lg font-bold">{ticker}</h3>
-          <p className="text-sm text-gray-500 truncate max-w-[180px]">{companyName}</p>
+        <div className="flex items-center space-x-2">
+          <StockLogo ticker={ticker} size={32} className="flex-shrink-0" />
+          <div className="min-w-0">
+            <h3 className="text-lg font-bold">{ticker}</h3>
+            <p className="text-sm text-gray-500 truncate max-w-[150px]">{companyName}</p>
+          </div>
         </div>
         <Button 
           variant="ghost" 
