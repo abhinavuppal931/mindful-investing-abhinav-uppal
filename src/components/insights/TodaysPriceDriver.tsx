@@ -42,6 +42,8 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
           setInsight(result.analysis);
           // Cache the result
           openaiCache.set(cacheKey, result.analysis);
+        } else {
+          setError('Unable to generate price driver analysis');
         }
       } catch (err) {
         console.error('Error fetching price driver:', err);
@@ -89,7 +91,7 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
       </CardHeader>
       <CardContent>
         <p className="text-foreground leading-relaxed text-sm">
-          {insight}
+          {insight || 'No analysis available'}
         </p>
       </CardContent>
     </Card>

@@ -76,25 +76,33 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
       console.log(`Fetching new ${analysisType} for ${ticker}`);
       let result;
       
-      switch (analysisType) {
-        case 'moat':
-          result = await openaiAPI.analyzeCompanyMoat(ticker, financialData);
-          break;
-        case 'risks':
-          result = await openaiAPI.analyzeInvestmentRisks(ticker, financialData, newsData);
-          break;
-        case 'nearTermTailwinds':
-          result = await openaiAPI.analyzeNearTermTailwinds(ticker, financialData, newsData);
-          break;
-        case 'longTermTailwinds':
-          result = await openaiAPI.analyzeLongTermTailwinds(ticker, financialData, newsData);
-          break;
-      }
+      try {
+        switch (analysisType) {
+          case 'moat':
+            result = await openaiAPI.analyzeCompanyMoat(ticker, financialData);
+            break;
+          case 'risks':
+            result = await openaiAPI.analyzeInvestmentRisks(ticker, financialData, newsData);
+            break;
+          case 'nearTermTailwinds':
+            result = await openaiAPI.analyzeNearTermTailwinds(ticker, financialData, newsData);
+            break;
+          case 'longTermTailwinds':
+            result = await openaiAPI.analyzeLongTermTailwinds(ticker, financialData, newsData);
+            break;
+          default:
+            throw new Error(`Unknown analysis type: ${analysisType}`);
+        }
 
-      if (result?.analysis) {
-        setAnalyses(prev => ({ ...prev, [analysisType]: result.analysis }));
-        // Cache the result
-        openaiCache.set(cacheKey, result.analysis);
+        if (result?.analysis) {
+          setAnalyses(prev => ({ ...prev, [analysisType]: result.analysis }));
+          // Cache the result
+          openaiCache.set(cacheKey, result.analysis);
+        } else {
+          console.error(`No analysis returned for ${analysisType}`);
+        }
+      } catch (apiError) {
+        console.error(`API error for ${analysisType}:`, apiError);
       }
     } catch (error) {
       console.error(`Error loading ${analysisType} analysis:`, error);
