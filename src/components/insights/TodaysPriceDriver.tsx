@@ -23,26 +23,25 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
       setError(null);
       
       try {
-        // Clear cache for real-time data
+        // Check cache first
         const cacheKey = `price_driver_${ticker}`;
-        openaiCache.clear(cacheKey);
+        const cachedData = openaiCache.get(cacheKey);
+        
+        if (cachedData) {
+          console.log(`Using cached price driver for ${ticker}`);
+          setInsight(cachedData);
+          setLoading(false);
+          return;
+        }
 
-        // Fetch new data
-        console.log(`Fetching current price driver for ${ticker}`);
+        // Fetch new data if not cached
+        console.log(`Fetching new price driver for ${ticker}`);
         const result = await openaiAPI.generateBriefInsight(ticker, financialData);
         
         if (result?.analysis) {
-          // Clean up the analysis text to remove debugging information
-          let cleanedAnalysis = result.analysis;
-          
-          // Remove data_period references and debugging dates
-          cleanedAnalysis = cleanedAnalysis.replace(/\*\*data_period\*\*[^.]*\./gi, '');
-          cleanedAnalysis = cleanedAnalysis.replace(/data_period[^.]*\./gi, '');
-          cleanedAnalysis = cleanedAnalysis.replace(/\("start_date"[^)]*\)/gi, '');
-          cleanedAnalysis = cleanedAnalysis.replace(/As of [^,]*, /gi, '');
-          cleanedAnalysis = cleanedAnalysis.replace(/\s+/g, ' ').trim();
-          
-          setInsight(cleanedAnalysis);
+          setInsight(result.analysis);
+          // Cache the result
+          openaiCache.set(cacheKey, result.analysis);
         } else {
           setError('Unable to generate price driver analysis');
         }
@@ -63,7 +62,7 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
         <CardContent className="py-6">
           <div className="flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
-            <span className="text-muted-foreground">Analyzing current market drivers...</span>
+            <span className="text-muted-foreground">Analyzing today's price drivers...</span>
           </div>
         </CardContent>
       </Card>
