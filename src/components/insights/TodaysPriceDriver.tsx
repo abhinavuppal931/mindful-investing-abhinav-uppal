@@ -25,7 +25,7 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
       try {
         // Clear cache for real-time data
         const cacheKey = `price_driver_${ticker}`;
-        openaiCache.delete(cacheKey);
+        openaiCache.clear(cacheKey);
 
         // Fetch new data
         console.log(`Fetching current price driver for ${ticker}`);
