@@ -66,19 +66,6 @@ export const fmpAPI = {
     }
   },
 
-  getMetricsTTMStable: async (symbol: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('fmp-api', {
-        body: { action: 'metrics-ttm-stable', symbol }
-      });
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('FMP Metrics TTM Stable error:', error);
-      throw error;
-    }
-  },
-
   getRatios: async (symbol: string, period = 'annual', limit = 10) => {
     try {
       const { data, error } = await supabase.functions.invoke('fmp-api', {
@@ -101,19 +88,6 @@ export const fmpAPI = {
       return data;
     } catch (error) {
       console.error('FMP Ratios TTM error:', error);
-      throw error;
-    }
-  },
-
-  getRatiosTTMStable: async (symbol: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('fmp-api', {
-        body: { action: 'ratios-ttm-stable', symbol }
-      });
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('FMP Ratios TTM Stable error:', error);
       throw error;
     }
   },

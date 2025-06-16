@@ -66,5 +66,3 @@ export const formatPercentage = (value: number | null | undefined): string => {
     return 'N/A';
   }
 };
-
-export const formatPercent = formatPercentage;

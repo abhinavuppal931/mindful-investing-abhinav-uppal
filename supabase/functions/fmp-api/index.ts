@@ -89,22 +89,12 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/key-metrics-ttm/${symbol}?apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
-      case 'metrics-ttm-stable':
-        // Use stable endpoint for TTM key metrics
-        endpoint = `${STABLE_BASE_URL}/key-metrics-ttm?symbol=${symbol}&apikey=${FMP_API_KEY}`;
-        ttl = 24 * 60 * 60 * 1000; // 24 hours
-        break;
       case 'ratios':
         endpoint = `${BASE_URL}/ratios/${symbol}?period=${period}&limit=${limit}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       case 'ratios-ttm':
         endpoint = `${BASE_URL}/ratios-ttm/${symbol}?apikey=${FMP_API_KEY}`;
-        ttl = 24 * 60 * 60 * 1000; // 24 hours
-        break;
-      case 'ratios-ttm-stable':
-        // Use stable endpoint for TTM ratios
-        endpoint = `${STABLE_BASE_URL}/ratios-ttm?symbol=${symbol}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
       case 'historical-prices':
@@ -174,8 +164,8 @@ serve(async (req) => {
     const data = await response.json();
 
     // Log the response for debugging segmentation data
-    if (action.includes('segmentation') || action.includes('ttm')) {
-      console.log(`${action} data for ${symbol}:`, JSON.stringify(data, null, 2));
+    if (action.includes('segmentation')) {
+      console.log(`Segmentation data for ${symbol}:`, JSON.stringify(data, null, 2));
     }
 
     // Store in cache
