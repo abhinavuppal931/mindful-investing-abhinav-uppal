@@ -306,12 +306,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     country: stockData.country,
     website: stockData.website,
     ipoDate: stockData.ipoDate,
-    description: stockData.description
+    description: stockData.description,
+    ceo: stockData.ceo
   };
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">
-      <CompanyOverview data={companyOverviewData} />
+      <CompanyOverview profile={companyOverviewData} />
       
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
