@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { fmpAPI, finnhubAPI } from '../services/api';
+import { fmpAPI } from '@/services/api';
 
 export interface StockQuote {
   symbol: string;
@@ -16,152 +17,297 @@ export interface StockQuote {
   priceAvg200: number;
   volume: number;
   avgVolume: number;
-  eps: number;
-  pe: number;
-  sharesOutstanding: number;
+  pe?: number;
+  eps?: number;
 }
 
 export interface FinancialData {
   date: string;
+  symbol: string;
+  reportedCurrency: string;
+  cik: string;
+  fillingDate: string;
+  acceptedDate: string;
+  calendarYear: string;
+  period: string;
   revenue: number;
-  netIncome: number;
+  costOfRevenue: number;
   grossProfit: number;
-  operatingIncome: number;
-  totalDebt: number;
-  totalCash: number;
-  freeCashFlow: number;
-  operatingCashFlow: number;
+  grossProfitRatio: number;
+  researchAndDevelopmentExpenses: number;
+  generalAndAdministrativeExpenses: number;
+  sellingAndMarketingExpenses: number;
+  sellingGeneralAndAdministrativeExpenses: number;
+  otherExpenses: number;
+  operatingExpenses: number;
+  costAndExpenses: number;
+  interestIncome: number;
+  interestExpense: number;
+  depreciationAndAmortization: number;
   ebitda: number;
+  ebitdaratio: number;
+  operatingIncome: number;
+  operatingIncomeRatio: number;
+  totalOtherIncomeExpensesNet: number;
+  incomeBeforeTax: number;
+  incomeBeforeTaxRatio: number;
+  incomeTaxExpense: number;
+  netIncome: number;
+  netIncomeRatio: number;
+  eps: number;
+  epsdiluted: number;
+  weightedAverageShsOut: number;
+  weightedAverageShsOutDil: number;
+  link: string;
+  finalLink: string;
+}
+
+export interface KeyMetrics {
+  symbol: string;
+  date: string;
+  calendarYear: string;
+  period: string;
+  revenuePerShare: number;
+  netIncomePerShare: number;
+  operatingCashFlowPerShare: number;
+  freeCashFlowPerShare: number;
+  cashPerShare: number;
+  bookValuePerShare: number;
+  tangibleBookValuePerShare: number;
+  shareholdersEquityPerShare: number;
+  interestDebtPerShare: number;
+  marketCap: number;
+  enterpriseValue: number;
+  peRatio: number;
+  priceToSalesRatio: number;
+  pocfratio: number;
+  pfcfRatio: number;
+  pbRatio: number;
+  ptbRatio: number;
+  evToSales: number;
+  enterpriseValueOverEBITDA: number;
+  evToOperatingCashFlow: number;
+  evToFreeCashFlow: number;
+  earningsYield: number;
+  freeCashFlowYield: number;
+  debtToEquity: number;
+  debtToAssets: number;
+  netDebtToEBITDA: number;
+  currentRatio: number;
+  interestCoverage: number;
+  incomeQuality: number;
+  dividendYield: number;
+  payoutRatio: number;
+  salesGeneralAndAdministrativeToRevenue: number;
+  researchAndDdevelopementToRevenue: number;
+  intangiblesToTotalAssets: number;
+  capexToOperatingCashFlow: number;
+  capexToRevenue: number;
+  capexToDepreciation: number;
+  stockBasedCompensationToRevenue: number;
+  grahamNumber: number;
+  roic: number;
+  returnOnTangibleAssets: number;
+  grahamNetNet: number;
+  workingCapital: number;
+  tangibleAssetValue: number;
+  netCurrentAssetValue: number;
+  investedCapital: number;
+  averageReceivables: number;
+  averagePayables: number;
+  averageInventory: number;
+  daysSalesOutstanding: number;
+  daysPayablesOutstanding: number;
+  daysOfInventoryOnHand: number;
+  receivablesTurnover: number;
+  payablesTurnover: number;
+  inventoryTurnover: number;
+  roe: number;
+  capexPerShare: number;
 }
 
 export interface CompanyProfile {
   symbol: string;
+  price: number;
+  beta: number;
+  volAvg: number;
+  mktCap: number;
+  lastDiv: number;
+  range: string;
+  changes: number;
   companyName: string;
+  currency: string;
+  cik: string;
+  isin: string;
+  cusip: string;
+  exchange: string;
+  exchangeShortName: string;
   industry: string;
-  sector: string;
-  description: string;
   website: string;
+  description: string;
   ceo: string;
-  employees: number;
+  sector: string;
   country: string;
+  fullTimeEmployees: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  dcfDiff: number;
+  dcf: number;
   image: string;
+  ipoDate: string;
+  defaultImage: boolean;
+  isEtf: boolean;
+  isActivelyTrading: boolean;
+  isAdr: boolean;
+  isFund: boolean;
 }
 
-export const useStockData = (symbol: string) => {
+export interface Ratios {
+  symbol: string;
+  date: string;
+  calendarYear: string;
+  period: string;
+  currentRatio: number;
+  quickRatio: number;
+  cashRatio: number;
+  daysOfSalesOutstanding: number;
+  daysOfInventoryOutstanding: number;
+  operatingCycle: number;
+  daysOfPayablesOutstanding: number;
+  cashConversionCycle: number;
+  grossProfitMargin: number;
+  operatingProfitMargin: number;
+  pretaxProfitMargin: number;
+  netProfitMargin: number;
+  effectiveTaxRate: number;
+  returnOnAssets: number;
+  returnOnEquity: number;
+  returnOnCapitalEmployed: number;
+  netIncomePerEBT: number;
+  ebtPerEbit: number;
+  ebitPerRevenue: number;
+  debtRatio: number;
+  debtEquityRatio: number;
+  longTermDebtToCapitalization: number;
+  totalDebtToCapitalization: number;
+  interestCoverage: number;
+  cashFlowToDebtRatio: number;
+  companyEquityMultiplier: number;
+  receivablesTurnover: number;
+  payablesTurnover: number;
+  inventoryTurnover: number;
+  fixedAssetTurnover: number;
+  assetTurnover: number;
+  operatingCashFlowPerShare: number;
+  freeCashFlowPerShare: number;
+  cashPerShare: number;
+  payoutRatio: number;
+  operatingCashFlowSalesRatio: number;
+  freeCashFlowOperatingCashFlowRatio: number;
+  cashFlowCoverageRatios: number;
+  shortTermCoverageRatios: number;
+  capitalExpenditureCoverageRatio: number;
+  dividendPaidAndCapexCoverageRatio: number;
+  dividendPayoutRatio: number;
+  priceBookValueRatio: number;
+  priceToBookRatio: number;
+  priceToSalesRatio: number;
+  priceEarningsRatio: number;
+  priceToFreeCashFlowsRatio: number;
+  priceToOperatingCashFlowsRatio: number;
+  priceCashFlowRatio: number;
+  priceEarningsToGrowthRatio: number;
+  priceSalesRatio: number;
+  dividendYield: number;
+  enterpriseValueMultiple: number;
+  priceFairValue: number;
+}
+
+export const useStockData = (ticker: string, period: 'annual' | 'quarterly' = 'annual', years: number = 5) => {
   const [quote, setQuote] = useState<StockQuote | null>(null);
-  const [financials, setFinancials] = useState<FinancialData[]>([]);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [incomeStatement, setIncomeStatement] = useState<FinancialData[]>([]);
+  const [balanceSheet, setBalanceSheet] = useState<any[]>([]);
+  const [cashFlow, setCashFlow] = useState<any[]>([]);
+  const [keyMetrics, setKeyMetrics] = useState<KeyMetrics[]>([]);
+  const [keyMetricsTTM, setKeyMetricsTTM] = useState<KeyMetrics[]>([]);
+  const [ratios, setRatios] = useState<Ratios[]>([]);
+  const [ratiosTTM, setRatiosTTM] = useState<Ratios[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!symbol) return;
+    if (!ticker) return;
 
-    const fetchStockData = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       
-      console.log(`Fetching data for symbol: ${symbol}`);
-
       try {
-        // Test the health endpoint first
-        console.log('Testing Supabase connection...');
-        
-        // Fetch quote data
-        console.log('Fetching quote data...');
-        const quoteData = await fmpAPI.getQuote(symbol);
-        console.log('Quote data received:', quoteData);
-        
+        // Fetch all data in parallel
+        const [
+          quoteData,
+          profileData,
+          incomeData,
+          balanceData,
+          cashFlowData,
+          metricsData,
+          metricsTTMData,
+          ratiosData,
+          ratiosTTMData
+        ] = await Promise.all([
+          fmpAPI.getQuote(ticker),
+          fmpAPI.getProfile(ticker),
+          fmpAPI.getFinancials(ticker, period, 'income', years),
+          fmpAPI.getFinancials(ticker, period, 'balance', years),
+          fmpAPI.getFinancials(ticker, period, 'cash', years),
+          fmpAPI.getMetrics(ticker, period, years),
+          fmpAPI.getMetricsTTMStable(ticker), // Use stable endpoint for TTM
+          fmpAPI.getRatios(ticker, period, years),
+          fmpAPI.getRatiosTTMStable(ticker), // Use stable endpoint for TTM
+        ]);
+
         if (quoteData && quoteData.length > 0) {
           setQuote(quoteData[0]);
         }
-
-        // Fetch profile data
-        console.log('Fetching profile data...');
-        const profileData = await fmpAPI.getProfile(symbol);
-        console.log('Profile data received:', profileData);
         
         if (profileData && profileData.length > 0) {
           setProfile(profileData[0]);
         }
 
-        // Fetch financial statements (income statement)
-        console.log('Fetching financial data...');
-        const incomeData = await fmpAPI.getFinancials(symbol, 'annual', 'income');
-        const cashFlowData = await fmpAPI.getFinancials(symbol, 'annual', 'cash');
-        
-        console.log('Income data received:', incomeData);
-        console.log('Cash flow data received:', cashFlowData);
-        
-        // Combine financial data
-        const combinedFinancials = incomeData.map((income: any, index: number) => {
-          const cashFlow = cashFlowData[index] || {};
-          return {
-            date: income.date,
-            revenue: income.revenue || 0,
-            netIncome: income.netIncome || 0,
-            grossProfit: income.grossProfit || 0,
-            operatingIncome: income.operatingIncome || 0,
-            totalDebt: income.totalDebt || 0,
-            totalCash: income.totalCash || 0,
-            freeCashFlow: cashFlow.freeCashFlow || 0,
-            operatingCashFlow: cashFlow.operatingCashFlow || 0,
-            ebitda: income.ebitda || 0
-          };
-        });
+        setIncomeStatement(incomeData || []);
+        setBalanceSheet(balanceData || []);
+        setCashFlow(cashFlowData || []);
+        setKeyMetrics(metricsData || []);
+        setKeyMetricsTTM(Array.isArray(metricsTTMData) ? metricsTTMData : [metricsTTMData].filter(Boolean));
+        setRatios(ratiosData || []);
+        setRatiosTTM(Array.isArray(ratiosTTMData) ? ratiosTTMData : [ratiosTTMData].filter(Boolean));
 
-        setFinancials(combinedFinancials);
-        console.log('Combined financials set:', combinedFinancials);
-        
       } catch (err) {
         console.error('Error fetching stock data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch stock data');
+        setError('Failed to fetch stock data');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStockData();
-  }, [symbol]);
+    fetchData();
+  }, [ticker, period, years]);
 
-  return { quote, financials, profile, loading, error };
-};
-
-export const useNews = (symbol?: string) => {
-  const [news, setNews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchNews = async () => {
-      setLoading(true);
-      setError(null);
-      
-      console.log(`Fetching news for symbol: ${symbol || 'market'}`);
-
-      try {
-        const to = new Date().toISOString().split('T')[0];
-        const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-        let newsData;
-        if (symbol) {
-          newsData = await finnhubAPI.getCompanyNews(symbol, from, to);
-        } else {
-          newsData = await finnhubAPI.getMarketNews();
-        }
-
-        console.log('News data received:', newsData);
-        setNews(newsData || []);
-      } catch (err) {
-        console.error('Error fetching news:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch news');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNews();
-  }, [symbol]);
-
-  return { news, loading, error };
+  return {
+    quote,
+    profile,
+    incomeStatement,
+    balanceSheet,
+    cashFlow,
+    keyMetrics,
+    keyMetricsTTM,
+    ratios,
+    ratiosTTM,
+    loading,
+    error,
+  };
 };

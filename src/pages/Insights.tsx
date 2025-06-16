@@ -4,6 +4,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import StockCard from '@/components/cards/StockCard';
 import StockDetail from '@/components/insights/StockDetail';
 import MarketIndices from '@/components/insights/MarketIndices';
+import StockLogo from '@/components/insights/StockLogo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -150,7 +151,7 @@ const Insights = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleWatchlistToggle = async (tickerSymbol: string) => {
+  const handleWatchlistToggle = async (tickerSymbol: string, companyName?: string) => {
     if (!user) {
       toast({ title: "Sign in required", description: "Please sign in to manage your watchlist", variant: "destructive" });
       return;
@@ -230,6 +231,10 @@ const Insights = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {searchResults.map((stock) => (
                     <div key={stock.ticker} className="relative">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <StockLogo ticker={stock.ticker} size={24} />
+                        <span className="text-sm font-medium">{stock.ticker}</span>
+                      </div>
                       <StockCard
                         ticker={stock.ticker}
                         companyName={stock.companyName}
@@ -245,7 +250,7 @@ const Insights = () => {
                           className="absolute top-2 right-2 h-6 w-6"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleWatchlistToggle(stock.ticker);
+                            handleWatchlistToggle(stock.ticker, stock.companyName);
                           }}
                         >
                           {isInWatchlist(stock.ticker) ? (
@@ -298,6 +303,10 @@ const Insights = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {watchlistStocks.map((stock) => (
                       <div key={stock.ticker} className="relative">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <StockLogo ticker={stock.ticker} size={24} />
+                          <span className="text-sm font-medium">{stock.ticker}</span>
+                        </div>
                         <StockCard
                           ticker={stock.ticker}
                           companyName={stock.companyName}
@@ -328,6 +337,10 @@ const Insights = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {stocksList.map((stock) => (
                 <div key={stock.ticker} className="relative">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <StockLogo ticker={stock.ticker} size={24} />
+                    <span className="text-sm font-medium">{stock.ticker}</span>
+                  </div>
                   <StockCard
                     ticker={stock.ticker}
                     companyName={stock.companyName}
