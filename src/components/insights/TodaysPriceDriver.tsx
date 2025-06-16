@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, TrendingUp } from 'lucide-react';
 import { openaiAPI } from '@/services/api';
+import { openaiCache } from '@/utils/openaiCache';
 
 interface TodaysPriceDriverProps {
   ticker: string;
@@ -22,8 +23,26 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
       setError(null);
       
       try {
+        // Check cache first
+        const cacheKey = `price_driver_${ticker}`;
+        const cachedData = openaiCache.get(cacheKey);
+        
+        if (cachedData) {
+          console.log(`Using cached price driver for ${ticker}`);
+          setInsight(cachedData);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch new data if not cached
+        console.log(`Fetching new price driver for ${ticker}`);
         const result = await openaiAPI.generateBriefInsight(ticker, financialData);
-        setInsight(result.analysis);
+        
+        if (result?.analysis) {
+          setInsight(result.analysis);
+          // Cache the result
+          openaiCache.set(cacheKey, result.analysis);
+        }
       } catch (err) {
         console.error('Error fetching price driver:', err);
         setError('Unable to load price driver analysis');
@@ -69,7 +88,7 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-foreground leading-relaxed">
+        <p className="text-foreground leading-relaxed text-sm">
           {insight}
         </p>
       </CardContent>

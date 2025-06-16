@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { Loader2, ChevronDown, ChevronUp, Shield, AlertTriangle, TrendingUp, Target } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { openaiAPI } from '@/services/api';
-import { Badge } from '@/components/ui/badge';
+import { openaiCache } from '@/utils/openaiCache';
+import { formatAIContent } from '@/utils/formatAIContent';
 
 interface AIAnalysisGridProps {
   ticker: string;
@@ -35,59 +36,81 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
   });
 
   useEffect(() => {
-    if (ticker && financialData?.length > 0) {
-      loadAnalyses();
+    // Load cached data on component mount
+    if (ticker) {
+      loadCachedAnalyses();
     }
-  }, [ticker, financialData]);
+  }, [ticker]);
 
-  const loadAnalyses = async () => {
-    const analysisTypes = [
-      { key: 'moat', func: () => openaiAPI.analyzeCompanyMoat(ticker, financialData) },
-      { key: 'risks', func: () => openaiAPI.analyzeInvestmentRisks(ticker, financialData, newsData) },
-      { key: 'nearTermTailwinds', func: () => openaiAPI.analyzeNearTermTailwinds(ticker, financialData, newsData) },
-      { key: 'longTermTailwinds', func: () => openaiAPI.analyzeLongTermTailwinds(ticker, financialData, newsData) }
-    ];
-
-    for (const analysis of analysisTypes) {
-      setLoading(prev => ({ ...prev, [analysis.key]: true }));
-      try {
-        const result = await analysis.func();
-        if (result?.analysis) {
-          setAnalyses(prev => ({ ...prev, [analysis.key]: result.analysis }));
-        }
-      } catch (error) {
-        console.error(`Error loading ${analysis.key} analysis:`, error);
-      } finally {
-        setLoading(prev => ({ ...prev, [analysis.key]: false }));
-      }
-    }
-  };
-
-  const toggleSection = (section: string) => {
-    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const formatAnalysisContent = (content: string) => {
-    if (!content) return null;
+  const loadCachedAnalyses = () => {
+    const analysisTypes = ['moat', 'risks', 'nearTermTailwinds', 'longTermTailwinds'];
     
-    // Split content into sections and format as bullet points
-    const lines = content.split('\n').filter(line => line.trim());
-    return lines.map((line, index) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
-        return (
-          <div key={index} className="flex items-start mb-2">
-            <span className="text-primary mr-2 mt-1">•</span>
-            <span className="text-sm">{trimmedLine.replace(/^[•\-*]\s*/, '')}</span>
-          </div>
-        );
+    analysisTypes.forEach(type => {
+      const cacheKey = `${type}_${ticker}`;
+      const cachedData = openaiCache.get(cacheKey);
+      if (cachedData) {
+        setAnalyses(prev => ({ ...prev, [type]: cachedData }));
       }
-      return (
-        <p key={index} className="text-sm mb-2 font-medium">
-          {trimmedLine}
-        </p>
-      );
     });
+  };
+
+  const loadAnalysis = async (analysisType: string) => {
+    if (analyses[analysisType as keyof typeof analyses]) {
+      // Already loaded, just return
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, [analysisType]: true }));
+    
+    try {
+      const cacheKey = `${analysisType}_${ticker}`;
+      let cachedData = openaiCache.get(cacheKey);
+      
+      if (cachedData) {
+        console.log(`Using cached ${analysisType} for ${ticker}`);
+        setAnalyses(prev => ({ ...prev, [analysisType]: cachedData }));
+        return;
+      }
+
+      // Fetch new data
+      console.log(`Fetching new ${analysisType} for ${ticker}`);
+      let result;
+      
+      switch (analysisType) {
+        case 'moat':
+          result = await openaiAPI.analyzeCompanyMoat(ticker, financialData);
+          break;
+        case 'risks':
+          result = await openaiAPI.analyzeInvestmentRisks(ticker, financialData, newsData);
+          break;
+        case 'nearTermTailwinds':
+          result = await openaiAPI.analyzeNearTermTailwinds(ticker, financialData, newsData);
+          break;
+        case 'longTermTailwinds':
+          result = await openaiAPI.analyzeLongTermTailwinds(ticker, financialData, newsData);
+          break;
+      }
+
+      if (result?.analysis) {
+        setAnalyses(prev => ({ ...prev, [analysisType]: result.analysis }));
+        // Cache the result
+        openaiCache.set(cacheKey, result.analysis);
+      }
+    } catch (error) {
+      console.error(`Error loading ${analysisType} analysis:`, error);
+    } finally {
+      setLoading(prev => ({ ...prev, [analysisType]: false }));
+    }
+  };
+
+  const toggleSection = async (section: string) => {
+    const isOpening = !openSections[section];
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+    
+    // Load analysis when opening section if not already loaded
+    if (isOpening) {
+      await loadAnalysis(section);
+    }
   };
 
   const analysisCards = [
@@ -159,11 +182,11 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
                   </div>
                 ) : analyses[card.key as keyof typeof analyses] ? (
                   <div className="space-y-2">
-                    {formatAnalysisContent(analyses[card.key as keyof typeof analyses] || '')}
+                    {formatAIContent(analyses[card.key as keyof typeof analyses] || '')}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground italic">
-                    Click to load {card.title.toLowerCase()} analysis
+                  <p className="text-muted-foreground italic text-sm">
+                    Analysis will load when you expand this section
                   </p>
                 )}
               </CardContent>
