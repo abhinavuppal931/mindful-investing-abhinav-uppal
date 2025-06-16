@@ -7,7 +7,7 @@ import TodaysPriceDriver from './TodaysPriceDriver';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LineChart } from '@/components/charts/LineChart';
+import LineChart from '@/components/charts/LineChart';
 import { Loader2 } from 'lucide-react';
 
 interface StockDetailProps {
@@ -74,6 +74,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     profile
   };
 
+  // Mock news data for AI analysis - this should be replaced with actual news data
+  const newsData: any[] = [];
+
   const handlePeriodChange = (newPeriod: 'annual' | 'quarterly') => {
     setPeriod(newPeriod);
     setIsTTM(false); // Reset TTM when changing period
@@ -90,11 +93,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
   return (
     <div className="space-y-6">
-      <CompanyOverview quote={quote} profile={profile} />
+      <CompanyOverview profile={profile} />
       
-      <TodaysPriceDriver ticker={ticker} />
+      <TodaysPriceDriver ticker={ticker} financialData={financialData} />
       
-      <AIAnalysisGrid ticker={ticker} financialData={financialData} />
+      <AIAnalysisGrid ticker={ticker} financialData={financialData} newsData={newsData} />
 
       <Tabs defaultValue="revenue" className="w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
