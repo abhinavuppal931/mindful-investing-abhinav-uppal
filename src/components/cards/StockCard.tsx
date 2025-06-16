@@ -3,6 +3,7 @@ import React from 'react';
 import { ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StockLogo from '@/components/insights/StockLogo';
+import { formatCurrency, formatNumber } from '@/utils/formatUtils';
 
 interface StockCardProps {
   ticker: string;
@@ -44,7 +45,7 @@ const StockCard: React.FC<StockCardProps> = ({
       </div>
       
       <div className="mt-4">
-        <div className="text-2xl font-bold">${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div className="text-2xl font-bold">{formatCurrency(price)}</div>
         <div className={`flex items-center mt-1 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
           {isPositive ? (
             <ArrowUpRight className="h-4 w-4 mr-1" />
@@ -52,7 +53,7 @@ const StockCard: React.FC<StockCardProps> = ({
             <ArrowDownRight className="h-4 w-4 mr-1" />
           )}
           <span className="text-sm font-medium">
-            {isPositive ? '+' : ''}{change.toFixed(2)} ({isPositive ? '+' : ''}{changePercent.toFixed(2)}%)
+            {isPositive ? '+' : ''}{formatNumber(change)} ({isPositive ? '+' : ''}{formatNumber(changePercent)}%)
           </span>
         </div>
       </div>
