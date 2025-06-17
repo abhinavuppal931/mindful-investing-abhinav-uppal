@@ -8,8 +8,8 @@ import AIAnalysisGrid from './AIAnalysisGrid';
 import AnalystRatingsCard from './AnalystRatingsCard';
 import PriceTargetCard from './PriceTargetCard';
 import TodaysPriceDriver from './TodaysPriceDriver';
-import { fmpAPI } from '@/services/api';
-import { useStockData } from '@/hooks/useStockData';
+import { fmpAPI, finnhubAPI } from '@/services/api';
+import { useStockData, useNews } from '@/hooks/useStockData';
 
 interface StockDetailProps {
   ticker: string;
@@ -19,6 +19,7 @@ interface StockDetailProps {
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName, onBack }) => {
   const { quote, financials, profile, loading: stockDataLoading, error } = useStockData(ticker);
+  const { news, loading: newsLoading } = useNews(ticker);
   const [loading, setLoading] = useState(true);
   const [stockQuote, setStockQuote] = useState<any>(null);
 
@@ -93,6 +94,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName, onBack }
       <AIAnalysisGrid 
         ticker={ticker}
         financialData={financials}
+        newsData={news || []}
       />
 
       {/* Analyst Metrics Cards */}
