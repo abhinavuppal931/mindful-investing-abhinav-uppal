@@ -257,6 +257,32 @@ export const fmpAPI = {
       console.error('FMP Earnings Transcript error:', error);
       throw error;
     }
+  },
+
+  getRatingsConsensus: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'ratings-consensus', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Ratings Consensus error:', error);
+      throw error;
+    }
+  },
+
+  getPriceTargetConsensus: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'price-target-consensus', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Price Target Consensus error:', error);
+      throw error;
+    }
   }
 };
 
