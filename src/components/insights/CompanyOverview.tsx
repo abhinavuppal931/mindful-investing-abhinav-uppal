@@ -5,13 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Building2, Globe, Users } from 'lucide-react';
 
 interface CompanyOverviewProps {
-  ticker: string;
-  companyName: string;
-  stockData: any;
   profile: any;
 }
 
-const CompanyOverview: React.FC<CompanyOverviewProps> = ({ ticker, companyName, stockData, profile }) => {
+const CompanyOverview: React.FC<CompanyOverviewProps> = ({ profile }) => {
   if (!profile) return null;
 
   const formatNumber = (num: number): string => {
