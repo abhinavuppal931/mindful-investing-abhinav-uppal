@@ -85,12 +85,12 @@ const AnalystRatingsCard: React.FC<AnalystRatingsCardProps> = ({ data, loading }
 
   const getConsensusColor = (consensus: string) => {
     const lowerConsensus = consensus.toLowerCase();
-    if (lowerConsensus.includes('strong buy')) return 'from-emerald-600 to-emerald-400';
-    if (lowerConsensus.includes('buy')) return 'from-green-500 to-green-400';
-    if (lowerConsensus.includes('hold')) return 'from-amber-500 to-amber-400';
-    if (lowerConsensus.includes('sell')) return 'from-red-500 to-red-400';
-    if (lowerConsensus.includes('strong sell')) return 'from-red-700 to-red-500';
-    return 'from-gray-500 to-gray-400';
+    if (lowerConsensus.includes('strong buy')) return { start: '#059669', end: '#10b981' }; // emerald
+    if (lowerConsensus.includes('buy')) return { start: '#22c55e', end: '#4ade80' }; // green
+    if (lowerConsensus.includes('hold')) return { start: '#f59e0b', end: '#fbbf24' }; // amber
+    if (lowerConsensus.includes('sell')) return { start: '#ef4444', end: '#f87171' }; // red
+    if (lowerConsensus.includes('strong sell')) return { start: '#dc2626', end: '#ef4444' }; // dark red
+    return { start: '#6b7280', end: '#9ca3af' }; // gray
   };
 
   const getDominantRating = () => {
@@ -111,6 +111,7 @@ const AnalystRatingsCard: React.FC<AnalystRatingsCardProps> = ({ data, loading }
   };
 
   const dominant = getDominantRating();
+  const consensusColors = getConsensusColor(dominant.name);
 
   const ratings = [
     { 
@@ -169,12 +170,12 @@ const AnalystRatingsCard: React.FC<AnalystRatingsCardProps> = ({ data, loading }
                   fill="none"
                   className="text-gray-200"
                 />
-                {/* Progress circle */}
+                {/* Progress circle with proper gradient */}
                 <circle
                   cx="50"
                   cy="50"
                   r="40"
-                  stroke="url(#gradient)"
+                  stroke="url(#consensusGradient)"
                   strokeWidth="8"
                   fill="none"
                   strokeLinecap="round"
@@ -182,9 +183,9 @@ const AnalystRatingsCard: React.FC<AnalystRatingsCardProps> = ({ data, loading }
                   className="transition-all duration-300"
                 />
                 <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" className={`stop-color-${getConsensusColor(dominant.name).split('-')[1]}-600`} />
-                    <stop offset="100%" className={`stop-color-${getConsensusColor(dominant.name).split('-')[1]}-400`} />
+                  <linearGradient id="consensusGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor={consensusColors.start} />
+                    <stop offset="100%" stopColor={consensusColors.end} />
                   </linearGradient>
                 </defs>
               </svg>
