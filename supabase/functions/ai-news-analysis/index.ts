@@ -262,6 +262,12 @@ SCORING METHODOLOGY:
 - 0.3-0.5: Mostly speculation with minimal concrete information
 - 0.0-0.3: Pure speculation, rumors, or social media driven content
 
+SPECIAL INSTRUCTIONS:
+When evaluating articles reporting official strategic changes (e.g., business model shifts, monetization initiatives, executive changes):  
+- Assign a baseline score of 0.8 to articles citing an official company announcement (e.g., press releases, CEO statements)  
+- Adjust the score downward only if speculative or opinion-based content (e.g., "could," "might," "analysts believe") exceeds 50% of the article  
+- Focus on the official announcement’s core details over speculative framing, especially across multiple reports of the same event
+
 RESPONSE FORMAT:
 RELEVANCE: [HIGH/LOW]  
 CONFIDENCE: [0.00-1.00]
