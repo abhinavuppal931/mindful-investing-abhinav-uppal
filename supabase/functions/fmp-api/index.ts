@@ -145,10 +145,6 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/earning_call_transcript/${symbol}?year=${year}&quarter=${quarter}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
-      case 'grades-consensus':
-        endpoint = `${STABLE_BASE_URL}/grades-consensus?symbol=${symbol}&apikey=${FMP_API_KEY}`;
-        ttl = 24 * 60 * 60 * 1000; // 24 hours
-        break;
       default:
         throw new Error('Invalid action');
     }

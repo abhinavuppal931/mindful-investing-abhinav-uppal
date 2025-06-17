@@ -257,19 +257,6 @@ export const fmpAPI = {
       console.error('FMP Earnings Transcript error:', error);
       throw error;
     }
-  },
-
-  getGradesConsensus: async (symbol: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('fmp-api', {
-        body: { action: 'grades-consensus', symbol }
-      });
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('FMP Grades Consensus error:', error);
-      throw error;
-    }
   }
 };
 
