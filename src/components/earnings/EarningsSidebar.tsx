@@ -1,12 +1,11 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { format } from 'date-fns';
-import { X, Sun, Moon, Search } from 'lucide-react';
+import { X, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
 import { EarningsEvent } from '@/hooks/useEarningsData';
 import StockLogo from '@/components/insights/StockLogo';
 
@@ -25,23 +24,7 @@ const EarningsSidebar: React.FC<EarningsSidebarProps> = ({
   overflowCompanies,
   overflowDate
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-
   if (!isOpen) return null;
-
-  const formatRevenue = (revenue: number | null | undefined): string => {
-    if (!revenue) return '-';
-    
-    if (revenue >= 1000000000) {
-      return `$${(revenue / 1000000000).toFixed(1)}B`;
-    } else {
-      return `$${(revenue / 1000000).toFixed(1)}M`;
-    }
-  };
-
-  const filteredOverflowCompanies = overflowCompanies?.filter(company =>
-    company.symbol.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
 
   const renderCompanyDetails = (company: EarningsEvent) => (
     <Card key={company.symbol} className="mb-4">
@@ -76,13 +59,13 @@ const EarningsSidebar: React.FC<EarningsSidebarProps> = ({
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Estimate:</span>
                 <span className="font-medium">
-                  {formatRevenue(company.revenueEstimate)}
+                  {company.revenueEstimate ? `$${(company.revenueEstimate / 1000000).toFixed(1)}M` : '-'}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Actual:</span>
                 <span className="font-medium">
-                  {formatRevenue(company.revenueActual)}
+                  {company.revenueActual ? `$${(company.revenueActual / 1000000).toFixed(1)}M` : '-'}
                 </span>
               </div>
             </div>
@@ -122,32 +105,12 @@ const EarningsSidebar: React.FC<EarningsSidebarProps> = ({
           </Button>
         </div>
 
-        {overflowCompanies && overflowCompanies.length > 0 && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Search companies..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
         <ScrollArea className="flex-1 p-4">
           {selectedCompany && renderCompanyDetails(selectedCompany)}
           
           {overflowCompanies && overflowCompanies.length > 0 && (
             <div className="space-y-2">
-              {(searchQuery ? filteredOverflowCompanies : overflowCompanies).map((company, index) => renderCompanyDetails(company))}
-              
-              {searchQuery && filteredOverflowCompanies.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No companies found matching "{searchQuery}"</p>
-                </div>
-              )}
+              {overflowCompanies.map((company, index) => renderCompanyDetails(company))}
             </div>
           )}
         </ScrollArea>
