@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -106,14 +107,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         </div>
       </div>
 
-      <CompanyOverview 
-        ticker={ticker}
-        companyName={companyName}
-        stockData={quote}
-        profile={profile}
-      />
+      <CompanyOverview profile={profile} />
 
-      <TodaysPriceDriver ticker={ticker} />
+      <TodaysPriceDriver ticker={ticker} financialData={financials} />
 
       <AIAnalysisGrid 
         ticker={ticker} 
