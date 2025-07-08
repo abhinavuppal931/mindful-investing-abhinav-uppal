@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useStockData } from '@/hooks/useStockData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +21,7 @@ interface StockDetailProps {
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   const [selectedTimeFrame, setSelectedTimeFrame] = useState('1Y');
   const [newsTimeFrame, setNewsTimeFrame] = useState('7');
-  const [stockData, loading, error] = useStockData(ticker, selectedTimeFrame, newsTimeFrame);
+  const { quote, financials, profile, loading, error } = useStockData(ticker);
 
   const handleTimeFrameChange = (timeFrame: string) => {
     setSelectedTimeFrame(timeFrame);
@@ -57,7 +58,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     );
   }
 
-  if (!stockData.quote || !stockData.profile) {
+  if (!quote || !profile) {
     return (
       <Alert>
         <AlertTriangle className="h-4 w-4" />
@@ -76,20 +77,20 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-foreground">
-            ${stockData.quote.price?.toFixed(2)}
+            ${quote.price?.toFixed(2)}
           </p>
-          <p className={`text-sm ${stockData.quote.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {stockData.quote.change >= 0 ? '+' : ''}
-            {stockData.quote.change?.toFixed(2)} ({stockData.quote.changesPercentage?.toFixed(2)}%)
+          <p className={`text-sm ${quote.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {quote.change >= 0 ? '+' : ''}
+            {quote.change?.toFixed(2)} ({quote.changesPercentage?.toFixed(2)}%)
           </p>
         </div>
       </div>
 
       {/* Company Overview */}
-      <CompanyOverview profile={stockData.profile} />
+      <CompanyOverview profile={profile} />
 
       {/* Today's Price Driver */}
-      <TodaysPriceDriver ticker={ticker} />
+      <TodaysPriceDriver ticker={ticker} financialData={financials} />
 
       {/* Financial Charts */}
       <div className="grid grid-cols-1 gap-6">
@@ -99,14 +100,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       {/* AI Analysis Grid */}
       <AIAnalysisGrid 
         ticker={ticker} 
-        financialData={stockData.financials} 
+        financialData={financials} 
         newsData={[]} 
       />
 
       {/* Analyst Cards - NEW ADDITION */}
       <AnalystCards 
         ticker={ticker} 
-        currentPrice={stockData.quote.price || 0} 
+        currentPrice={quote.price || 0} 
       />
 
       {/* Company News */}
