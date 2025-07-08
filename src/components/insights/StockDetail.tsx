@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import CompanyOverview from './CompanyOverview';
 import TodaysPriceDriver from './TodaysPriceDriver';
@@ -18,7 +19,7 @@ interface StockDetailProps {
 }
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
-  const { stockData, loading, error } = useStockData(ticker);
+  const { quote, financials, profile, loading, error } = useStockData(ticker);
   const [showBackButton, setShowBackButton] = useState(false);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     );
   }
 
-  if (error || !stockData) {
+  if (error || !quote) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -58,6 +59,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     );
   }
 
+  // Create combined stock data object for components that need it
+  const combinedStockData = {
+    quote,
+    profile,
+    financials
+  };
+
   return (
     <div className="space-y-8">
       {/* Back Button */}
@@ -74,23 +82,26 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
       {/* Company Overview */}
       <CompanyOverview 
-        stockData={stockData.quote}
-        profile={stockData.profile}
+        profile={profile}
       />
 
       {/* Today's Price Driver */}
       <TodaysPriceDriver 
         ticker={ticker}
-        financialData={stockData}
+        financialData={combinedStockData}
       />
 
       {/* AI Analysis Grid */}
-      <AIAnalysisGrid ticker={ticker} />
+      <AIAnalysisGrid 
+        ticker={ticker} 
+        financialData={financials}
+        newsData={[]}
+      />
 
       {/* Analyst Cards */}
       <AnalystCards 
         ticker={ticker} 
-        currentPrice={stockData.quote?.price || 0}
+        currentPrice={quote?.price || 0}
       />
 
       {/* Financial Charts Section */}
