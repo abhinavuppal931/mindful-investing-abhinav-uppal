@@ -29,15 +29,20 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
         const data = await logokitAPI.getLogo(ticker);
         console.log(`Logo data received for ${ticker}:`, data);
         
+        // Check if we have a valid logoUrl and no error
         if (data && data.logoUrl && !data.error) {
+          console.log(`Setting logo URL for ${ticker}: ${data.logoUrl}`);
           setLogoUrl(data.logoUrl);
+          setError(false);
         } else {
-          console.log(`No logo available for ${ticker}:`, data?.error || 'No logo URL');
+          console.log(`No valid logo for ${ticker}:`, data?.error || 'No logo URL in response');
           setError(true);
+          setLogoUrl(null);
         }
       } catch (error) {
         console.error(`Error fetching logo for ${ticker}:`, error);
         setError(true);
+        setLogoUrl(null);
       } finally {
         setLoading(false);
       }
@@ -46,6 +51,7 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
     fetchLogo();
   }, [ticker]);
 
+  // Loading state
   if (loading) {
     return (
       <div 
@@ -55,6 +61,7 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
     );
   }
 
+  // Error state or no logo - show initials
   if (error || !logoUrl) {
     return (
       <div 
@@ -66,19 +73,20 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
     );
   }
 
+  // Success state - show logo
   return (
     <img
       src={logoUrl}
       alt={`${ticker} logo`}
-      className={`rounded ${className}`}
+      className={`rounded object-contain ${className}`}
       style={{ width: size, height: size }}
-      onError={() => {
-        console.error(`Failed to load logo image for ${ticker}`);
+      onError={(e) => {
+        console.error(`Failed to load logo image for ${ticker} from URL: ${logoUrl}`);
         setError(true);
         setLogoUrl(null);
       }}
       onLoad={() => {
-        console.log(`Successfully loaded logo for ${ticker}`);
+        console.log(`Successfully loaded logo for ${ticker} from URL: ${logoUrl}`);
       }}
     />
   );

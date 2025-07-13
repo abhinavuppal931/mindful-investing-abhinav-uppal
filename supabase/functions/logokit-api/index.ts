@@ -21,7 +21,8 @@ serve(async (req) => {
       console.error('LogoKit API key not configured');
       return new Response(JSON.stringify({ 
         error: 'LogoKit API key not configured',
-        logoUrl: null
+        logoUrl: null,
+        symbol: symbol?.toUpperCase() || null
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -32,47 +33,61 @@ serve(async (req) => {
       console.error('Symbol is required');
       return new Response(JSON.stringify({ 
         error: 'Symbol is required',
-        logoUrl: null
+        logoUrl: null,
+        symbol: null
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const logoUrl = `https://img.logokit.com/ticker/${symbol.toUpperCase()}?token=${LOGOKIT_API_KEY}`;
+    const cleanSymbol = symbol.toUpperCase().trim();
+    const logoUrl = `https://img.logokit.com/ticker/${cleanSymbol}?token=${LOGOKIT_API_KEY}`;
     
-    console.log(`Fetching logo for ${symbol}: ${logoUrl}`);
+    console.log(`Testing logo availability for ${cleanSymbol}: ${logoUrl}`);
 
-    // Test the logo URL first
+    // Test the logo URL with a HEAD request
     const response = await fetch(logoUrl, {
-      method: 'HEAD', // Use HEAD to check if the image exists
+      method: 'HEAD',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; LogoKit-API)',
+      },
     });
     
-    if (!response.ok) {
-      console.error(`LogoKit API error for ${symbol}: ${response.status} ${response.statusText}`);
-      // Return fallback response instead of throwing error
+    console.log(`LogoKit response for ${cleanSymbol}:`, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+    
+    if (response.ok) {
+      // Logo is available, return the URL
+      console.log(`Logo available for ${cleanSymbol}`);
+      return new Response(JSON.stringify({ 
+        logoUrl,
+        symbol: cleanSymbol,
+        error: null
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } else {
+      // Logo not available
+      console.log(`Logo not available for ${cleanSymbol}: ${response.status} ${response.statusText}`);
       return new Response(JSON.stringify({ 
         logoUrl: null,
-        symbol: symbol.toUpperCase(),
-        error: `Logo not available for ${symbol}`
+        symbol: cleanSymbol,
+        error: `Logo not available for ${cleanSymbol} (HTTP ${response.status})`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Return the logo URL if successful
-    return new Response(JSON.stringify({ 
-      logoUrl,
-      symbol: symbol.toUpperCase()
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
   } catch (error) {
     console.error('LogoKit API error:', error);
     return new Response(JSON.stringify({ 
       error: error.message || 'Unknown error occurred',
-      logoUrl: null
+      logoUrl: null,
+      symbol: null
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
