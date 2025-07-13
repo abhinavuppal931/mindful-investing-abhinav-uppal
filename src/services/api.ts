@@ -257,6 +257,32 @@ export const fmpAPI = {
       console.error('FMP Earnings Transcript error:', error);
       throw error;
     }
+  },
+
+  getAnalystRatings: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'analyst-ratings', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Analyst Ratings error:', error);
+      throw error;
+    }
+  },
+
+  getPriceTarget: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'price-target', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Price Target error:', error);
+      throw error;
+    }
   }
 };
 

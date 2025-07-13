@@ -15,34 +15,20 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
 
   useEffect(() => {
     const fetchLogo = async () => {
-      if (!ticker) {
-        setLoading(false);
-        setError(true);
-        return;
-      }
+      if (!ticker) return;
       
       setLoading(true);
       setError(false);
-      
       try {
-        console.log(`Fetching logo for ticker: ${ticker}`);
         const data = await logokitAPI.getLogo(ticker);
-        console.log(`Logo data received for ${ticker}:`, data);
-        
-        // Check if we have a valid logoUrl and no error
-        if (data && data.logoUrl && !data.error) {
-          console.log(`Setting logo URL for ${ticker}: ${data.logoUrl}`);
+        if (data && data.logoUrl) {
           setLogoUrl(data.logoUrl);
-          setError(false);
         } else {
-          console.log(`No valid logo for ${ticker}:`, data?.error || 'No logo URL in response');
           setError(true);
-          setLogoUrl(null);
         }
       } catch (error) {
-        console.error(`Error fetching logo for ${ticker}:`, error);
+        console.error('Error fetching logo:', error);
         setError(true);
-        setLogoUrl(null);
       } finally {
         setLoading(false);
       }
@@ -51,7 +37,6 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
     fetchLogo();
   }, [ticker]);
 
-  // Loading state
   if (loading) {
     return (
       <div 
@@ -61,32 +46,26 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
     );
   }
 
-  // Error state or no logo - show initials
   if (error || !logoUrl) {
     return (
       <div 
         className={`bg-gray-100 rounded flex items-center justify-center text-xs font-semibold text-gray-600 ${className}`}
         style={{ width: size, height: size }}
       >
-        {ticker.slice(0, 2).toUpperCase()}
+        {ticker.slice(0, 2)}
       </div>
     );
   }
 
-  // Success state - show logo
   return (
     <img
       src={logoUrl}
       alt={`${ticker} logo`}
-      className={`rounded object-contain ${className}`}
+      className={`rounded ${className}`}
       style={{ width: size, height: size }}
-      onError={(e) => {
-        console.error(`Failed to load logo image for ${ticker} from URL: ${logoUrl}`);
+      onError={() => {
         setError(true);
         setLogoUrl(null);
-      }}
-      onLoad={() => {
-        console.log(`Successfully loaded logo for ${ticker} from URL: ${logoUrl}`);
       }}
     />
   );
