@@ -18,24 +18,49 @@ serve(async (req) => {
     const { symbol } = await req.json();
     
     if (!LOGOKIT_API_KEY) {
-      throw new Error('LogoKit API key not configured');
+      console.error('LogoKit API key not configured');
+      return new Response(JSON.stringify({ 
+        error: 'LogoKit API key not configured',
+        logoUrl: null
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     if (!symbol) {
-      throw new Error('Symbol is required');
+      console.error('Symbol is required');
+      return new Response(JSON.stringify({ 
+        error: 'Symbol is required',
+        logoUrl: null
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const logoUrl = `https://img.logokit.com/ticker/${symbol.toUpperCase()}?token=${LOGOKIT_API_KEY}`;
     
     console.log(`Fetching logo for ${symbol}: ${logoUrl}`);
 
-    const response = await fetch(logoUrl);
+    // Test the logo URL first
+    const response = await fetch(logoUrl, {
+      method: 'HEAD', // Use HEAD to check if the image exists
+    });
     
     if (!response.ok) {
-      throw new Error(`LogoKit API error: ${response.status}`);
+      console.error(`LogoKit API error for ${symbol}: ${response.status} ${response.statusText}`);
+      // Return fallback response instead of throwing error
+      return new Response(JSON.stringify({ 
+        logoUrl: null,
+        symbol: symbol.toUpperCase(),
+        error: `Logo not available for ${symbol}`
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Return the logo URL instead of the image data
+    // Return the logo URL if successful
     return new Response(JSON.stringify({ 
       logoUrl,
       symbol: symbol.toUpperCase()
@@ -46,7 +71,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('LogoKit API error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error.message || 'Unknown error occurred',
       logoUrl: null
     }), {
       status: 500,

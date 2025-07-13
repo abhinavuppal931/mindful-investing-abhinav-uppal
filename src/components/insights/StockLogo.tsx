@@ -15,19 +15,28 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
 
   useEffect(() => {
     const fetchLogo = async () => {
-      if (!ticker) return;
+      if (!ticker) {
+        setLoading(false);
+        setError(true);
+        return;
+      }
       
       setLoading(true);
       setError(false);
+      
       try {
+        console.log(`Fetching logo for ticker: ${ticker}`);
         const data = await logokitAPI.getLogo(ticker);
-        if (data && data.logoUrl) {
+        console.log(`Logo data received for ${ticker}:`, data);
+        
+        if (data && data.logoUrl && !data.error) {
           setLogoUrl(data.logoUrl);
         } else {
+          console.log(`No logo available for ${ticker}:`, data?.error || 'No logo URL');
           setError(true);
         }
       } catch (error) {
-        console.error('Error fetching logo:', error);
+        console.error(`Error fetching logo for ${ticker}:`, error);
         setError(true);
       } finally {
         setLoading(false);
@@ -52,7 +61,7 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
         className={`bg-gray-100 rounded flex items-center justify-center text-xs font-semibold text-gray-600 ${className}`}
         style={{ width: size, height: size }}
       >
-        {ticker.slice(0, 2)}
+        {ticker.slice(0, 2).toUpperCase()}
       </div>
     );
   }
@@ -64,8 +73,12 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
       className={`rounded ${className}`}
       style={{ width: size, height: size }}
       onError={() => {
+        console.error(`Failed to load logo image for ${ticker}`);
         setError(true);
         setLogoUrl(null);
+      }}
+      onLoad={() => {
+        console.log(`Successfully loaded logo for ${ticker}`);
       }}
     />
   );
