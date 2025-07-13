@@ -8,6 +8,8 @@ const corsHeaders = {
 };
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const FMP_API_KEY = Deno.env.get('FMP_API_KEY');
+const FINNHUB_API_KEY = Deno.env.get('FINNHUB_API_KEY');
 
 interface CacheEntry {
   data: any;
@@ -19,6 +21,104 @@ const cache = new Map<string, CacheEntry>();
 
 function isValidCache(entry: CacheEntry): boolean {
   return Date.now() - entry.timestamp < entry.ttl;
+}
+
+async function fetchRealtimeNews(symbol: string): Promise<any[]> {
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
+  console.log(`Fetching real-time news for ${symbol} from ${yesterday} to ${today}`);
+  
+  const newsPromises = [];
+  
+  try {
+    // FMP Stock News
+    if (FMP_API_KEY) {
+      const fmpStockNewsUrl = `https://financialmodelingprep.com/api/v3/stock_news?tickers=${symbol}&from=${yesterday}&to=${today}&limit=10&apikey=${FMP_API_KEY}`;
+      newsPromises.push(
+        fetch(fmpStockNewsUrl)
+          .then(res => res.json())
+          .then(data => ({ source: 'FMP_STOCK', data: Array.isArray(data) ? data : [] }))
+          .catch(err => {
+            console.error('FMP Stock News error:', err);
+            return { source: 'FMP_STOCK', data: [] };
+          })
+      );
+    }
+
+    // FMP General News
+    if (FMP_API_KEY) {
+      const fmpGeneralNewsUrl = `https://financialmodelingprep.com/api/v3/fmp/articles?from=${yesterday}&to=${today}&limit=10&apikey=${FMP_API_KEY}`;
+      newsPromises.push(
+        fetch(fmpGeneralNewsUrl)
+          .then(res => res.json())
+          .then(data => ({ source: 'FMP_GENERAL', data: Array.isArray(data) ? data : [] }))
+          .catch(err => {
+            console.error('FMP General News error:', err);
+            return { source: 'FMP_GENERAL', data: [] };
+          })
+      );
+    }
+
+    // Finnhub Company News
+    if (FINNHUB_API_KEY) {
+      const finnhubCompanyNewsUrl = `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${yesterday}&to=${today}&token=${FINNHUB_API_KEY}`;
+      newsPromises.push(
+        fetch(finnhubCompanyNewsUrl)
+          .then(res => res.json())
+          .then(data => ({ source: 'FINNHUB_COMPANY', data: Array.isArray(data) ? data : [] }))
+          .catch(err => {
+            console.error('Finnhub Company News error:', err);
+            return { source: 'FINNHUB_COMPANY', data: [] };
+          })
+      );
+    }
+
+    // Finnhub Market News
+    if (FINNHUB_API_KEY) {
+      const finnhubMarketNewsUrl = `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_API_KEY}`;
+      newsPromises.push(
+        fetch(finnhubMarketNewsUrl)
+          .then(res => res.json())
+          .then(data => ({ source: 'FINNHUB_MARKET', data: Array.isArray(data) ? data.slice(0, 10) : [] }))
+          .catch(err => {
+            console.error('Finnhub Market News error:', err);
+            return { source: 'FINNHUB_MARKET', data: [] };
+          })
+      );
+    }
+
+    const newsResults = await Promise.all(newsPromises);
+    console.log(`Fetched news from ${newsResults.length} sources`);
+    
+    // Combine and filter news
+    const allNews = newsResults.flatMap(result => 
+      result.data.map((item: any) => ({
+        source: result.source,
+        title: item.title || item.headline,
+        summary: item.summary || item.text || '',
+        publishedDate: item.publishedDate || item.datetime || item.date,
+        url: item.url || item.source,
+        symbol: item.symbol || symbol
+      }))
+    );
+
+    // Filter for symbol-specific news and recent news
+    const symbolSpecificNews = allNews.filter(news => 
+      news.title && (
+        news.title.toLowerCase().includes(symbol.toLowerCase()) ||
+        news.summary.toLowerCase().includes(symbol.toLowerCase()) ||
+        news.symbol === symbol
+      )
+    );
+
+    console.log(`Found ${symbolSpecificNews.length} symbol-specific news items for ${symbol}`);
+    return symbolSpecificNews.slice(0, 15); // Limit to top 15 most relevant news items
+
+  } catch (error) {
+    console.error('Error fetching real-time news:', error);
+    return [];
+  }
 }
 
 async function callOpenAI(messages: any[], model = 'gpt-4o-mini'): Promise<any> {
@@ -58,7 +158,14 @@ serve(async (req) => {
 
     let analysisResult: string;
     let ttl = 24 * 60 * 60 * 1000; // 24 hours default
-    const cacheKey = `openai_${action}_${symbol}`;
+    let cacheKey = `openai_${action}_${symbol}`;
+
+    // For brief-insight, include today's date in cache key for daily refresh
+    if (action === 'brief-insight') {
+      const today = new Date().toISOString().split('T')[0];
+      cacheKey = `openai_${action}_${symbol}_${today}`;
+      ttl = 24 * 60 * 60 * 1000; // 24 hours cache for brief insights
+    }
 
     const cachedEntry = cache.get(cacheKey);
     if (cachedEntry && isValidCache(cachedEntry)) {
@@ -122,14 +229,27 @@ serve(async (req) => {
         break;
 
       case 'brief-insight':
+        // Fetch real-time news for enhanced analysis
+        console.log(`Fetching real-time news for brief-insight analysis of ${symbol}`);
+        const realtimeNews = await fetchRealtimeNews(symbol);
+        
+        let newsContext = '';
+        if (realtimeNews.length > 0) {
+          newsContext = `Recent news (past 24 hours): ${JSON.stringify(realtimeNews.slice(0, 10))}`;
+          console.log(`Using ${realtimeNews.length} news items for enhanced analysis`);
+        } else {
+          console.log('No recent news found, falling back to basic analysis');
+          newsContext = 'No recent company-specific news available in the past 24 hours.';
+        }
+
         analysisResult = await callOpenAI([
           {
             role: 'system',
-            content: 'You are a financial market analyst. Provide brief, actionable insights about what is driving a stock today.'
+            content: 'You are a financial market analyst specializing in real-time stock analysis. Provide brief, actionable insights about what is driving a stock today based on the latest news, market developments, and financial data.'
           },
           {
             role: 'user',
-            content: `Generate a brief 2-3 sentence market insight for ${symbol} focusing on "what's driving the stock price today." Consider recent financial performance: ${JSON.stringify(financialData?.slice(0, 1))}. Be concise and actionable for investors.`
+            content: `Analyze what is driving ${symbol}'s stock price today by examining the latest news, earnings reports, analyst upgrades/downgrades, and market sentiment from the past 24 hours. ${newsContext} Financial context: ${JSON.stringify(financialData?.slice(0, 1))}. Provide a brief 2-3 sentence summary focusing on the single most significant factor or combination of factors currently influencing the stock's momentum, whether positive or negative. If no recent news is available, focus on recent financial performance and market conditions.`
           }
         ]);
         break;
@@ -159,6 +279,8 @@ serve(async (req) => {
       timestamp: Date.now(),
       ttl
     });
+
+    console.log(`Cached ${action} analysis for ${symbol} with TTL: ${ttl}ms`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
