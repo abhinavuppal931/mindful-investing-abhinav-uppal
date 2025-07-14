@@ -145,7 +145,7 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
     },
     {
       key: 'longTermTailwinds',
-      title: '🎯 Long-Term Strategic Advantages',
+      title: '🎯 Long-Term Strategic Trajectory',
       description: 'Sustainable growth opportunities',
       bgGradient: 'bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-950 dark:to-violet-900',
       borderColor: 'border-purple-200 dark:border-purple-800'
