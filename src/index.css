@@ -116,4 +116,48 @@
   .focus-mode {
     @apply bg-mindful-50 dark:bg-mindful-950 p-6 rounded-xl border border-mindful-200 dark:border-mindful-800;
   }
+
+  /* Enhanced sidebar animations */
+  .sidebar-item-text {
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  }
+  
+  .sidebar-expanded .sidebar-item-text {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  
+  .sidebar-collapsed .sidebar-item-text {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+}
+
+/* Custom smooth animations for sidebar */
+@layer utilities {
+  .animate-sidebar-expand {
+    animation: sidebarExpand 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  
+  .animate-sidebar-collapse {
+    animation: sidebarCollapse 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+}
+
+@keyframes sidebarExpand {
+  from {
+    width: 4rem;
+  }
+  to {
+    width: 16rem;
+  }
+}
+
+@keyframes sidebarCollapse {
+  from {
+    width: 16rem;
+  }
+  to {
+    width: 4rem;
+  }
 }
