@@ -51,21 +51,25 @@ const UserMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start p-3 h-auto">
-          <Avatar className="h-8 w-8 mr-3">
-            <AvatarFallback className="bg-mindful-100 text-mindful-700">
-              {getInitials(user.email || '')}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col items-start">
-            <span className="text-sm font-medium">{getFirstName()}</span>
-            <span className="text-xs text-muted-foreground truncate max-w-32">
-              {user.email}
-            </span>
+        <Button variant="ghost" className="w-full justify-start p-3 h-auto hover:bg-sidebar-accent">
+          <div className="flex items-center w-full min-w-0">
+            <Avatar className="h-8 w-8 flex-shrink-0">
+              <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
+                {getInitials(user.email || '')}
+              </AvatarFallback>
+            </Avatar>
+            <div className="ml-3 flex flex-col items-start min-w-0 flex-1">
+              <span className="text-sm font-medium text-sidebar-foreground truncate max-w-full">
+                {getFirstName()}
+              </span>
+              <span className="text-xs text-muted-foreground truncate max-w-full">
+                {user.email}
+              </span>
+            </div>
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
+      <DropdownMenuContent className="w-56" align="end" forceMount side="right">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{getFirstName()}</p>

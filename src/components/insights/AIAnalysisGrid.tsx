@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -126,50 +125,49 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
       key: 'moat',
       title: '🏰 Company Moat Analysis',
       description: 'Competitive advantages and defensive strategies',
-      bgGradient: 'bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900',
-      borderColor: 'border-blue-200 dark:border-blue-800'
+      hoverColor: 'hover:shadow-blue-500/10'
     },
     {
       key: 'risks',
       title: '⚠️ Investment Risk Assessment',
       description: 'Potential challenges and risk factors',
-      bgGradient: 'bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-950 dark:to-rose-900',
-      borderColor: 'border-red-200 dark:border-red-800'
+      hoverColor: 'hover:shadow-red-500/10'
     },
     {
       key: 'nearTermTailwinds',
       title: '🚀 Near-Term Growth Drivers',
       description: 'Short-term opportunities and catalysts',
-      bgGradient: 'bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-900',
-      borderColor: 'border-green-200 dark:border-green-800'
+      hoverColor: 'hover:shadow-green-500/10'
     },
     {
       key: 'longTermTailwinds',
       title: '🎯 Long-Term Strategic Trajectory',
       description: 'Sustainable growth opportunities',
-      bgGradient: 'bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-950 dark:to-violet-900',
-      borderColor: 'border-purple-200 dark:border-purple-800'
+      hoverColor: 'hover:shadow-purple-500/10'
     }
   ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {analysisCards.map((card) => (
-        <Card key={card.key} className={`${card.bgGradient} ${card.borderColor} border-2 transition-all duration-200 hover:shadow-lg`}>
+        <div 
+          key={card.key} 
+          className={`rounded-2xl border border-border/30 dark:border-white/20 bg-border/10 dark:bg-white/10 backdrop-blur-md text-card-foreground shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl ${card.hoverColor}`}
+        >
           <Collapsible 
             open={openSections[card.key]} 
             onOpenChange={() => toggleSection(card.key)}
           >
             <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-lg">
+              <div className="flex flex-col space-y-1.5 p-6 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-2xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg font-bold flex items-center">
+                    <h3 className="text-2xl font-inter font-normal leading-none tracking-tighter flex items-center">
                       {card.title}
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-1">
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1.5">
                       {card.description}
-                    </CardDescription>
+                    </p>
                   </div>
                   <Button variant="ghost" size="sm">
                     {openSections[card.key] ? (
@@ -179,11 +177,11 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
                     )}
                   </Button>
                 </div>
-              </CardHeader>
+              </div>
             </CollapsibleTrigger>
             
             <CollapsibleContent>
-              <CardContent className="pt-0">
+              <div className="p-6 pt-0">
                 {loading[card.key] ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -197,10 +195,10 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
                     Analysis will load when you expand this section
                   </p>
                 )}
-              </CardContent>
+              </div>
             </CollapsibleContent>
           </Collapsible>
-        </Card>
+        </div>
       ))}
     </div>
   );
