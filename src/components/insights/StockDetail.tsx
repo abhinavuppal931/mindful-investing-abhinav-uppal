@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target, Search } from 'lucide-react';
+import { GlassDots } from '@/components/ui/glass-dots';
+import { TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
@@ -495,7 +495,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     if (chartLoading[activeTab]) {
       return (
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <GlassDots />
         </div>
       );
     }
@@ -843,7 +843,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <GlassDots />
         </CardContent>
       </Card>
     );
