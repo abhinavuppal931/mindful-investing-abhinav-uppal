@@ -129,55 +129,58 @@ const AnimatedSidebar: React.FC = () => {
       <div className="border-t border-sidebar-border p-2">
         {user ? (
           <div className="relative overflow-hidden">
-            <div className="fixed left-2 right-2">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 w-12 flex justify-center">
-                  <div className="w-8 h-8 bg-sidebar-primary rounded-full flex items-center justify-center">
-                    <span className="text-xs font-medium text-sidebar-primary-foreground">
-                      {user.email?.[0]?.toUpperCase() || 'U'}
-                    </span>
-                  </div>
+            <div className="flex items-center">
+              <div className="flex-shrink-0 w-12 flex justify-center">
+                <div className="w-8 h-8 bg-sidebar-primary rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-sidebar-primary-foreground">
+                    {user.email?.[0]?.toUpperCase() || 'U'}
+                  </span>
                 </div>
-                <div 
-                  className={cn(
-                    "ml-2 transition-all duration-500 ease-out",
-                    isHovered 
-                      ? "opacity-100 translate-x-0" 
-                      : "opacity-0 translate-x-4 pointer-events-none"
-                  )}
-                  style={{
-                    transitionDelay: isHovered ? '300ms' : '0ms'
-                  }}
-                >
-                  <UserMenu />
+              </div>
+              <div 
+                className={cn(
+                  "ml-2 transition-all duration-500 ease-out overflow-hidden",
+                  isHovered 
+                    ? "opacity-100 translate-x-0 w-full" 
+                    : "opacity-0 translate-x-4 w-0 pointer-events-none"
+                )}
+                style={{
+                  transitionDelay: isHovered ? '300ms' : '0ms'
+                }}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">
+                    {user.email?.split('@')[0] || 'User'}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.email}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
         ) : (
           <div className="relative overflow-hidden">
-            <div className="fixed left-2 right-2">
-              <Link to="/auth" className="block">
-                <Button 
-                  size="sm" 
-                  className={cn(
-                    "transition-all duration-500 ease-out",
-                    isHovered ? "w-full opacity-100" : "w-12 opacity-80"
-                  )}
-                >
-                  <span className={cn(
-                    isHovered ? "block" : "hidden"
-                  )}>
-                    Sign In
-                  </span>
-                  <span className={cn(
-                    isHovered ? "hidden" : "block"
-                  )}>
-                    →
-                  </span>
-                </Button>
-              </Link>
-            </div>
+            <Link to="/auth" className="block">
+              <Button 
+                size="sm" 
+                className={cn(
+                  "transition-all duration-500 ease-out",
+                  isHovered ? "w-full opacity-100" : "w-12 opacity-80"
+                )}
+              >
+                <span className={cn(
+                  isHovered ? "block" : "hidden"
+                )}>
+                  Sign In
+                </span>
+                <span className={cn(
+                  isHovered ? "hidden" : "block"
+                )}>
+                  →
+                </span>
+              </Button>
+            </Link>
           </div>
         )}
       </div>
