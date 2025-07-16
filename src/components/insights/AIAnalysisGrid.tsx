@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { Loader2, ChevronDown, ChevronUp, Shield, AlertTriangle, Rocket, Target } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { openaiAPI } from '@/services/api';
 import { openaiCache } from '@/utils/openaiCache';
 import { formatAIContent } from '@/utils/formatAIContent';
@@ -124,103 +123,83 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
   const analysisCards = [
     {
       key: 'moat',
-      title: 'Company Moat Analysis',
+      title: '🏰 Company Moat Analysis',
       description: 'Competitive advantages and defensive strategies',
-      icon: Shield,
       hoverColor: 'hover:shadow-blue-500/10'
     },
     {
       key: 'risks',
-      title: 'Investment Risk Assessment',
+      title: '⚠️ Investment Risk Assessment',
       description: 'Potential challenges and risk factors',
-      icon: AlertTriangle,
       hoverColor: 'hover:shadow-red-500/10'
     },
     {
       key: 'nearTermTailwinds',
-      title: 'Near-Term Growth Drivers',
+      title: '🚀 Near-Term Growth Drivers',
       description: 'Short-term opportunities and catalysts',
-      icon: Rocket,
       hoverColor: 'hover:shadow-green-500/10'
     },
     {
       key: 'longTermTailwinds',
-      title: 'Long-Term Strategic Trajectory',
+      title: '🎯 Long-Term Strategic Trajectory',
       description: 'Sustainable growth opportunities',
-      icon: Target,
       hoverColor: 'hover:shadow-purple-500/10'
     }
   ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {analysisCards.map((card) => {
-        const IconComponent = card.icon;
-        return (
-          <div 
-            key={card.key} 
-            className={`rounded-2xl border border-border/30 dark:border-white/20 bg-border/10 dark:bg-white/10 backdrop-blur-md text-card-foreground shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl ${card.hoverColor}`}
+      {analysisCards.map((card) => (
+        <div 
+          key={card.key} 
+          className={`rounded-2xl border border-border/30 dark:border-white/20 bg-border/10 dark:bg-white/10 backdrop-blur-md text-card-foreground shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl ${card.hoverColor}`}
+        >
+          <Collapsible 
+            open={openSections[card.key]} 
+            onOpenChange={() => toggleSection(card.key)}
           >
-            <Collapsible 
-              open={openSections[card.key]} 
-              onOpenChange={() => toggleSection(card.key)}
-            >
-              <CollapsibleTrigger asChild>
-                <div className="flex flex-col space-y-1.5 p-6 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-2xl">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <IconComponent className="h-6 w-6 text-primary" />
-                      <div>
-                        <h3 className="text-2xl font-inter font-normal leading-none tracking-tighter">
-                          {card.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-1.5">
-                          {card.description}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" className="transition-transform duration-200">
-                      {openSections[card.key] ? (
-                        <ChevronUp className="h-4 w-4 transition-transform duration-200" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CollapsibleTrigger>
-              
-              <CollapsibleContent className="transition-all duration-300 ease-in-out overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                <div className="p-6 pt-0">
-                  {loading[card.key] ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="w-3 h-3 bg-white/30 backdrop-blur-md rounded-full animate-pulse shadow-lg"></div>
-                        <div 
-                          className="w-3 h-3 bg-white/30 backdrop-blur-md rounded-full animate-pulse shadow-lg" 
-                          style={{ animationDelay: '0.2s' }}
-                        ></div>
-                        <div 
-                          className="w-3 h-3 bg-white/30 backdrop-blur-md rounded-full animate-pulse shadow-lg" 
-                          style={{ animationDelay: '0.4s' }}
-                        ></div>
-                      </div>
-                    </div>
-                  ) : analyses[card.key as keyof typeof analyses] ? (
-                    <div className="space-y-2">
-                      {formatAIContent(analyses[card.key as keyof typeof analyses] || '')}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground italic text-sm">
-                      Analysis will load when you expand this section
+            <CollapsibleTrigger asChild>
+              <div className="flex flex-col space-y-1.5 p-6 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-inter font-normal leading-none tracking-tighter flex items-center">
+                      {card.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1.5">
+                      {card.description}
                     </p>
-                  )}
+                  </div>
+                  <Button variant="ghost" size="sm">
+                    {openSections[card.key] ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        );
-      })}
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="p-6 pt-0">
+                {loading[card.key] ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : analyses[card.key as keyof typeof analyses] ? (
+                  <div className="space-y-2">
+                    {formatAIContent(analyses[card.key as keyof typeof analyses] || '')}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground italic text-sm">
+                    Analysis will load when you expand this section
+                  </p>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      ))}
     </div>
   );
 };
