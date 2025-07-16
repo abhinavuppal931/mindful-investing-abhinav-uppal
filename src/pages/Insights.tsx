@@ -7,9 +7,7 @@ import MarketIndices from '@/components/insights/MarketIndices';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { GlassDots } from '@/components/ui/glass-dots';
-import { Search, Star, StarOff } from 'lucide-react';
+import { Search, Star, StarOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { toast } from '@/hooks/use-toast';
@@ -194,32 +192,8 @@ const Insights = () => {
             <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
             <MarketIndices />
           </div>
-          
-          {/* Loading Skeleton */}
-          <div className="space-y-6">
-            {/* Search Bar Skeleton */}
-            <Skeleton className="h-10 w-full" />
-            
-            {/* Welcome Card Skeleton */}
-            <div className="space-y-4">
-              <Skeleton className="h-[120px] w-full rounded-xl" />
-            </div>
-            
-            {/* Stock Cards Skeleton */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-[120px]" />
-                      <Skeleton className="h-4 w-[80px]" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-[100px] w-full rounded-xl" />
-                </div>
-              ))}
-            </div>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-mindful-600"></div>
           </div>
         </div>
       </MainLayout>
@@ -245,7 +219,7 @@ const Insights = () => {
           />
           {searchLoading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <GlassDots />
+              <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           )}
         </div>
