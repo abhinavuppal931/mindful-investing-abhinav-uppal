@@ -23,6 +23,28 @@ interface CacheEntry {
   ttl: number;
 }
 
+// New response interfaces for analyst metrics (for type hints only)
+interface RatingsConsensusResponse {
+  symbol: string;
+  strongBuy?: number;
+  buy?: number;
+  hold?: number;
+  sell?: number;
+  strongSell?: number;
+  total?: number;
+  consensus?: string;
+  [key: string]: any;
+}
+
+interface PriceTargetConsensusResponse {
+  symbol: string;
+  targetLow?: number;
+  targetHigh?: number;
+  targetConsensus?: number;
+  targetMedian?: number;
+  [key: string]: any;
+}
+
 const cache = new Map<string, CacheEntry>();
 
 function isValidCache(entry: CacheEntry): boolean {
@@ -144,6 +166,16 @@ serve(async (req) => {
       case 'earnings-transcript':
         endpoint = `${BASE_URL}/earning_call_transcript/${symbol}?year=${year}&quarter=${quarter}&apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
+      case 'grades-consensus':
+        // Analyst ratings consensus (stable)
+        endpoint = `${STABLE_BASE_URL}/grades-consensus?symbol=${symbol}&apikey=${FMP_API_KEY}`;
+        ttl = 6 * 60 * 60 * 1000; // 6 hours
+        break;
+      case 'price-target-consensus':
+        // Analyst price target consensus (stable)
+        endpoint = `${STABLE_BASE_URL}/price-target-consensus?symbol=${symbol}&apikey=${FMP_API_KEY}`;
+        ttl = 6 * 60 * 60 * 1000; // 6 hours
         break;
       default:
         throw new Error('Invalid action');

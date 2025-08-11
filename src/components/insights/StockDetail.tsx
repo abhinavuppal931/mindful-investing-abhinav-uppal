@@ -15,6 +15,7 @@ import TodaysPriceDriver from './TodaysPriceDriver';
 import CompanyOverview from './CompanyOverview';
 import AIAnalysisGrid from './AIAnalysisGrid';
 import StockLogo from './StockLogo';
+import Analyst from './Analyst';
 
 interface StockDetailProps {
   ticker: string;
@@ -1289,6 +1290,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         financialData={financials?.slice(0, 3)} 
         newsData={[]} 
       />
+
+      {/* Analyst Metrics */}
+      <Analyst ticker={ticker} />
     </div>
   );
 };
