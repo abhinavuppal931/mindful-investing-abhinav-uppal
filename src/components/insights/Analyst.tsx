@@ -37,21 +37,28 @@ function CircularDial({ percent, label }: { percent: number; label: string }) {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
 
-  const key = label.toLowerCase().replace(/\s/g, '') as keyof typeof gradients;
-  const gradientId = `grad-${key}`;
+  // Dynamic stroke color based on consensus label
+  const colorMap: Record<string, string> = {
+    'STRONG BUY': '142 76% 36%', // emerald-500
+    BUY: '142 76% 36%',
+    HOLD: '45 93% 47%', // amber-500
+    SELL: '0 84% 60%', // red-500
+    'STRONG SELL': '0 74% 42%', // red-700
+  };
+  const strokeHsl = colorMap[label?.toUpperCase?.() || 'HOLD'] || '45 93% 47%';
 
   return (
     <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" className={cn('text-transparent', `text-[color:transparent]`)} />
-        </linearGradient>
-      </defs>
       <circle cx="60" cy="60" r={radius} strokeWidth="10" className="stroke-muted/30 fill-none" />
       <circle
         cx="60" cy="60" r={radius} strokeWidth="10" fill="none"
-        className={cn('transition-all duration-700 ease-out', 'stroke-[url(#none)]', `stroke-emerald-500`)}
-        style={{ strokeDasharray: circumference, strokeDashoffset: offset, strokeLinecap: 'round' }}
+        className={cn('transition-all duration-700 ease-out')}
+        style={{
+          stroke: `hsl(${strokeHsl})`,
+          strokeDasharray: circumference,
+          strokeDashoffset: offset,
+          strokeLinecap: 'round',
+        }}
       />
       <foreignObject x="25" y="35" width="70" height="50">
         <div className="h-full w-full flex flex-col items-center justify-center">
@@ -171,24 +178,28 @@ function PriceTargetCard({ data, currentPrice }: { data: PriceTargetConsensusIte
     );
   }
 
-  const low = Number(data.targetLow ?? data.low ?? 0);
-  const high = Number(data.targetHigh ?? data.high ?? 0);
-  const consensus = Number(data.targetConsensus ?? data.consensus ?? 0);
-  const median = Number(data.targetMedian ?? data.median ?? 0);
-  const min = Math.min(low || consensus || median || high || 0, low || 0);
-  const max = Math.max(high || consensus || median || low || 0, high || 0);
-  const range = Math.max(max - min, 1);
+  // Extract values (median intentionally ignored)
+  const low = Number(data.targetLow ?? data.low);
+  const high = Number(data.targetHigh ?? data.high);
+  const consensus = Number(data.targetConsensus ?? data.consensus);
+  const current = typeof currentPrice === 'number' ? currentPrice : null;
 
-  const points: Array<{ label: string; value: number; color: string }> = [
-    { label: `Low ${low ? low.toFixed(2) : '-'}`, value: low, color: 'text-muted-foreground' },
-    { label: `Median ${median ? median.toFixed(2) : '-'}`, value: median, color: 'text-foreground' },
-    { label: `Consensus ${consensus ? consensus.toFixed(2) : '-'}`, value: consensus, color: 'text-foreground' },
-    { label: `High ${high ? high.toFixed(2) : '-'}`, value: high, color: 'text-muted-foreground' },
+  const isFiniteNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+  const pool = [low, high, consensus, current ?? NaN].filter(isFiniteNum);
+  const min = pool.length ? Math.min(...pool) : 0;
+  const max = pool.length ? Math.max(...pool) : 1;
+  const range = Math.max(max - min, 1);
+  const position = (v: number) => (isFiniteNum(v) ? `${((v - min) / range) * 100}%` : '0%');
+
+  const points: Array<{ key: string; label: string; value: number; tone: string }> = [
+    { key: 'L', label: 'Low', value: low, tone: 'text-[hsl(0,84%,60%)]' },
+    { key: 'C', label: 'Consensus', value: consensus, tone: 'text-foreground' },
+    { key: 'H', label: 'High', value: high, tone: 'text-[hsl(142,76%,36%)]' },
   ];
 
-  const current = currentPrice ?? null;
-
-  const position = (v: number) => `${((v - min) / range) * 100}%`;
+  const upsidePct = isFiniteNum(consensus) && current !== null && isFiniteNum(current)
+    ? ((consensus - current) / current) * 100
+    : null;
 
   return (
     <Card>
@@ -196,26 +207,55 @@ function PriceTargetCard({ data, currentPrice }: { data: PriceTargetConsensusIte
         <CardTitle>Analyst Price Targets</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="relative pt-8 pb-8">
-          <div className="relative h-2 rounded-full bg-gradient-to-r from-red-500 via-amber-500 to-emerald-500" />
+        {/* Current price banner */}
+        <div className="mb-5 rounded-xl border border-border/50 bg-gradient-to-r from-[hsl(var(--muted))] to-[hsl(var(--accent))] p-4 text-center">
+          <div className="text-xs text-muted-foreground">Current Price</div>
+          <div className="text-3xl font-semibold tabular-nums">{current !== null ? `$${current.toFixed(2)}` : '-'}</div>
+        </div>
+
+        {/* Scale slider */}
+        <div className="relative pt-10 pb-12">
+          <div className="relative h-2 rounded-full bg-gradient-to-r from-[hsl(0,84%,60%)] via-[hsl(45,93%,47%)] to-[hsl(142,76%,36%)]" />
 
           {points.map((p, idx) => (
             <div key={p.label} className="absolute" style={{ left: position(p.value) }}>
-              <div className={cn('w-3 h-3 rounded-full bg-foreground border-2 border-background', 'translate-x-[-50%] translate-y-[-50%]')} />
-              <div className={cn('absolute whitespace-nowrap text-xs px-1 py-0.5 rounded-md bg-background/70 backdrop-blur-sm border border-border/50', idx % 2 === 0 ? 'top-3' : 'bottom-3', 'left-1/2 -translate-x-1/2')}>
-                <span className={p.color}>{p.label}</span>
+              <div className="w-5 h-5 rounded-full bg-background border-2 border-foreground translate-x-[-50%] translate-y-[-50%] flex items-center justify-center shadow-sm">
+                <span className="text-[10px] font-semibold">{p.key}</span>
+              </div>
+              <div className={cn(
+                'absolute whitespace-nowrap text-xs px-2 py-1 rounded-md bg-background/80 backdrop-blur-md border border-border/50 left-1/2 -translate-x-1/2',
+                idx % 2 === 0 ? 'top-4' : 'bottom-4'
+              )}>
+                <span className="text-muted-foreground mr-1">{p.label}</span>
+                <span className={cn('font-medium tabular-nums', p.tone)}>
+                  {isFiniteNum(p.value) ? `$${p.value.toFixed(2)}` : '-'}
+                </span>
               </div>
             </div>
           ))}
 
-          {current !== null && !Number.isNaN(current) && (
+          {current !== null && isFiniteNum(current) && (
             <div className="absolute" style={{ left: position(current) }}>
-              <div className="w-3 h-3 rounded-full bg-primary border-2 border-background translate-x-[-50%] translate-y-[-50%]" />
-              <div className="absolute whitespace-nowrap text-xs px-1 py-0.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 top-8 left-1/2 -translate-x-1/2">
-                <span className="text-primary font-medium">Current {current.toFixed(2)}</span>
-              </div>
+              <div className="w-5 h-5 rounded-full bg-primary border-2 border-background translate-x-[-50%] translate-y-[-50%] shadow" />
             </div>
           )}
+        </div>
+
+        {/* Upside potential */}
+        <div
+          className={cn(
+            'mt-6 rounded-xl p-4 text-center border',
+            upsidePct === null
+              ? 'bg-muted/30 text-muted-foreground border-border/50'
+              : upsidePct >= 0
+              ? 'bg-[hsl(142,76%,36%)]/10 text-[hsl(142,76%,36%)] border-transparent'
+              : 'bg-[hsl(0,84%,60%)]/10 text-[hsl(0,84%,60%)] border-transparent'
+          )}
+        >
+          <div className="text-sm">Consensus Upside Potential</div>
+          <div className="text-2xl font-semibold tabular-nums">
+            {upsidePct !== null ? `${upsidePct >= 0 ? '+' : ''}${upsidePct.toFixed(1)}%` : '-'}
+          </div>
         </div>
       </CardContent>
     </Card>
