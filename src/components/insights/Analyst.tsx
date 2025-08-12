@@ -141,7 +141,7 @@ function RatingsCard({ data }: { data: RatingsConsensusItem | null }) {
       <CardHeader>
         <CardTitle>Analyst Ratings</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-6 lg:pb-8">
         <div className="flex flex-col sm:flex-row gap-6 items-center">
           <CircularDial percent={dominantPercent} label={dominantLabel} />
           <div className="flex-1 w-full space-y-3">
@@ -214,31 +214,51 @@ function PriceTargetCard({ data, currentPrice }: { data: PriceTargetConsensusIte
         </div>
 
         {/* Scale slider */}
-        <div className="relative pt-10 pb-12">
-          <div className="relative h-2 rounded-full bg-gradient-to-r from-[hsl(0,84%,60%)] via-[hsl(45,93%,47%)] to-[hsl(142,76%,36%)]" />
+        <div className="relative pt-8 pb-14">
+          <div className="relative h-3 rounded-full bg-gradient-to-r from-[hsl(0,84%,60%)] via-[hsl(45,93%,47%)] to-[hsl(142,76%,36%)] drop-shadow-sm" />
 
-          {points.map((p, idx) => (
-            <div key={p.label} className="absolute" style={{ left: position(p.value) }}>
-              <div className="w-5 h-5 rounded-full bg-background border-2 border-foreground translate-x-[-50%] translate-y-[-50%] flex items-center justify-center shadow-sm">
-                <span className="text-[10px] font-semibold">{p.key}</span>
-              </div>
-              <div className={cn(
-                'absolute whitespace-nowrap text-xs px-2 py-1 rounded-md bg-background/80 backdrop-blur-md border border-border/50 left-1/2 -translate-x-1/2',
-                idx % 2 === 0 ? 'top-4' : 'bottom-4'
-              )}>
-                <span className="text-muted-foreground mr-1">{p.label}</span>
-                <span className={cn('font-medium tabular-nums', p.tone)}>
-                  {isFiniteNum(p.value) ? `$${p.value.toFixed(2)}` : '-'}
-                </span>
+          {/* Circular markers above the bar */}
+          {points.map((p) => (
+            <div key={p.label} className="absolute -top-3" style={{ left: position(p.value) }}>
+              <div
+                className={cn(
+                  'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white translate-x-[-50%] border-2 border-background shadow-md',
+                  p.key === 'L'
+                    ? 'bg-[hsl(0,84%,60%)]'
+                    : p.key === 'C'
+                    ? 'bg-[hsl(45,93%,47%)]'
+                    : 'bg-[hsl(142,76%,36%)]'
+                )}
+              >
+                {p.key}
               </div>
             </div>
           ))}
 
+          {/* Current price prominent marker */}
           {current !== null && isFiniteNum(current) && (
-            <div className="absolute" style={{ left: position(current) }}>
-              <div className="w-5 h-5 rounded-full bg-primary border-2 border-background translate-x-[-50%] translate-y-[-50%] shadow" />
+            <div className="absolute -top-4 z-20" style={{ left: position(current) }}>
+              <div className="w-7 h-7 rounded-full bg-[hsl(221,83%,53%)] translate-x-[-50%] border-2 border-background shadow-lg flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-background block" />
+              </div>
             </div>
           )}
+        </div>
+
+        {/* Labels under the bar */}
+        <div className="mt-2 grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div className="text-xs uppercase text-muted-foreground tracking-wide">Low Target</div>
+            <div className="font-semibold tabular-nums text-[hsl(0,84%,60%)]">{isFiniteNum(low) ? `$${low.toFixed(2)}` : '-'}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-muted-foreground tracking-wide">Consensus</div>
+            <div className="font-semibold tabular-nums text-[hsl(45,93%,47%)]">{isFiniteNum(consensus) ? `$${consensus.toFixed(2)}` : '-'}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-muted-foreground tracking-wide">High Target</div>
+            <div className="font-semibold tabular-nums text-[hsl(142,76%,36%)]">{isFiniteNum(high) ? `$${high.toFixed(2)}` : '-'}</div>
+          </div>
         </div>
 
         {/* Upside potential */}
