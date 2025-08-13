@@ -33,7 +33,7 @@ const gradients = {
 const labelOrder = ['Strong Buy', 'Buy', 'Hold', 'Sell', 'Strong Sell'] as const;
 
 function CircularDial({ percent, label }: { percent: number; label: string }) {
-  const radius = 42;
+  const radius = 50;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
 
@@ -48,7 +48,7 @@ function CircularDial({ percent, label }: { percent: number; label: string }) {
   const strokeHsl = colorMap[label?.toUpperCase?.() || 'HOLD'] || '45 93% 47%';
 
   return (
-    <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
+    <svg width="140" height="140" viewBox="0 0 120 120" className="flex-shrink-0">
       <circle cx="60" cy="60" r={radius} strokeWidth="10" className="stroke-muted/30 fill-none" />
       <circle
         cx="60" cy="60" r={radius} strokeWidth="10" fill="none"
@@ -60,9 +60,9 @@ function CircularDial({ percent, label }: { percent: number; label: string }) {
           strokeLinecap: 'round',
         }}
       />
-      <foreignObject x="25" y="35" width="70" height="50">
+      <foreignObject x="20" y="30" width="80" height="60">
         <div className="h-full w-full flex flex-col items-center justify-center">
-          <div className="text-xl font-semibold">{Math.round(percent)}%</div>
+          <div className="text-2xl font-semibold">{Math.round(percent)}%</div>
           <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
         </div>
       </foreignObject>
@@ -72,12 +72,12 @@ function CircularDial({ percent, label }: { percent: number; label: string }) {
 
 function RatingBar({ label, count, percent, variant }: { label: string; count: number; percent: number; variant: keyof typeof gradients }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">{label}</span>
         <span className="tabular-nums">{count}</span>
       </div>
-      <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
+      <div className="h-3 rounded-full bg-muted/30 overflow-hidden">
         <div
           className={cn('h-full bg-gradient-to-r', gradients[variant])}
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
@@ -142,9 +142,9 @@ function RatingsCard({ data }: { data: RatingsConsensusItem | null }) {
         <CardTitle>Analyst Ratings</CardTitle>
       </CardHeader>
       <CardContent className="pb-6 lg:pb-8">
-        <div className="flex flex-col sm:flex-row gap-6 items-center">
+        <div className="flex flex-col sm:flex-row gap-8 items-center">
           <CircularDial percent={dominantPercent} label={dominantLabel} />
-          <div className="flex-1 w-full space-y-3">
+          <div className="flex-1 w-full space-y-4">
             {bars.map((b) => {
               const pct = totalCount ? ((totals[b.key] || 0) / totalCount) * 100 : 0;
               return (
@@ -215,47 +215,47 @@ function PriceTargetCard({ data, currentPrice }: { data: PriceTargetConsensusIte
 
         {/* Scale slider */}
         <div className="relative pt-8 pb-14">
-          <div className="relative h-3 rounded-full bg-gradient-to-r from-[hsl(0,84%,60%)] via-[hsl(45,93%,47%)] to-[hsl(142,76%,36%)] drop-shadow-sm" />
-
-          {/* Circular markers above the bar */}
-          {points.map((p) => (
-            <div key={p.label} className="absolute -top-3" style={{ left: position(p.value) }}>
-              <div
-                className={cn(
-                  'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white translate-x-[-50%] border-2 border-background shadow-md',
-                  p.key === 'L'
-                    ? 'bg-[hsl(0,84%,60%)]'
-                    : p.key === 'C'
-                    ? 'bg-[hsl(45,93%,47%)]'
-                    : 'bg-[hsl(142,76%,36%)]'
-                )}
-              >
-                {p.key}
+          <div className="relative h-3 rounded-full bg-gradient-to-r from-[hsl(0,84%,60%)] via-[hsl(45,93%,47%)] to-[hsl(142,76%,36%)] drop-shadow-sm">
+            {/* Circular markers centered on the bar */}
+            {points.map((p) => (
+              <div key={p.label} className="absolute top-1/2 -translate-y-1/2" style={{ left: position(p.value) }}>
+                <div
+                  className={cn(
+                    'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white translate-x-[-50%] border-2 border-background shadow-md',
+                    p.key === 'L'
+                      ? 'bg-[hsl(0,84%,60%)]'
+                      : p.key === 'C'
+                      ? 'bg-[hsl(45,93%,47%)]'
+                      : 'bg-[hsl(142,76%,36%)]'
+                  )}
+                >
+                  {p.key}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {/* Current price prominent marker */}
-          {current !== null && isFiniteNum(current) && (
-            <div className="absolute -top-4 z-20" style={{ left: position(current) }}>
-              <div className="w-7 h-7 rounded-full bg-[hsl(221,83%,53%)] translate-x-[-50%] border-2 border-background shadow-lg flex items-center justify-center">
-                <span className="w-2 h-2 rounded-full bg-background block" />
+            {/* Current price prominent marker */}
+            {current !== null && isFiniteNum(current) && (
+              <div className="absolute top-1/2 -translate-y-1/2 z-20" style={{ left: position(current) }}>
+                <div className="w-7 h-7 rounded-full bg-[hsl(221,83%,53%)] translate-x-[-50%] border-2 border-background shadow-lg flex items-center justify-center">
+                  <span className="w-2 h-2 rounded-full bg-background block" />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Labels under the bar */}
-        <div className="mt-2 grid grid-cols-3 gap-4 text-center">
-          <div>
+        <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+          <div className="rounded-lg border border-border/50 bg-muted/40 p-3 shadow-sm">
             <div className="text-xs uppercase text-muted-foreground tracking-wide">Low Target</div>
             <div className="font-semibold tabular-nums text-[hsl(0,84%,60%)]">{isFiniteNum(low) ? `$${low.toFixed(2)}` : '-'}</div>
           </div>
-          <div>
+          <div className="rounded-lg border border-border/50 bg-muted/40 p-3 shadow-sm">
             <div className="text-xs uppercase text-muted-foreground tracking-wide">Consensus</div>
             <div className="font-semibold tabular-nums text-[hsl(45,93%,47%)]">{isFiniteNum(consensus) ? `$${consensus.toFixed(2)}` : '-'}</div>
           </div>
-          <div>
+          <div className="rounded-lg border border-border/50 bg-muted/40 p-3 shadow-sm">
             <div className="text-xs uppercase text-muted-foreground tracking-wide">High Target</div>
             <div className="font-semibold tabular-nums text-[hsl(142,76%,36%)]">{isFiniteNum(high) ? `$${high.toFixed(2)}` : '-'}</div>
           </div>
