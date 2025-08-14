@@ -66,6 +66,32 @@ export const fmpAPI = {
     }
   },
 
+  getKeyMetricsTTM: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'key-metrics-ttm', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Key Metrics TTM error:', error);
+      throw error;
+    }
+  },
+
+  getFinancialRatiosTTM: async (symbol: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fmp-api', {
+        body: { action: 'financial-ratios-ttm', symbol }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('FMP Financial Ratios TTM error:', error);
+      throw error;
+    }
+  },
+
   getRatios: async (symbol: string, period = 'annual', limit = 10) => {
     try {
       const { data, error } = await supabase.functions.invoke('fmp-api', {

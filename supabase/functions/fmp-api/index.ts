@@ -119,6 +119,14 @@ serve(async (req) => {
         endpoint = `${BASE_URL}/ratios-ttm/${symbol}?apikey=${FMP_API_KEY}`;
         ttl = 24 * 60 * 60 * 1000; // 24 hours
         break;
+      case 'key-metrics-ttm':
+        endpoint = `${STABLE_BASE_URL}/key-metrics-ttm?symbol=${symbol}&apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
+      case 'financial-ratios-ttm':
+        endpoint = `${STABLE_BASE_URL}/financial-ratios-ttm?symbol=${symbol}&apikey=${FMP_API_KEY}`;
+        ttl = 24 * 60 * 60 * 1000; // 24 hours
+        break;
       case 'historical-prices':
         const fromDate = from || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const toDate = to || new Date().toISOString().split('T')[0];

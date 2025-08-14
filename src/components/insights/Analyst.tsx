@@ -141,10 +141,10 @@ function RatingsCard({ data }: { data: RatingsConsensusItem | null }) {
       <CardHeader>
         <CardTitle>Analyst Ratings</CardTitle>
       </CardHeader>
-      <CardContent className="pb-6 lg:pb-8">
+      <CardContent className="pb-6 lg:pb-8 lg:pb-16">
         <div className="flex flex-col sm:flex-row gap-8 items-center">
           <CircularDial percent={dominantPercent} label={dominantLabel} />
-          <div className="flex-1 w-full space-y-4">
+          <div className="flex-1 w-full space-y-5 lg:space-y-6">
             {bars.map((b) => {
               const pct = totalCount ? ((totals[b.key] || 0) / totalCount) * 100 : 0;
               return (

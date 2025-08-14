@@ -60,9 +60,24 @@ const formatXAxisDate = (tickItem: any, period: string): string => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   }
   
-  // For longer timeframes, use quarterly format
+  // For longer timeframes, use quarterly format with better spacing
   const quarter = Math.ceil((date.getMonth() + 1) / 3);
-  return `Q${quarter} ${date.getFullYear()}`;
+  const year = date.getFullYear();
+  return `Q${quarter} ${year}`;
+};
+
+// Custom tick formatter for price charts to avoid duplicate quarters
+const formatPriceXAxis = (tickItem: any, index: number) => {
+  const date = new Date(tickItem);
+  const quarter = Math.ceil((date.getMonth() + 1) / 3);
+  const year = date.getFullYear();
+  
+  // Use a simple approach - show every nth tick to reduce crowding
+  if (index % 2 === 0) {
+    return `Q${quarter} ${year}`;
+  }
+  
+  return '';
 };
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
@@ -393,33 +408,65 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           break;
 
         case 'margins':
-          const ratiosForMargins = ratioType === 'ttm' 
-            ? [await fmpAPI.getRatiosTTM(ticker)]
-            : await fmpAPI.getRatios(ticker, dataType, limit);
-          
-          data = ratiosForMargins.map((item: any) => ({
-            year: ratioType === 'ttm' ? 'TTM' : new Date(item.date).getFullYear(),
-            grossMargin: item.grossProfitMargin || 0,
-            operatingMargin: item.operatingProfitMargin || 0,
-            netMargin: item.netProfitMargin || 0,
-            ebitdaMargin: item.ebitdaMargin || 0
-          })).reverse();
+          if (ratioType === 'ttm') {
+            const ttmRatios = await fmpAPI.getFinancialRatiosTTM(ticker);
+            data = Array.isArray(ttmRatios) ? ttmRatios.map((item: any) => ({
+              year: 'TTM',
+              grossMargin: item.grossProfitMargin || 0,
+              operatingMargin: item.operatingProfitMargin || 0,
+              netMargin: item.netProfitMargin || 0,
+              ebitdaMargin: item.ebitdaMargin || 0
+            })) : [ttmRatios].map((item: any) => ({
+              year: 'TTM',
+              grossMargin: item.grossProfitMargin || 0,
+              operatingMargin: item.operatingProfitMargin || 0,
+              netMargin: item.netProfitMargin || 0,
+              ebitdaMargin: item.ebitdaMargin || 0
+            }));
+          } else {
+            const ratiosForMargins = await fmpAPI.getRatios(ticker, dataType, limit);
+            data = ratiosForMargins.map((item: any) => ({
+              year: new Date(item.date).getFullYear(),
+              grossMargin: item.grossProfitMargin || 0,
+              operatingMargin: item.operatingProfitMargin || 0,
+              netMargin: item.netProfitMargin || 0,
+              ebitdaMargin: item.ebitdaMargin || 0
+            })).reverse();
+          }
           break;
 
         case 'ratios':
-          const ratiosSource = ratioType === 'ttm' 
-            ? [await fmpAPI.getRatiosTTM(ticker)]
-            : await fmpAPI.getRatios(ticker, dataType, limit);
-          
-          data = ratiosSource.map((item: any) => ({
-            year: ratioType === 'ttm' ? 'TTM' : new Date(item.date).getFullYear(),
-            pe: item.priceEarningsRatio || 0,
-            ps: item.priceToSalesRatio || 0,
-            pfcf: item.priceToFreeCashFlowsRatio || 0,
-            pocf: item.priceToOperatingCashFlowsRatio || 0,
-            roe: item.returnOnEquity || 0,
-            roic: item.returnOnCapitalEmployed || 0
-          })).reverse();
+          if (ratioType === 'ttm') {
+            const ttmKeyMetrics = await fmpAPI.getKeyMetricsTTM(ticker);
+            data = Array.isArray(ttmKeyMetrics) ? ttmKeyMetrics.map((item: any) => ({
+              year: 'TTM',
+              pe: item.peRatio || 0,
+              ps: item.priceToSalesRatio || 0,
+              pfcf: item.priceToFreeCashFlowsRatio || 0,
+              pocf: item.priceToOperatingCashFlowsRatio || 0,
+              roe: item.roe || 0,
+              roic: item.roic || 0
+            })) : [ttmKeyMetrics].map((item: any) => ({
+              year: 'TTM',
+              pe: item.peRatio || 0,
+              ps: item.priceToSalesRatio || 0,
+              pfcf: item.priceToFreeCashFlowsRatio || 0,
+              pocf: item.priceToOperatingCashFlowsRatio || 0,
+              roe: item.roe || 0,
+              roic: item.roic || 0
+            }));
+          } else {
+            const ratiosSource = await fmpAPI.getRatios(ticker, dataType, limit);
+            data = ratiosSource.map((item: any) => ({
+              year: new Date(item.date).getFullYear(),
+              pe: item.priceEarningsRatio || 0,
+              ps: item.priceToSalesRatio || 0,
+              pfcf: item.priceToFreeCashFlowsRatio || 0,
+              pocf: item.priceToOperatingCashFlowsRatio || 0,
+              roe: item.returnOnEquity || 0,
+              roic: item.returnOnCapitalEmployed || 0
+            })).reverse();
+          }
           setRatiosData(data);
           break;
       }
@@ -554,7 +601,8 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 <XAxis 
                   dataKey="date" 
                   stroke="#6b7280"
-                  tickFormatter={(tickItem) => formatXAxisDate(tickItem, period)}
+                  tickFormatter={formatPriceXAxis}
+                  interval="preserveStartEnd"
                 />
                 <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
                 <ChartTooltip content={<CustomTooltip />} />
@@ -1005,6 +1053,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                     <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
                     <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
                     <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                    <SelectItem value="10Y">{dataType === 'quarterly' ? '40Q' : '10Y'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1042,11 +1091,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
-                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
-                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
-                  </SelectContent>
+                      <SelectContent>
+                        <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                        <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                        <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                        <SelectItem value="10Y">{dataType === 'quarterly' ? '40Q' : '10Y'}</SelectItem>
+                      </SelectContent>
                 </Select>
               </div>
               {renderChart()}
@@ -1097,11 +1147,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
-                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
-                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
-                  </SelectContent>
+                      <SelectContent>
+                        <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                        <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                        <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                        <SelectItem value="10Y">{dataType === 'quarterly' ? '40Q' : '10Y'}</SelectItem>
+                      </SelectContent>
                 </Select>
               </div>
               {renderChart()}
@@ -1116,11 +1167,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
-                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
-                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
-                  </SelectContent>
+                      <SelectContent>
+                        <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                        <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                        <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                        <SelectItem value="10Y">{dataType === 'quarterly' ? '40Q' : '10Y'}</SelectItem>
+                      </SelectContent>
                 </Select>
               </div>
               {renderChart()}
@@ -1134,11 +1186,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
-                    <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
-                    <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
-                  </SelectContent>
+                      <SelectContent>
+                        <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                        <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                        <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                        <SelectItem value="10Y">{dataType === 'quarterly' ? '40Q' : '10Y'}</SelectItem>
+                      </SelectContent>
                 </Select>
               </div>
               {renderChart()}
@@ -1192,11 +1245,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                       <SelectTrigger className="w-20">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
-                        <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
-                        <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
-                      </SelectContent>
+                        <SelectContent>
+                          <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
+                          <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
+                          <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                          <SelectItem value="10Y">{dataType === 'quarterly' ? '40Q' : '10Y'}</SelectItem>
+                        </SelectContent>
                     </Select>
                   )}
                 </div>
@@ -1270,6 +1324,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                         <SelectItem value="1Y">{dataType === 'quarterly' ? '4Q' : '1Y'}</SelectItem>
                         <SelectItem value="3Y">{dataType === 'quarterly' ? '12Q' : '3Y'}</SelectItem>
                         <SelectItem value="5Y">{dataType === 'quarterly' ? '20Q' : '5Y'}</SelectItem>
+                        <SelectItem value="10Y">{dataType === 'quarterly' ? '40Q' : '10Y'}</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
