@@ -82,30 +82,54 @@ const LineChart: React.FC<LineChartProps> = ({
           .tickFormat(() => '')
       );
 
-    // Add x-axis with clean quarterly formatting matching reference
-    const timeSpan = xScale.domain()[1].getTime() - xScale.domain()[0].getTime();
+    // Add x-axis with manual tick control for clean quarterly spacing
+    const [startDate, endDate] = xScale.domain();
+    const timeSpan = endDate.getTime() - startDate.getTime();
     const years = timeSpan / (1000 * 60 * 60 * 24 * 365);
     
-    // Determine optimal spacing based on chart width and data range
-    const availableWidth = width;
-    const maxLabels = Math.floor(availableWidth / 80); // Minimum 80px between labels
+    // Generate explicit tick dates to prevent overlapping
+    const generateTickDates = (start: Date, end: Date, years: number): Date[] => {
+      const tickDates: Date[] = [];
+      
+      if (years <= 2) {
+        // For shorter periods, show quarterly ticks
+        let current = new Date(start.getFullYear(), Math.floor(start.getMonth() / 3) * 3, 1);
+        while (current <= end) {
+          if (current >= start) {
+            tickDates.push(new Date(current));
+          }
+          current.setMonth(current.getMonth() + 6); // Every 6 months for cleaner spacing
+        }
+      } else if (years <= 5) {
+        // For medium periods, show yearly ticks
+        let current = new Date(start.getFullYear(), 0, 1);
+        while (current <= end) {
+          if (current >= start) {
+            tickDates.push(new Date(current));
+          }
+          current.setFullYear(current.getFullYear() + 1);
+        }
+      } else {
+        // For longer periods, show every 2 years
+        let current = new Date(Math.ceil(start.getFullYear() / 2) * 2, 0, 1);
+        while (current <= end) {
+          if (current >= start) {
+            tickDates.push(new Date(current));
+          }
+          current.setFullYear(current.getFullYear() + 2);
+        }
+      }
+      
+      return tickDates;
+    };
     
-    let tickInterval;
-    if (years <= 1) {
-      tickInterval = d3.timeMonth.every(3); // Quarterly for 1 year or less
-    } else if (years <= 3) {
-      tickInterval = d3.timeMonth.every(6); // Semi-annual for 2-3 years
-    } else if (years <= 8) {
-      tickInterval = d3.timeYear.every(1); // Annual for 4-8 years
-    } else {
-      tickInterval = d3.timeYear.every(2); // Bi-annual for longer periods
-    }
+    const tickDates = generateTickDates(startDate, endDate, years);
     
     const xAxis = d3.axisBottom(xScale)
-      .ticks(tickInterval)
+      .tickValues(tickDates) // Use explicit tick values instead of intervals
       .tickFormat((d) => {
         const date = d as Date;
-        if (years <= 3) {
+        if (years <= 2) {
           const quarter = Math.floor(date.getMonth() / 3) + 1;
           return `Q${quarter} ${date.getFullYear()}`;
         } else {
@@ -118,10 +142,7 @@ const LineChart: React.FC<LineChartProps> = ({
       .call(xAxis)
       .attr('class', 'text-sm text-gray-600')
       .selectAll('text')
-      .style('text-anchor', 'end')
-      .attr('transform', 'rotate(-45)')
-      .attr('dx', '-0.5em')
-      .attr('dy', '0.15em');
+      .style('text-anchor', 'middle');
 
     // Add y-axis
     chart.append('g')

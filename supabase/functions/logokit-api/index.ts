@@ -17,13 +17,16 @@ serve(async (req) => {
   try {
     const { symbol } = await req.json();
     
-    if (!LOGOKIT_API_KEY) {
-      console.error('LogoKit API key not configured');
+    console.log(`LogoKit API Key exists: ${!!LOGOKIT_API_KEY}`);
+    console.log(`LogoKit API Key starts with pk_: ${LOGOKIT_API_KEY?.startsWith('pk_')}`);
+    
+    if (!LOGOKIT_API_KEY || !LOGOKIT_API_KEY.startsWith('pk_')) {
+      console.error('LogoKit API key not configured or invalid format');
       return new Response(JSON.stringify({ 
-        error: 'LogoKit API key not configured',
+        error: 'LogoKit API key not configured or invalid format',
         logoUrl: null
       }), {
-        status: 400,
+        status: 200, // Return 200 to avoid edge function errors
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
