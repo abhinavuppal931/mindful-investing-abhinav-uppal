@@ -82,30 +82,38 @@ const LineChart: React.FC<LineChartProps> = ({
           .tickFormat(() => '')
       );
 
-    // Add x-axis with improved quarterly formatting
+    // Add x-axis with clean quarterly formatting matching reference
     const timeSpan = xScale.domain()[1].getTime() - xScale.domain()[0].getTime();
     const years = timeSpan / (1000 * 60 * 60 * 24 * 365);
     
-    // Adjust tick interval based on data range
-    let tickInterval;
-    if (years <= 2) {
-      tickInterval = d3.timeMonth.every(6); // Every 6 months for short ranges
-    } else if (years <= 5) {
-      tickInterval = d3.timeYear.every(1); // Yearly for medium ranges
-    } else {
-      tickInterval = d3.timeYear.every(2); // Every 2 years for long ranges
-    }
+    // Create a custom tick generator for clean quarterly intervals
+    const generateQuarterlyTicks = (domain: [Date, Date]) => {
+      const [start, end] = domain;
+      const ticks: Date[] = [];
+      
+      // Start from the beginning of the first quarter in the range
+      let current = new Date(start.getFullYear(), Math.floor(start.getMonth() / 3) * 3, 1);
+      
+      // Generate ticks every 6 months for better spacing
+      while (current <= end) {
+        if (current >= start) {
+          ticks.push(new Date(current));
+        }
+        // Add 6 months
+        current.setMonth(current.getMonth() + 6);
+      }
+      
+      return ticks;
+    };
+    
+    const customTicks = generateQuarterlyTicks(xScale.domain() as [Date, Date]);
     
     const xAxis = d3.axisBottom(xScale)
-      .ticks(tickInterval)
+      .tickValues(customTicks)
       .tickFormat((d) => {
         const date = d as Date;
-        if (years <= 2) {
-          const quarter = Math.floor(date.getMonth() / 3) + 1;
-          return `Q${quarter} ${date.getFullYear()}`;
-        } else {
-          return `${date.getFullYear()}`;
-        }
+        const quarter = Math.floor(date.getMonth() / 3) + 1;
+        return `Q${quarter} ${date.getFullYear()}`;
       });
     
     chart.append('g')
@@ -114,7 +122,9 @@ const LineChart: React.FC<LineChartProps> = ({
       .attr('class', 'text-sm text-gray-600')
       .selectAll('text')
       .style('text-anchor', 'middle')
-      .attr('dy', '1.2em');
+      .attr('transform', 'rotate(-45)')
+      .attr('dx', '-0.8em')
+      .attr('dy', '0.15em');
 
     // Add y-axis
     chart.append('g')

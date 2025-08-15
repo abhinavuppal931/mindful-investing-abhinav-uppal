@@ -21,9 +21,12 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
       setError(false);
       try {
         const data = await logokitAPI.getLogo(ticker);
-        if (data && data.logoUrl) {
+        console.log(`Logo API response for ${ticker}:`, data);
+        
+        if (data && data.logoUrl && !data.error) {
           setLogoUrl(data.logoUrl);
         } else {
+          console.warn(`No logo available for ${ticker}:`, data?.error || 'No logoUrl in response');
           setError(true);
         }
       } catch (error) {
