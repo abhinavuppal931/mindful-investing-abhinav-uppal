@@ -66,15 +66,32 @@ const formatXAxisDate = (tickItem: any, period: string): string => {
   return `Q${quarter} ${year}`;
 };
 
-// Custom tick formatter for price charts to avoid duplicate quarters
+// Cache for tracking shown quarters in price chart
+let shownQuarters = new Set<string>();
+
+// Custom tick formatter for price charts with clean quarterly labels
 const formatPriceXAxis = (tickItem: any, index: number) => {
   const date = new Date(tickItem);
   const quarter = Math.ceil((date.getMonth() + 1) / 3);
   const year = date.getFullYear();
+  const quarterStr = `Q${quarter} ${year}`;
   
-  // Use a simple approach - show every nth tick to reduce crowding
-  if (index % 2 === 0) {
-    return `Q${quarter} ${year}`;
+  // Reset cache for new render cycles
+  if (index === 0) {
+    shownQuarters.clear();
+  }
+  
+  // Show only unique quarters to avoid overlapping labels
+  if (!shownQuarters.has(quarterStr)) {
+    shownQuarters.add(quarterStr);
+    
+    // For better spacing, show every other quarter for longer periods
+    // This creates cleaner visual spacing between labels
+    const shouldShow = index === 0 || index % 4 === 0 || shownQuarters.size <= 8;
+    
+    if (shouldShow) {
+      return quarterStr;
+    }
   }
   
   return '';
@@ -602,7 +619,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   dataKey="date" 
                   stroke="#6b7280"
                   tickFormatter={formatPriceXAxis}
-                  interval="preserveStartEnd"
+                  interval={0}
+                  minTickGap={60}
+                  tick={{ fontSize: 12 }}
                 />
                 <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
                 <ChartTooltip content={<CustomTooltip />} />
