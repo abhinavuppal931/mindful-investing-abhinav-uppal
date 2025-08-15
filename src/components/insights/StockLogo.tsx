@@ -24,7 +24,17 @@ const StockLogo: React.FC<StockLogoProps> = ({ ticker, className = '', size = 24
         console.log(`Logo API response for ${ticker}:`, data);
         
         if (data && data.logoUrl && !data.error) {
-          setLogoUrl(data.logoUrl);
+          // Test if the logo URL is actually accessible
+          const testImg = new Image();
+          testImg.onload = () => {
+            setLogoUrl(data.logoUrl);
+            setError(false);
+          };
+          testImg.onerror = () => {
+            console.warn(`Logo URL failed to load for ${ticker}: ${data.logoUrl}`);
+            setError(true);
+          };
+          testImg.src = data.logoUrl;
         } else {
           console.warn(`No logo available for ${ticker}:`, data?.error || 'No logoUrl in response');
           setError(true);

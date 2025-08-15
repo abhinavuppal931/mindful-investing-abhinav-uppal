@@ -43,9 +43,12 @@ serve(async (req) => {
     console.log(`Fetching logo for ${symbol}: ${logoUrl}`);
 
     const response = await fetch(logoUrl);
+    const responseText = await response.text();
+    
+    console.log(`LogoKit API response for ${symbol}: Status ${response.status}, Content-Type: ${response.headers.get('content-type')}`);
     
     if (!response.ok) {
-      console.error(`LogoKit API returned status: ${response.status}`);
+      console.error(`LogoKit API returned status: ${response.status}, Response: ${responseText}`);
       // Return a graceful fallback instead of throwing error
       return new Response(JSON.stringify({ 
         logoUrl: null,
@@ -56,13 +59,26 @@ serve(async (req) => {
       });
     }
 
-    // Return the logo URL instead of the image data
-    return new Response(JSON.stringify({ 
-      logoUrl,
-      symbol: symbol.toUpperCase()
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    // Check if the response is an actual image or an error message
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.startsWith('image/')) {
+      // Return the logo URL for successful image responses
+      return new Response(JSON.stringify({ 
+        logoUrl,
+        symbol: symbol.toUpperCase()
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } else {
+      console.error(`LogoKit API returned non-image content for ${symbol}: ${responseText}`);
+      return new Response(JSON.stringify({ 
+        logoUrl: null,
+        symbol: symbol.toUpperCase(),
+        error: 'Invalid response format'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
   } catch (error) {
     console.error('LogoKit API error:', error);
