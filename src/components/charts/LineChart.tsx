@@ -82,14 +82,22 @@ const LineChart: React.FC<LineChartProps> = ({
           .tickFormat(() => '')
       );
 
-    // Add x-axis
+    // Add x-axis with improved quarterly formatting
+    const xAxis = d3.axisBottom(xScale)
+      .ticks(d3.timeMonth.every(3)) // Show quarterly ticks
+      .tickFormat((d) => {
+        const date = d as Date;
+        const quarter = Math.floor(date.getMonth() / 3) + 1;
+        return `Q${quarter} ${date.getFullYear()}`;
+      });
+    
     chart.append('g')
       .attr('transform', `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(xScale))
+      .call(xAxis)
       .attr('class', 'text-sm text-gray-600')
       .selectAll('text')
-      .attr('transform', 'rotate(-45)')
-      .attr('text-anchor', 'end');
+      .style('text-anchor', 'middle')
+      .attr('dy', '1.2em');
 
     // Add y-axis
     chart.append('g')

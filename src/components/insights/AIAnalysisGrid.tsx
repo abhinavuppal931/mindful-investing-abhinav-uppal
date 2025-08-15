@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp, Shield, AlertTriangle, TrendingUp, Target } from 'lucide-react';
 import { openaiAPI } from '@/services/api';
 import { openaiCache } from '@/utils/openaiCache';
 import { formatAIContent } from '@/utils/formatAIContent';
@@ -123,27 +123,35 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
   const analysisCards = [
     {
       key: 'moat',
-      title: '🏰 Company Moat Analysis',
+      title: 'Company Moat Analysis',
       description: 'Competitive advantages and defensive strategies',
-      hoverColor: 'hover:shadow-blue-500/10'
+      hoverColor: 'hover:shadow-blue-500/10',
+      icon: Shield,
+      iconColor: 'text-blue-600'
     },
     {
       key: 'risks',
-      title: '⚠️ Investment Risk Assessment',
+      title: 'Investment Risk Assessment',
       description: 'Potential challenges and risk factors',
-      hoverColor: 'hover:shadow-red-500/10'
+      hoverColor: 'hover:shadow-red-500/10',
+      icon: AlertTriangle,
+      iconColor: 'text-red-600'
     },
     {
       key: 'nearTermTailwinds',
-      title: '🚀 Near-Term Growth Drivers',
+      title: 'Near-Term Growth Drivers',
       description: 'Short-term opportunities and catalysts',
-      hoverColor: 'hover:shadow-green-500/10'
+      hoverColor: 'hover:shadow-green-500/10',
+      icon: TrendingUp,
+      iconColor: 'text-green-600'
     },
     {
       key: 'longTermTailwinds',
-      title: '🎯 Long-Term Strategic Trajectory',
+      title: 'Long-Term Strategic Trajectory',
       description: 'Sustainable growth opportunities',
-      hoverColor: 'hover:shadow-purple-500/10'
+      hoverColor: 'hover:shadow-purple-500/10',
+      icon: Target,
+      iconColor: 'text-purple-600'
     }
   ];
 
@@ -163,6 +171,12 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-2xl font-inter font-normal leading-none tracking-tighter flex items-center">
+                      <card.icon 
+                        className={`w-5 h-5 mr-2 ${card.iconColor}`}
+                        style={{ 
+                          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))'
+                        }}
+                      />
                       {card.title}
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1.5">
