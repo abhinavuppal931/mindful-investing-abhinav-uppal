@@ -66,35 +66,49 @@ const formatXAxisDate = (tickItem: any, period: string): string => {
   return `Q${quarter} ${year}`;
 };
 
-// Cache for tracking shown quarters in price chart
-let shownQuarters = new Set<string>();
+// Generate custom ticks for clean quarterly display
+const generateQuarterlyTicks = (data: any[], period: string) => {
+  if (!data || data.length === 0) return [];
+  
+  const firstDate = new Date(data[0].date);
+  const lastDate = new Date(data[data.length - 1].date);
+  
+  const ticks = [];
+  const current = new Date(firstDate);
+  
+  // Start from the beginning of the quarter
+  current.setMonth(Math.floor(current.getMonth() / 3) * 3);
+  current.setDate(1);
+  
+  while (current <= lastDate) {
+    // Find the closest data point to this quarter start
+    const quarterStart = new Date(current);
+    let closestDataPoint = data[0];
+    let minDiff = Math.abs(new Date(data[0].date).getTime() - quarterStart.getTime());
+    
+    for (const point of data) {
+      const diff = Math.abs(new Date(point.date).getTime() - quarterStart.getTime());
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestDataPoint = point;
+      }
+    }
+    
+    ticks.push(closestDataPoint.date);
+    
+    // Move to next quarter
+    current.setMonth(current.getMonth() + 3);
+  }
+  
+  return ticks;
+};
 
-// Custom tick formatter for price charts with clean quarterly labels
-const formatPriceXAxis = (tickItem: any, index: number) => {
+// Custom tick formatter for price charts
+const formatPriceXAxis = (tickItem: any) => {
   const date = new Date(tickItem);
   const quarter = Math.ceil((date.getMonth() + 1) / 3);
   const year = date.getFullYear();
-  const quarterStr = `Q${quarter} ${year}`;
-  
-  // Reset cache for new render cycles
-  if (index === 0) {
-    shownQuarters.clear();
-  }
-  
-  // Show only unique quarters to avoid overlapping labels
-  if (!shownQuarters.has(quarterStr)) {
-    shownQuarters.add(quarterStr);
-    
-    // For better spacing, show every other quarter for longer periods
-    // This creates cleaner visual spacing between labels
-    const shouldShow = index === 0 || index % 4 === 0 || shownQuarters.size <= 8;
-    
-    if (shouldShow) {
-      return quarterStr;
-    }
-  }
-  
-  return '';
+  return `Q${quarter} ${year}`;
 };
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
@@ -604,6 +618,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
     switch (activeTab) {
       case 'price':
+        const quarterlyTicks = generateQuarterlyTicks(data, period);
         return (
           <ChartContainer config={{}} className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -619,9 +634,10 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   dataKey="date" 
                   stroke="#6b7280"
                   tickFormatter={formatPriceXAxis}
-                  interval={0}
-                  minTickGap={60}
+                  ticks={quarterlyTicks}
                   tick={{ fontSize: 12 }}
+                  tickLine={true}
+                  axisLine={true}
                 />
                 <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
                 <ChartTooltip content={<CustomTooltip />} />
