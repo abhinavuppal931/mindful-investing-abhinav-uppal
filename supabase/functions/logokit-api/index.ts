@@ -18,11 +18,24 @@ serve(async (req) => {
     const { symbol } = await req.json();
     
     if (!LOGOKIT_API_KEY) {
-      throw new Error('LogoKit API key not configured');
+      console.error('LogoKit API key not configured');
+      return new Response(JSON.stringify({ 
+        error: 'LogoKit API key not configured',
+        logoUrl: null
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     if (!symbol) {
-      throw new Error('Symbol is required');
+      return new Response(JSON.stringify({ 
+        error: 'Symbol is required',
+        logoUrl: null
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const logoUrl = `https://img.logokit.com/ticker/${symbol.toUpperCase()}?token=${LOGOKIT_API_KEY}`;
@@ -32,7 +45,15 @@ serve(async (req) => {
     const response = await fetch(logoUrl);
     
     if (!response.ok) {
-      throw new Error(`LogoKit API error: ${response.status}`);
+      console.error(`LogoKit API returned status: ${response.status}`);
+      // Return a graceful fallback instead of throwing error
+      return new Response(JSON.stringify({ 
+        logoUrl: null,
+        symbol: symbol.toUpperCase(),
+        error: `Logo not available (${response.status})`
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Return the logo URL instead of the image data

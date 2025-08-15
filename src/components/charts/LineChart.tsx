@@ -83,12 +83,29 @@ const LineChart: React.FC<LineChartProps> = ({
       );
 
     // Add x-axis with improved quarterly formatting
+    const timeSpan = xScale.domain()[1].getTime() - xScale.domain()[0].getTime();
+    const years = timeSpan / (1000 * 60 * 60 * 24 * 365);
+    
+    // Adjust tick interval based on data range
+    let tickInterval;
+    if (years <= 2) {
+      tickInterval = d3.timeMonth.every(6); // Every 6 months for short ranges
+    } else if (years <= 5) {
+      tickInterval = d3.timeYear.every(1); // Yearly for medium ranges
+    } else {
+      tickInterval = d3.timeYear.every(2); // Every 2 years for long ranges
+    }
+    
     const xAxis = d3.axisBottom(xScale)
-      .ticks(d3.timeMonth.every(3)) // Show quarterly ticks
+      .ticks(tickInterval)
       .tickFormat((d) => {
         const date = d as Date;
-        const quarter = Math.floor(date.getMonth() / 3) + 1;
-        return `Q${quarter} ${date.getFullYear()}`;
+        if (years <= 2) {
+          const quarter = Math.floor(date.getMonth() / 3) + 1;
+          return `Q${quarter} ${date.getFullYear()}`;
+        } else {
+          return `${date.getFullYear()}`;
+        }
       });
     
     chart.append('g')
