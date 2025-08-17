@@ -894,31 +894,88 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     }
   };
 
-  const renderGrowthMetrics = (type: 'revenue' | 'netIncome' | 'operatingCF') => {
-    if (!growthData || !growthData[type]) return null;
+  const renderDynamicGrowthMetrics = (data: any[], metricKey: string) => {
+    if (!data || data.length === 0) return null;
 
-    const data = growthData[type];
+    const calculateGrowth = (periods: number) => {
+      if (data.length < periods + 1) return null;
+      const currentValue = data[data.length - 1][metricKey];
+      const pastValue = data[data.length - 1 - periods][metricKey];
+      if (!currentValue || !pastValue || pastValue === 0) return null;
+      return ((currentValue - pastValue) / Math.abs(pastValue)) * 100;
+    };
 
+    const getPeriodsToShow = () => {
+      if (dataType === 'quarterly') {
+        switch (period) {
+          case '1Y': return [{ periods: 4, label: '4Q' }];
+          case '3Y': return [
+            { periods: 4, label: '4Q' },
+            { periods: 8, label: '8Q' },
+            { periods: 12, label: '12Q' }
+          ];
+          case '5Y': return [
+            { periods: 4, label: '4Q' },
+            { periods: 12, label: '12Q' },
+            { periods: 20, label: '20Q' }
+          ];
+          case '10Y': return [
+            { periods: 12, label: '12Q' },
+            { periods: 20, label: '20Q' },
+            { periods: 40, label: '40Q' }
+          ];
+          default: return [];
+        }
+      } else {
+        switch (period) {
+          case '1Y': return [{ periods: 1, label: '1Y' }];
+          case '3Y': return [
+            { periods: 1, label: '1Y' },
+            { periods: 2, label: '2Y' },
+            { periods: 3, label: '3Y' }
+          ];
+          case '5Y': return [
+            { periods: 1, label: '1Y' },
+            { periods: 3, label: '3Y' },
+            { periods: 5, label: '5Y' }
+          ];
+          case '10Y': return [
+            { periods: 3, label: '3Y' },
+            { periods: 5, label: '5Y' },
+            { periods: 10, label: '10Y' }
+          ];
+          default: return [];
+        }
+      }
+    };
+
+    const periodsToShow = getPeriodsToShow();
+    
     return (
-      <div className="grid grid-cols-3 gap-2 mt-4">
-        <div className="text-center">
-          <div className="text-xs text-muted-foreground mb-1">10Y Growth</div>
-          <Badge variant={data.tenYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.tenYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
-            {data.tenYear >= 0 ? '+' : ''}{(data.tenYear * 100).toFixed(1)}%
-          </Badge>
-        </div>
-        <div className="text-center">
-          <div className="text-xs text-muted-foreground mb-1">5Y Growth</div>
-          <Badge variant={data.fiveYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.fiveYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
-            {data.fiveYear >= 0 ? '+' : ''}{(data.fiveYear * 100).toFixed(1)}%
-          </Badge>
-        </div>
-        <div className="text-center">
-          <div className="text-xs text-muted-foreground mb-1">3Y Growth</div>
-          <Badge variant={data.threeYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.threeYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
-            {data.threeYear >= 0 ? '+' : ''}{(data.threeYear * 100).toFixed(1)}%
-          </Badge>
-        </div>
+      <div className="flex justify-center items-center mt-4 gap-2">
+        {periodsToShow.map(({ periods, label }) => {
+          const growth = calculateGrowth(periods);
+          if (growth === null) return null;
+          
+          const isPositive = growth >= 0;
+          
+          return (
+            <div
+              key={label}
+              className={`
+                px-3 py-1.5 rounded-full text-xs font-semibold text-white
+                transition-all duration-200 ease-in-out tracking-wide leading-none
+                hover:transform hover:-translate-y-0.5
+                ${isPositive 
+                  ? 'bg-emerald-500 shadow-[0_2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)]' 
+                  : 'bg-red-500 shadow-[0_2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)]'
+                }
+              `}
+            >
+              {label}: {isPositive ? '+' : ''}{growth.toFixed(1)}%
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -1093,7 +1150,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
-              {activeMetric.revenue === 'total' && renderGrowthMetrics('revenue')}
+              {activeMetric.revenue === 'total' && renderDynamicGrowthMetrics(chartData, 'revenue')}
             </TabsContent>
 
             {/* Profitability Tab */}
@@ -1135,7 +1192,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
-              {renderGrowthMetrics('netIncome')}
+              {renderDynamicGrowthMetrics(chartData, 'netIncome')}
             </TabsContent>
 
             {/* Cash Flow Tab */}
@@ -1191,7 +1248,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
-              {renderGrowthMetrics('operatingCF')}
+              {renderDynamicGrowthMetrics(chartData, 'operatingCashFlow')}
             </TabsContent>
 
             {/* Expenses Tab */}
