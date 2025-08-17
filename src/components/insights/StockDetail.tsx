@@ -895,30 +895,72 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
   };
 
   const renderGrowthMetrics = (type: 'revenue' | 'netIncome' | 'operatingCF') => {
-    if (!growthData || !growthData[type]) return null;
+    if (!chartData || chartData.length === 0) return null;
 
-    const data = growthData[type];
+    // Get the metric key based on type
+    const metricKey = type === 'revenue' ? 'revenue' : 
+                     type === 'netIncome' ? 'netIncome' : 
+                     'operatingCashFlow';
+
+    // Define periods to show based on current selection
+    const getPeriods = () => {
+      if (dataType === 'annual') {
+        switch (period) {
+          case '10Y': return [{ label: '3Y', quarters: 3 }, { label: '5Y', quarters: 5 }, { label: '10Y', quarters: 10 }];
+          case '5Y': return [{ label: '1Y', quarters: 1 }, { label: '3Y', quarters: 3 }, { label: '5Y', quarters: 5 }];
+          case '3Y': return [{ label: '1Y', quarters: 1 }, { label: '2Y', quarters: 2 }, { label: '3Y', quarters: 3 }];
+          case '1Y': return [{ label: '1Y', quarters: 1 }];
+          default: return [];
+        }
+      } else {
+        switch (period) {
+          case '10Y': return [{ label: '12Q', quarters: 12 }, { label: '20Q', quarters: 20 }, { label: '40Q', quarters: 40 }];
+          case '5Y': return [{ label: '4Q', quarters: 4 }, { label: '12Q', quarters: 12 }, { label: '20Q', quarters: 20 }];
+          case '3Y': return [{ label: '4Q', quarters: 4 }, { label: '8Q', quarters: 8 }, { label: '12Q', quarters: 12 }];
+          case '1Y': return [{ label: '4Q', quarters: 4 }];
+          default: return [];
+        }
+      }
+    };
+
+    const periods = getPeriods();
+
+    // Calculate percentage change for each period
+    const calculateChange = (periodQuarters: number) => {
+      if (chartData.length < periodQuarters) return null;
+      
+      const latestValue = chartData[chartData.length - 1][metricKey];
+      const earliestValue = chartData[chartData.length - periodQuarters][metricKey];
+      
+      if (!latestValue || !earliestValue || earliestValue === 0) return null;
+      
+      return ((latestValue - earliestValue) / earliestValue) * 100;
+    };
 
     return (
-      <div className="grid grid-cols-3 gap-2 mt-4">
-        <div className="text-center">
-          <div className="text-xs text-muted-foreground mb-1">10Y Growth</div>
-          <Badge variant={data.tenYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.tenYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
-            {data.tenYear >= 0 ? '+' : ''}{(data.tenYear * 100).toFixed(1)}%
-          </Badge>
-        </div>
-        <div className="text-center">
-          <div className="text-xs text-muted-foreground mb-1">5Y Growth</div>
-          <Badge variant={data.fiveYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.fiveYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
-            {data.fiveYear >= 0 ? '+' : ''}{(data.fiveYear * 100).toFixed(1)}%
-          </Badge>
-        </div>
-        <div className="text-center">
-          <div className="text-xs text-muted-foreground mb-1">3Y Growth</div>
-          <Badge variant={data.threeYear >= 0 ? "default" : "destructive"} className={`rounded-full ${data.threeYear >= 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
-            {data.threeYear >= 0 ? '+' : ''}{(data.threeYear * 100).toFixed(1)}%
-          </Badge>
-        </div>
+      <div className="flex justify-center items-center gap-3 mt-4">
+        {periods.map((periodConfig) => {
+          const change = calculateChange(periodConfig.quarters);
+          if (change === null) return null;
+          
+          const isPositive = change >= 0;
+          
+          return (
+            <div
+              key={periodConfig.label}
+              className={`relative rounded-2xl border backdrop-blur-md p-3 shadow-xl text-sm font-medium ${
+                isPositive 
+                  ? 'border-green-400/50 bg-green-500/20 text-green-300' 
+                  : 'border-red-400/50 bg-red-500/20 text-red-300'
+              }`}
+            >
+              <div className="text-xs opacity-80 mb-1">{periodConfig.label} Growth</div>
+              <div className="font-semibold">
+                {isPositive ? '+' : ''}{change.toFixed(1)}%
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   };
