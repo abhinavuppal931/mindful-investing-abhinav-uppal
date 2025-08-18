@@ -901,7 +901,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       if (data.length < periods + 1) return null;
       const currentValue = data[data.length - 1][metricKey];
       const pastValue = data[data.length - 1 - periods][metricKey];
-      if (!currentValue || !pastValue || pastValue === 0) return null;
+      if (currentValue === undefined || pastValue === undefined || pastValue === 0) return null;
       return ((currentValue - pastValue) / Math.abs(pastValue)) * 100;
     };
 
@@ -1151,6 +1151,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </div>
               {renderChart()}
               {activeMetric.revenue === 'total' && renderDynamicGrowthMetrics(chartData, 'revenue')}
+              {activeMetric.revenue === 'productSegments' && revenueSegmentData.length > 0 && Object.keys(revenueSegmentData[0]).filter(k => k !== 'year' && k !== 'date').map(segment => 
+                renderDynamicGrowthMetrics(revenueSegmentData, segment)
+              )}
+              {activeMetric.revenue === 'geographicSegments' && revenueSegmentData.length > 0 && Object.keys(revenueSegmentData[0]).filter(k => k !== 'year' && k !== 'date').map(segment => 
+                renderDynamicGrowthMetrics(revenueSegmentData, segment)
+              )}
             </TabsContent>
 
             {/* Profitability Tab */}
@@ -1192,7 +1198,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
-              {renderDynamicGrowthMetrics(chartData, 'netIncome')}
+              {activeMetric.profitability === 'netIncome' && renderDynamicGrowthMetrics(chartData, 'netIncome')}
+              {activeMetric.profitability === 'ebitda' && renderDynamicGrowthMetrics(chartData, 'ebitda')}
+              {activeMetric.profitability === 'eps' && renderDynamicGrowthMetrics(chartData, 'eps')}
             </TabsContent>
 
             {/* Cash Flow Tab */}
@@ -1248,7 +1256,16 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
-              {renderDynamicGrowthMetrics(chartData, 'operatingCashFlow')}
+              {activeMetric.cashFlow === 'operatingCashFlow' && renderDynamicGrowthMetrics(chartData, 'operatingCashFlow')}
+              {activeMetric.cashFlow === 'freeCashFlow' && renderDynamicGrowthMetrics(chartData, 'freeCashFlow')}
+              {activeMetric.cashFlow === 'freeCashFlowPerShare' && renderDynamicGrowthMetrics(chartData, 'freeCashFlowPerShare')}
+              {activeMetric.cashFlow === 'freeCashFlowYield' && renderDynamicGrowthMetrics(chartData, 'freeCashFlowYield')}
+              {activeMetric.cashFlow === 'comparison' && (
+                <>
+                  {renderDynamicGrowthMetrics(chartData, 'freeCashFlow')}
+                  {renderDynamicGrowthMetrics(chartData, 'stockBasedCompensation')}
+                </>
+              )}
             </TabsContent>
 
             {/* Expenses Tab */}
@@ -1268,6 +1285,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
+              {chartData.length > 0 && (
+                <>
+                  {renderDynamicGrowthMetrics(chartData, 'rdExpenses')}
+                  {renderDynamicGrowthMetrics(chartData, 'sgaExpenses')}
+                  {renderDynamicGrowthMetrics(chartData, 'operatingExpenses')}
+                </>
+              )}
             </TabsContent>
 
             {/* Cash & Debt Tab */}
@@ -1287,6 +1311,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
+              {chartData.length > 0 && (
+                <>
+                  {renderDynamicGrowthMetrics(chartData, 'totalCash')}
+                  {renderDynamicGrowthMetrics(chartData, 'totalDebt')}
+                </>
+              )}
             </TabsContent>
 
             {/* Margins Tab */}
@@ -1348,6 +1378,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </div>
               </div>
               {renderChart()}
+              {chartData.length > 0 && (
+                <>
+                  {activeMetric.margins === 'grossMargin' && renderDynamicGrowthMetrics(chartData, 'grossMargin')}
+                  {activeMetric.margins === 'operatingMargin' && renderDynamicGrowthMetrics(chartData, 'operatingMargin')}
+                  {activeMetric.margins === 'netMargin' && renderDynamicGrowthMetrics(chartData, 'netMargin')}
+                  {activeMetric.margins === 'ebitdaMargin' && renderDynamicGrowthMetrics(chartData, 'ebitdaMargin')}
+                </>
+              )}
             </TabsContent>
 
             {/* Key Ratios Tab */}
@@ -1423,6 +1461,16 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </div>
               </div>
               {renderChart()}
+              {ratiosData.length > 0 && (
+                <>
+                  {activeMetric.ratios === 'pe' && renderDynamicGrowthMetrics(ratiosData, 'pe')}
+                  {activeMetric.ratios === 'ps' && renderDynamicGrowthMetrics(ratiosData, 'ps')}
+                  {activeMetric.ratios === 'pfcf' && renderDynamicGrowthMetrics(ratiosData, 'pfcf')}
+                  {activeMetric.ratios === 'pocf' && renderDynamicGrowthMetrics(ratiosData, 'pocf')}
+                  {activeMetric.ratios === 'roe' && renderDynamicGrowthMetrics(ratiosData, 'roe')}
+                  {activeMetric.ratios === 'roic' && renderDynamicGrowthMetrics(ratiosData, 'roic')}
+                </>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
