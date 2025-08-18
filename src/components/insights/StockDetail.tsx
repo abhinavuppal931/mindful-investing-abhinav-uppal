@@ -908,41 +908,41 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     const getPeriodsToShow = () => {
       if (dataType === 'quarterly') {
         switch (period) {
-          case '1Y': return [{ periods: 4, label: '4Q' }];
+          case '1Y': return [{ periods: 3, label: '4Q' }]; // 4 quarters = index 3
           case '3Y': return [
-            { periods: 4, label: '4Q' },
-            { periods: 8, label: '8Q' },
-            { periods: 12, label: '12Q' }
+            { periods: 3, label: '4Q' },
+            { periods: 7, label: '8Q' },
+            { periods: 11, label: '12Q' }
           ];
           case '5Y': return [
-            { periods: 4, label: '4Q' },
-            { periods: 12, label: '12Q' },
-            { periods: 20, label: '20Q' }
+            { periods: 3, label: '4Q' },
+            { periods: 11, label: '12Q' },
+            { periods: 19, label: '20Q' }
           ];
           case '10Y': return [
-            { periods: 12, label: '12Q' },
-            { periods: 20, label: '20Q' },
-            { periods: 40, label: '40Q' }
+            { periods: 11, label: '12Q' },
+            { periods: 19, label: '20Q' },
+            { periods: 39, label: '40Q' }
           ];
           default: return [];
         }
       } else {
         switch (period) {
-          case '1Y': return [{ periods: 1, label: '1Y' }];
+          case '1Y': return [{ periods: 0, label: '1Y' }]; // current vs 1 year ago = index 0
           case '3Y': return [
-            { periods: 1, label: '1Y' },
-            { periods: 2, label: '2Y' },
-            { periods: 3, label: '3Y' }
+            { periods: 0, label: '1Y' },
+            { periods: 1, label: '2Y' },
+            { periods: 2, label: '3Y' }
           ];
           case '5Y': return [
-            { periods: 1, label: '1Y' },
-            { periods: 3, label: '3Y' },
-            { periods: 5, label: '5Y' }
+            { periods: 0, label: '1Y' },
+            { periods: 2, label: '3Y' },
+            { periods: 4, label: '5Y' }
           ];
           case '10Y': return [
-            { periods: 3, label: '3Y' },
-            { periods: 5, label: '5Y' },
-            { periods: 10, label: '10Y' }
+            { periods: 2, label: '3Y' },
+            { periods: 4, label: '5Y' },
+            { periods: 9, label: '10Y' }
           ];
           default: return [];
         }
@@ -955,7 +955,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       <div className="flex justify-center items-center mt-4 gap-2">
         {periodsToShow.map(({ periods, label }) => {
           const growth = calculateGrowth(periods);
-          if (growth === null) return null;
+          if (growth === null || !isFinite(growth)) return null;
           
           const isPositive = growth >= 0;
           
