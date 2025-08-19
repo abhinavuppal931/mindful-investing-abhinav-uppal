@@ -980,6 +980,134 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     );
   };
 
+  // New function for grouped multi-metric display
+  const renderGroupedGrowthMetrics = (data: any[], metrics: string[]) => {
+    if (!data || data.length === 0 || !metrics.length) return null;
+
+    const calculateGrowth = (metricKey: string, periods: number) => {
+      if (data.length < periods + 1) return null;
+      const currentValue = data[data.length - 1][metricKey];
+      const pastValue = data[data.length - 1 - periods][metricKey];
+      if (currentValue === undefined || pastValue === undefined || pastValue === 0) return null;
+      return ((currentValue - pastValue) / Math.abs(pastValue)) * 100;
+    };
+
+    const getPeriodsToShow = () => {
+      if (dataType === 'quarterly') {
+        switch (period) {
+          case '1Y': return [{ periods: 3, label: '4Q' }];
+          case '3Y': return [
+            { periods: 3, label: '4Q' },
+            { periods: 7, label: '8Q' },
+            { periods: 11, label: '12Q' }
+          ];
+          case '5Y': return [
+            { periods: 3, label: '4Q' },
+            { periods: 11, label: '12Q' },
+            { periods: 19, label: '20Q' }
+          ];
+          case '10Y': return [
+            { periods: 11, label: '12Q' },
+            { periods: 19, label: '20Q' },
+            { periods: 39, label: '40Q' }
+          ];
+          default: return [];
+        }
+      } else {
+        switch (period) {
+          case '1Y': return [{ periods: 0, label: '1Y' }];
+          case '3Y': return [
+            { periods: 0, label: '1Y' },
+            { periods: 1, label: '2Y' },
+            { periods: 2, label: '3Y' }
+          ];
+          case '5Y': return [
+            { periods: 0, label: '1Y' },
+            { periods: 2, label: '3Y' },
+            { periods: 4, label: '5Y' }
+          ];
+          case '10Y': return [
+            { periods: 2, label: '3Y' },
+            { periods: 4, label: '5Y' },
+            { periods: 9, label: '10Y' }
+          ];
+          default: return [];
+        }
+      }
+    };
+
+    const periodsToShow = getPeriodsToShow();
+    const formatMetricName = (key: string) => {
+      const nameMap: { [key: string]: string } = {
+        // Revenue segments
+        'Automotive': 'Automotive',
+        'Energy Generation And Storage Segment': 'Energy & Storage',
+        'Services And Other': 'Services',
+        // Geographic segments
+        'Americas Segment': 'Americas',
+        'Europe Segment': 'Europe',
+        'Greater China Segment': 'China',
+        'Japan Segment': 'Japan',
+        'Rest of Asia Pacific Segment': 'Asia Pacific',
+        // Cash flow
+        'freeCashFlow': 'Free Cash Flow',
+        'stockBasedCompensation': 'Stock-Based Comp',
+        // Expenses
+        'rdExpenses': 'R&D',
+        'sgaExpenses': 'Sales & Marketing',
+        'operatingExpenses': 'Operating Expenses',
+        // Cash & Debt
+        'totalCash': 'Total Cash',
+        'totalDebt': 'Total Debt'
+      };
+      return nameMap[key] || key;
+    };
+
+    return (
+      <div className="flex flex-wrap justify-center items-start mt-4 gap-3">
+        {metrics.map((metricKey) => {
+          const metricName = formatMetricName(metricKey);
+          const badges = periodsToShow.map(({ periods, label }) => {
+            const growth = calculateGrowth(metricKey, periods);
+            if (growth === null || !isFinite(growth)) return null;
+            
+            const isPositive = growth >= 0;
+            
+            return (
+              <div
+                key={`${metricKey}-${label}`}
+                className={`
+                  px-2 py-1 rounded-full text-[10px] font-semibold text-white
+                  transition-all duration-200 ease-in-out tracking-wide leading-none
+                  hover:transform hover:-translate-y-0.5
+                  ${isPositive 
+                    ? 'bg-emerald-500 shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.15)]' 
+                    : 'bg-red-500 shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.15)]'
+                  }
+                `}
+              >
+                {label} {isPositive ? '+' : ''}{growth.toFixed(1)}%
+              </div>
+            );
+          }).filter(Boolean);
+
+          if (badges.length === 0) return null;
+
+          return (
+            <div key={metricKey} className="bg-slate-50 rounded-lg p-3">
+              <div className="text-[11px] font-semibold text-slate-600 mb-1">
+                {metricName}
+              </div>
+              <div className="flex gap-1">
+                {badges}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <Card>
@@ -1151,12 +1279,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               </div>
               {renderChart()}
               {activeMetric.revenue === 'total' && renderDynamicGrowthMetrics(chartData, 'revenue')}
-              {activeMetric.revenue === 'productSegments' && revenueSegmentData.length > 0 && Object.keys(revenueSegmentData[0]).filter(k => k !== 'year' && k !== 'date').map(segment => 
-                renderDynamicGrowthMetrics(revenueSegmentData, segment)
-              )}
-              {activeMetric.revenue === 'geographicSegments' && revenueSegmentData.length > 0 && Object.keys(revenueSegmentData[0]).filter(k => k !== 'year' && k !== 'date').map(segment => 
-                renderDynamicGrowthMetrics(revenueSegmentData, segment)
-              )}
+              {activeMetric.revenue === 'productSegments' && revenueSegmentData.length > 0 && 
+                renderGroupedGrowthMetrics(revenueSegmentData, Object.keys(revenueSegmentData[0]).filter(k => k !== 'year' && k !== 'date'))
+              }
+              {activeMetric.revenue === 'geographicSegments' && revenueSegmentData.length > 0 && 
+                renderGroupedGrowthMetrics(revenueSegmentData, Object.keys(revenueSegmentData[0]).filter(k => k !== 'year' && k !== 'date'))
+              }
             </TabsContent>
 
             {/* Profitability Tab */}
@@ -1260,12 +1388,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
               {activeMetric.cashFlow === 'freeCashFlow' && renderDynamicGrowthMetrics(chartData, 'freeCashFlow')}
               {activeMetric.cashFlow === 'freeCashFlowPerShare' && renderDynamicGrowthMetrics(chartData, 'freeCashFlowPerShare')}
               {activeMetric.cashFlow === 'freeCashFlowYield' && renderDynamicGrowthMetrics(chartData, 'freeCashFlowYield')}
-              {activeMetric.cashFlow === 'comparison' && (
-                <>
-                  {renderDynamicGrowthMetrics(chartData, 'freeCashFlow')}
-                  {renderDynamicGrowthMetrics(chartData, 'stockBasedCompensation')}
-                </>
-              )}
+              {activeMetric.cashFlow === 'comparison' && 
+                renderGroupedGrowthMetrics(chartData, ['freeCashFlow', 'stockBasedCompensation'])
+              }
             </TabsContent>
 
             {/* Expenses Tab */}
@@ -1285,13 +1410,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
-              {chartData.length > 0 && (
-                <>
-                  {renderDynamicGrowthMetrics(chartData, 'rdExpenses')}
-                  {renderDynamicGrowthMetrics(chartData, 'sgaExpenses')}
-                  {renderDynamicGrowthMetrics(chartData, 'operatingExpenses')}
-                </>
-              )}
+              {chartData.length > 0 && 
+                renderGroupedGrowthMetrics(chartData, ['rdExpenses', 'sgaExpenses', 'operatingExpenses'])
+              }
             </TabsContent>
 
             {/* Cash & Debt Tab */}
@@ -1311,12 +1432,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                 </Select>
               </div>
               {renderChart()}
-              {chartData.length > 0 && (
-                <>
-                  {renderDynamicGrowthMetrics(chartData, 'totalCash')}
-                  {renderDynamicGrowthMetrics(chartData, 'totalDebt')}
-                </>
-              )}
+              {chartData.length > 0 && 
+                renderGroupedGrowthMetrics(chartData, ['totalCash', 'totalDebt'])
+              }
             </TabsContent>
 
             {/* Margins Tab */}
