@@ -590,37 +590,26 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       );
     }
 
-    // Custom tooltip component with modern dark design
+    // Custom tooltip component
     const CustomTooltip = ({ active, payload, label }: any) => {
       if (active && payload && payload.length) {
         return (
-          <div className="animate-scale-in transition-all duration-200 ease-in-out z-[9999]">
-            <div 
-              className="bg-gray-800 border border-white/10 rounded-lg p-3 shadow-[0_10px_25px_rgba(0,0,0,0.25),0_4px_10px_rgba(0,0,0,0.1)]"
-              style={{
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)'
-              }}
-            >
-              <p className="text-gray-50 text-xs font-medium mb-1 whitespace-nowrap leading-relaxed">
-                {label}
+          <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
+            <p className="font-medium">{label}</p>
+            {payload.map((entry: any, index: number) => (
+              <p key={index} style={{ color: entry.color }} className="text-sm">
+                {entry.name}: {
+                  // Special formatting for segmentation data (always currency values)
+                  (activeTab === 'revenue' && (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments'))
+                    ? formatCurrency(entry.value, 2)
+                    : entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt') || entry.dataKey.includes('Expenses') || entry.dataKey.includes('Cash') || entry.dataKey.includes('Debt') || entry.dataKey.includes('Compensation')
+                    ? formatCurrency(entry.value, 2)
+                    : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield') || entry.dataKey.includes('roe') || entry.dataKey.includes('roic')
+                    ? formatPercentage(entry.value)
+                    : entry.value.toFixed(2)
+                }
               </p>
-              {payload.map((entry: any, index: number) => (
-                <p key={index} className="text-sm font-semibold whitespace-nowrap leading-relaxed" 
-                   style={{ color: '#34d399' }}>
-                  {entry.name}: {
-                    // Special formatting for segmentation data (always currency values)
-                    (activeTab === 'revenue' && (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments'))
-                      ? formatCurrency(entry.value, 2)
-                      : entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt') || entry.dataKey.includes('Expenses') || entry.dataKey.includes('Cash') || entry.dataKey.includes('Debt') || entry.dataKey.includes('Compensation')
-                      ? formatCurrency(entry.value, 2)
-                      : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield') || entry.dataKey.includes('roe') || entry.dataKey.includes('roic')
-                      ? formatPercentage(entry.value)
-                      : entry.value.toFixed(2)
-                  }
-                </p>
-              ))}
-            </div>
+            ))}
           </div>
         );
       }
