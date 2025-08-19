@@ -111,27 +111,68 @@ const formatPriceXAxis = (tickItem: any) => {
   return `Q${quarter} ${year}`;
 };
 
-// Dynamic chart configuration generator
+// Fixed color mapping for consistent metric colors
+const FIXED_METRIC_COLORS: { [key: string]: string } = {
+  // Price
+  'price': 'hsl(142, 76%, 36%)',
+  'volume': 'hsl(221, 83%, 53%)',
+  // Revenue
+  'revenue': 'hsl(142, 76%, 36%)',
+  'Automotive': 'hsl(142, 76%, 36%)',
+  'Energy Generation And Storage Segment': 'hsl(221, 83%, 53%)',
+  'Services And Other': 'hsl(38, 92%, 50%)',
+  'Americas Segment': 'hsl(142, 76%, 36%)',
+  'Europe Segment': 'hsl(221, 83%, 53%)',
+  'Greater China Segment': 'hsl(38, 92%, 50%)',
+  'Japan Segment': 'hsl(0, 84%, 60%)',
+  'Rest of Asia Pacific Segment': 'hsl(271, 81%, 56%)',
+  // Profitability
+  'netIncome': 'hsl(142, 76%, 36%)',
+  'ebitda': 'hsl(221, 83%, 53%)',
+  'eps': 'hsl(38, 92%, 50%)',
+  // Cash Flow
+  'operatingCashFlow': 'hsl(142, 76%, 36%)',
+  'freeCashFlow': 'hsl(221, 83%, 53%)',
+  'freeCashFlowPerShare': 'hsl(38, 92%, 50%)',
+  'stockBasedCompensation': 'hsl(0, 84%, 60%)',
+  'capitalExpenditure': 'hsl(271, 81%, 56%)',
+  'freeCashFlowYield': 'hsl(197, 71%, 73%)',
+  // Expenses
+  'rdExpenses': 'hsl(142, 76%, 36%)',
+  'sgaExpenses': 'hsl(221, 83%, 53%)',
+  'operatingExpenses': 'hsl(38, 92%, 50%)',
+  // Cash & Debt
+  'totalCash': 'hsl(142, 76%, 36%)',
+  'totalDebt': 'hsl(0, 84%, 60%)',
+  // Margins
+  'grossMargin': 'hsl(142, 76%, 36%)',
+  'operatingMargin': 'hsl(221, 83%, 53%)',
+  'netMargin': 'hsl(38, 92%, 50%)',
+  'ebitdaMargin': 'hsl(271, 81%, 56%)',
+  // Ratios
+  'pe': 'hsl(142, 76%, 36%)',
+  'ps': 'hsl(221, 83%, 53%)',
+  'pfcf': 'hsl(38, 92%, 50%)',
+  'pocf': 'hsl(0, 84%, 60%)',
+  'roe': 'hsl(271, 81%, 56%)',
+  'roic': 'hsl(197, 71%, 73%)'
+};
+
+// Dynamic chart configuration generator with fixed color mapping
 const generateChartConfig = (data: any[], activeMetric?: string, visibleSegments?: {[key: string]: boolean}) => {
   if (!data || data.length === 0) return {};
-  
-  const colors = ['hsl(142, 76%, 36%)', 'hsl(221, 83%, 53%)', 'hsl(38, 92%, 50%)', 'hsl(0, 84%, 60%)', 'hsl(271, 81%, 56%)', 'hsl(197, 71%, 73%)', 'hsl(84, 81%, 44%)', 'hsl(24, 70%, 56%)', 'hsl(330, 81%, 60%)', 'hsl(172, 66%, 50%)'];
   
   const config: any = {};
   const sampleData = data[0] || {};
   
-  let colorIndex = 0;
   Object.keys(sampleData).forEach(key => {
     if (key !== 'year' && key !== 'date') {
-      // Skip hidden segments if visibleSegments is provided
-      if (visibleSegments && visibleSegments[key] === false) return;
-      
+      // Always add to config for consistent color mapping regardless of visibility
       const metricName = getMetricDisplayName(key);
       config[key] = {
         label: metricName,
-        color: colors[colorIndex % colors.length]
+        color: FIXED_METRIC_COLORS[key] || 'hsl(142, 76%, 36%)' // fallback color
       };
-      colorIndex++;
     }
   });
   
@@ -202,15 +243,33 @@ const CustomTooltipContent = ({ active, payload, label, config }: any) => {
         
         // Format value based on metric type
         const formatValue = (value: number, dataKey: string) => {
-          if (dataKey.includes('margin') || dataKey.includes('yield') || dataKey === 'roe' || dataKey === 'roic') {
-            return formatPercentage(value);
-          } else if (dataKey === 'price' || dataKey.includes('cash') || dataKey.includes('revenue') || 
-                     dataKey.includes('income') || dataKey.includes('expense') || dataKey.includes('flow') || 
-                     dataKey.includes('debt') || dataKey.includes('Expenses') || dataKey.includes('Cash') || 
-                     dataKey.includes('Debt') || dataKey.includes('Compensation') || dataKey.includes('Automotive') ||
-                     dataKey.includes('Energy') || dataKey.includes('Services') || dataKey.includes('Americas') ||
-                     dataKey.includes('Europe') || dataKey.includes('China') || dataKey.includes('Japan') ||
-                     dataKey.includes('Asia')) {
+          // Margin metrics: Display as percentages
+          if (dataKey.includes('margin') || dataKey.includes('Margin')) {
+            return `${(value * 100).toFixed(2)}%`;
+          }
+          // FCF Yield: Display as percentage, remove $ prefix
+          else if (dataKey === 'freeCashFlowYield') {
+            return `${(value * 100).toFixed(2)}%`;
+          }
+          // ROE and ROIC: Display as percentages
+          else if (dataKey === 'roe' || dataKey === 'roic') {
+            return `${(value * 100).toFixed(2)}%`;
+          }
+          // Geographic Segments: Format in appropriate scale with currency prefix
+          else if (dataKey.includes('Segment') || dataKey.includes('Americas') || dataKey.includes('Europe') || 
+                   dataKey.includes('China') || dataKey.includes('Japan') || dataKey.includes('Asia')) {
+            return formatCurrency(value, 2);
+          }
+          // Net Income & EBITDA: Format in appropriate scale with currency prefix
+          else if (dataKey === 'netIncome' || dataKey === 'ebitda') {
+            return formatCurrency(value, 2);
+          }
+          // Other currency metrics
+          else if (dataKey === 'price' || dataKey.includes('cash') || dataKey.includes('revenue') || 
+                   dataKey.includes('income') || dataKey.includes('expense') || dataKey.includes('flow') || 
+                   dataKey.includes('debt') || dataKey.includes('Expenses') || dataKey.includes('Cash') || 
+                   dataKey.includes('Debt') || dataKey.includes('Compensation') || dataKey.includes('Automotive') ||
+                   dataKey.includes('Energy') || dataKey.includes('Services')) {
             return formatCurrency(value, 2);
           } else {
             return value.toFixed(2);
@@ -641,13 +700,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
     }));
   };
 
-  // Function to render segment legend
+  // Function to render segment legend with fixed colors
   const renderSegmentLegend = (segments: string[]) => {
-    const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#10b981'];
-    
     return (
       <div className="flex flex-wrap gap-2 mb-4">
-        {segments.map((segment, index) => (
+        {segments.map((segment) => (
           <button
             key={segment}
             onClick={() => toggleSegmentVisibility(segment)}
@@ -659,9 +716,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           >
             <div
               className={`w-3 h-3 rounded-full ${visibleSegments[segment] ? '' : 'opacity-30'}`}
-              style={{ backgroundColor: colors[index % colors.length] }}
+              style={{ backgroundColor: FIXED_METRIC_COLORS[segment] || 'hsl(142, 76%, 36%)' }}
             />
-            <span className={visibleSegments[segment] ? '' : 'line-through'}>{segment}</span>
+            <span className={visibleSegments[segment] ? '' : 'line-through'}>{getMetricDisplayName(segment)}</span>
           </button>
         ))}
       </div>
