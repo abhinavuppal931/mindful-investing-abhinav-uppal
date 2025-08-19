@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Calculator, Wallet, DollarSign, Target, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { fmpAPI } from '@/services/api';
 import { useStockData } from '@/hooks/useStockData';
@@ -109,6 +109,129 @@ const formatPriceXAxis = (tickItem: any) => {
   const quarter = Math.ceil((date.getMonth() + 1) / 3);
   const year = date.getFullYear();
   return `Q${quarter} ${year}`;
+};
+
+// Dynamic chart configuration generator
+const generateChartConfig = (data: any[], activeMetric?: string, visibleSegments?: {[key: string]: boolean}) => {
+  if (!data || data.length === 0) return {};
+  
+  const colors = ['hsl(142, 76%, 36%)', 'hsl(221, 83%, 53%)', 'hsl(38, 92%, 50%)', 'hsl(0, 84%, 60%)', 'hsl(271, 81%, 56%)', 'hsl(197, 71%, 73%)', 'hsl(84, 81%, 44%)', 'hsl(24, 70%, 56%)', 'hsl(330, 81%, 60%)', 'hsl(172, 66%, 50%)'];
+  
+  const config: any = {};
+  const sampleData = data[0] || {};
+  
+  let colorIndex = 0;
+  Object.keys(sampleData).forEach(key => {
+    if (key !== 'year' && key !== 'date') {
+      // Skip hidden segments if visibleSegments is provided
+      if (visibleSegments && visibleSegments[key] === false) return;
+      
+      const metricName = getMetricDisplayName(key);
+      config[key] = {
+        label: metricName,
+        color: colors[colorIndex % colors.length]
+      };
+      colorIndex++;
+    }
+  });
+  
+  return config;
+};
+
+// Helper function to get display names for metrics
+const getMetricDisplayName = (key: string): string => {
+  const nameMap: { [key: string]: string } = {
+    // Price
+    'price': 'Price',
+    'volume': 'Volume',
+    // Revenue
+    'revenue': 'Revenue',
+    'Automotive': 'Automotive',
+    'Energy Generation And Storage Segment': 'Energy & Storage',
+    'Services And Other': 'Services',
+    'Americas Segment': 'Americas',
+    'Europe Segment': 'Europe',
+    'Greater China Segment': 'China',
+    'Japan Segment': 'Japan',
+    'Rest of Asia Pacific Segment': 'Asia Pacific',
+    // Profitability
+    'netIncome': 'Net Income',
+    'ebitda': 'EBITDA',
+    'eps': 'EPS',
+    // Cash Flow
+    'operatingCashFlow': 'Operating Cash Flow',
+    'freeCashFlow': 'Free Cash Flow',
+    'freeCashFlowPerShare': 'FCF Per Share',
+    'stockBasedCompensation': 'Stock-Based Compensation',
+    'capitalExpenditure': 'Capital Expenditure',
+    'freeCashFlowYield': 'FCF Yield',
+    // Expenses
+    'rdExpenses': 'R&D Expenses',
+    'sgaExpenses': 'SG&A Expenses',
+    'operatingExpenses': 'Operating Expenses',
+    // Cash & Debt
+    'totalCash': 'Total Cash',
+    'totalDebt': 'Total Debt',
+    // Margins
+    'grossMargin': 'Gross Margin',
+    'operatingMargin': 'Operating Margin',
+    'netMargin': 'Net Margin',
+    'ebitdaMargin': 'EBITDA Margin',
+    // Ratios
+    'pe': 'P/E Ratio',
+    'ps': 'P/S Ratio',
+    'pfcf': 'P/FCF Ratio',
+    'pocf': 'P/OCF Ratio',
+    'roe': 'ROE',
+    'roic': 'ROIC'
+  };
+  return nameMap[key] || key;
+};
+
+// Custom tooltip component with dark theme
+const CustomTooltipContent = ({ active, payload, label, config }: any) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  return (
+    <div className="bg-gray-800 border border-white/10 rounded-lg p-3 shadow-[0_10px_25px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+      <p className="text-white font-medium text-sm mb-2">{label}</p>
+      {payload.map((entry: any, index: number) => {
+        const metricConfig = config?.[entry.dataKey] || {};
+        const color = metricConfig.color || entry.color;
+        const label = metricConfig.label || entry.name || entry.dataKey;
+        
+        // Format value based on metric type
+        const formatValue = (value: number, dataKey: string) => {
+          if (dataKey.includes('margin') || dataKey.includes('yield') || dataKey === 'roe' || dataKey === 'roic') {
+            return formatPercentage(value);
+          } else if (dataKey === 'price' || dataKey.includes('cash') || dataKey.includes('revenue') || 
+                     dataKey.includes('income') || dataKey.includes('expense') || dataKey.includes('flow') || 
+                     dataKey.includes('debt') || dataKey.includes('Expenses') || dataKey.includes('Cash') || 
+                     dataKey.includes('Debt') || dataKey.includes('Compensation') || dataKey.includes('Automotive') ||
+                     dataKey.includes('Energy') || dataKey.includes('Services') || dataKey.includes('Americas') ||
+                     dataKey.includes('Europe') || dataKey.includes('China') || dataKey.includes('Japan') ||
+                     dataKey.includes('Asia')) {
+            return formatCurrency(value, 2);
+          } else {
+            return value.toFixed(2);
+          }
+        };
+        
+        return (
+          <div key={index} className="flex items-center gap-2 text-sm">
+            <div 
+              className="w-3 h-3 rounded-full flex-shrink-0" 
+              style={{ backgroundColor: color }}
+            />
+            <span className="text-gray-300">{label}:</span>
+            <span className="text-white font-semibold" style={{ color }}>
+              {formatValue(entry.value, entry.dataKey)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
@@ -590,43 +713,18 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       );
     }
 
-    // Custom tooltip component
-    const CustomTooltip = ({ active, payload, label }: any) => {
-      if (active && payload && payload.length) {
-        return (
-          <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
-            <p className="font-medium">{label}</p>
-            {payload.map((entry: any, index: number) => (
-              <p key={index} style={{ color: entry.color }} className="text-sm">
-                {entry.name}: {
-                  // Special formatting for segmentation data (always currency values)
-                  (activeTab === 'revenue' && (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments'))
-                    ? formatCurrency(entry.value, 2)
-                    : entry.name.includes('$') || entry.dataKey.includes('cash') || entry.dataKey.includes('revenue') || entry.dataKey.includes('income') || entry.dataKey.includes('expense') || entry.dataKey.includes('flow') || entry.dataKey.includes('price') || entry.dataKey.includes('debt') || entry.dataKey.includes('Expenses') || entry.dataKey.includes('Cash') || entry.dataKey.includes('Debt') || entry.dataKey.includes('Compensation')
-                    ? formatCurrency(entry.value, 2)
-                    : entry.name.includes('%') || entry.dataKey.includes('margin') || entry.dataKey.includes('yield') || entry.dataKey.includes('roe') || entry.dataKey.includes('roic')
-                    ? formatPercentage(entry.value)
-                    : entry.value.toFixed(2)
-                }
-              </p>
-            ))}
-          </div>
-        );
-      }
-      return null;
-    };
-
     switch (activeTab) {
       case 'price':
         const quarterlyTicks = generateQuarterlyTicks(data, period);
+        const priceConfig = generateChartConfig(data, activeMetric.price);
         return (
-          <ChartContainer config={{}} className="h-[400px] w-full">
+          <ChartContainer config={priceConfig} className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0.05}/>
+                    <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.05}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
@@ -640,14 +738,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   axisLine={true}
                 />
                 <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                <ChartTooltip content={<CustomTooltip />} />
+                <ChartTooltip content={<CustomTooltipContent />} />
                 <Area 
                   type="monotone" 
                   dataKey="price" 
-                  stroke="#22c55e" 
+                  stroke="hsl(142, 76%, 36%)" 
                   strokeWidth={2}
                   fill="url(#priceGradient)"
-                  name="Price ($)"
+                  name="Price"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -657,7 +755,6 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
       case 'revenue':
         if (activeMetric.revenue === 'productSegments' || activeMetric.revenue === 'geographicSegments') {
           const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'year' && k !== 'date') : [];
-          const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#10b981'];
           
           console.log('Rendering segmentation chart with keys:', keys, 'data:', data);
           
@@ -671,24 +768,25 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
           
           // Filter visible keys based on segment visibility
           const visibleKeys = keys.filter(key => visibleSegments[key] !== false);
+          const segmentConfig = generateChartConfig(data, activeMetric.revenue, visibleSegments);
           
           return (
             <div className="space-y-4">
               {renderSegmentLegend(keys)}
-              <ChartContainer config={{}} className="h-[400px] w-full">
+              <ChartContainer config={segmentConfig} className="h-[400px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                     <XAxis dataKey="year" stroke="#6b7280" />
                     <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                    <ChartTooltip content={<CustomTooltip />} />
-                    {visibleKeys.map((key, index) => (
+                    <ChartTooltip content={<CustomTooltipContent />} />
+                    {visibleKeys.map((key) => (
                       <Bar 
                         key={key} 
                         dataKey={key} 
                         stackId="segments" 
-                        fill={colors[keys.indexOf(key) % colors.length]}
-                        name={key}
+                        fill={segmentConfig[key]?.color || 'hsl(142, 76%, 36%)'}
+                        name={getMetricDisplayName(key)}
                       />
                     ))}
                   </BarChart>
@@ -697,32 +795,56 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             </div>
           );
         }
+        const revenueConfig = generateChartConfig(data, activeMetric.revenue);
         return (
-          <ChartContainer config={{}} className="h-[400px] w-full">
+          <ChartContainer config={revenueConfig} className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                 <XAxis dataKey="year" stroke="#6b7280" />
                 <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                <ChartTooltip content={<CustomTooltip />} />
-                <Bar dataKey="revenue" fill="#22c55e" name="Revenue ($)" />
+                <ChartTooltip content={<CustomTooltipContent />} />
+                <Bar 
+                  dataKey="revenue" 
+                  fill={revenueConfig.revenue?.color || 'hsl(142, 76%, 36%)'} 
+                  name={getMetricDisplayName('revenue')} 
+                />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
         );
 
       case 'profitability':
+        const profitabilityConfig = generateChartConfig(data, activeMetric.profitability);
         return (
-          <ChartContainer config={{}} className="h-[400px] w-full">
+          <ChartContainer config={profitabilityConfig} className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                 <XAxis dataKey="year" stroke="#6b7280" />
                 <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                <ChartTooltip content={<CustomTooltip />} />
-                {activeMetric.profitability === 'netIncome' && <Bar dataKey="netIncome" fill="#3b82f6" name="Net Income ($)" />}
-                {activeMetric.profitability === 'ebitda' && <Bar dataKey="ebitda" fill="#8b5cf6" name="EBITDA ($)" />}
-                {activeMetric.profitability === 'eps' && <Bar dataKey="eps" fill="#f59e0b" name="EPS ($)" />}
+                <ChartTooltip content={<CustomTooltipContent />} />
+                {activeMetric.profitability === 'netIncome' && (
+                  <Bar 
+                    dataKey="netIncome" 
+                    fill={profitabilityConfig.netIncome?.color || 'hsl(221, 83%, 53%)'} 
+                    name={getMetricDisplayName('netIncome')} 
+                  />
+                )}
+                {activeMetric.profitability === 'ebitda' && (
+                  <Bar 
+                    dataKey="ebitda" 
+                    fill={profitabilityConfig.ebitda?.color || 'hsl(271, 81%, 56%)'} 
+                    name={getMetricDisplayName('ebitda')} 
+                  />
+                )}
+                {activeMetric.profitability === 'eps' && (
+                  <Bar 
+                    dataKey="eps" 
+                    fill={profitabilityConfig.eps?.color || 'hsl(38, 92%, 50%)'} 
+                    name={getMetricDisplayName('eps')} 
+                  />
+                )}
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
@@ -730,28 +852,28 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
 
       case 'cashFlow':
         if (activeMetric.cashFlow === 'comparison') {
-          const metrics = [
-            { key: 'freeCashFlow', name: 'Free Cash Flow', color: '#22c55e' },
-            { key: 'stockBasedCompensation', name: 'Stock-Based Compensation', color: '#f59e0b' }
-          ];
-          const visibleKeys = metrics.filter(metric => visibleSegments[metric.key] !== false);
+          const visibleKeys = ['freeCashFlow', 'stockBasedCompensation'].filter(key => visibleSegments[key] !== false);
+          const cashFlowConfig = generateChartConfig(data, activeMetric.cashFlow, visibleSegments);
           
           return (
             <div className="space-y-4">
-              {renderMetricLegend(metrics)}
-              <ChartContainer config={{}} className="h-[400px] w-full">
+              {renderMetricLegend([
+                { key: 'freeCashFlow', name: 'Free Cash Flow', color: cashFlowConfig.freeCashFlow?.color || 'hsl(142, 76%, 36%)' },
+                { key: 'stockBasedCompensation', name: 'Stock-Based Compensation', color: cashFlowConfig.stockBasedCompensation?.color || 'hsl(38, 92%, 50%)' }
+              ])}
+              <ChartContainer config={cashFlowConfig} className="h-[400px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                     <XAxis dataKey="year" stroke="#6b7280" />
                     <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                    <ChartTooltip content={<CustomTooltip />} />
-                    {visibleKeys.map((metric) => (
+                    <ChartTooltip content={<CustomTooltipContent />} />
+                    {visibleKeys.map((key) => (
                       <Bar 
-                        key={metric.key}
-                        dataKey={metric.key} 
-                        fill={metric.color} 
-                        name={metric.name}
+                        key={key}
+                        dataKey={key} 
+                        fill={cashFlowConfig[key]?.color || 'hsl(142, 76%, 36%)'} 
+                        name={getMetricDisplayName(key)}
                       />
                     ))}
                   </BarChart>
@@ -760,8 +882,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             </div>
           );
         }
+        const cashFlowSingleConfig = generateChartConfig(data, activeMetric.cashFlow);
         return (
-          <ChartContainer config={{}} className="h-[400px] w-full">
+          <ChartContainer config={cashFlowSingleConfig} className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
@@ -771,40 +894,64 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                     (value) => `${(value * 100).toFixed(0)}%` : formatYAxis} 
                   stroke="#6b7280" 
                 />
-                <ChartTooltip content={<CustomTooltip />} />
-                {activeMetric.cashFlow === 'operatingCashFlow' && <Bar dataKey="operatingCashFlow" fill="#06b6d4" name="Operating Cash Flow ($)" />}
-                {activeMetric.cashFlow === 'freeCashFlow' && <Bar dataKey="freeCashFlow" fill="#22c55e" name="Free Cash Flow ($)" />}
-                {activeMetric.cashFlow === 'freeCashFlowPerShare' && <Bar dataKey="freeCashFlowPerShare" fill="#8b5cf6" name="FCF Per Share ($)" />}
-                {activeMetric.cashFlow === 'freeCashFlowYield' && <Bar dataKey="freeCashFlowYield" fill="#f59e0b" name="FCF Yield (%)" />}
+                <ChartTooltip content={<CustomTooltipContent />} />
+                {activeMetric.cashFlow === 'operatingCashFlow' && (
+                  <Bar 
+                    dataKey="operatingCashFlow" 
+                    fill={cashFlowSingleConfig.operatingCashFlow?.color || 'hsl(197, 71%, 73%)'} 
+                    name={getMetricDisplayName('operatingCashFlow')} 
+                  />
+                )}
+                {activeMetric.cashFlow === 'freeCashFlow' && (
+                  <Bar 
+                    dataKey="freeCashFlow" 
+                    fill={cashFlowSingleConfig.freeCashFlow?.color || 'hsl(142, 76%, 36%)'} 
+                    name={getMetricDisplayName('freeCashFlow')} 
+                  />
+                )}
+                {activeMetric.cashFlow === 'freeCashFlowPerShare' && (
+                  <Bar 
+                    dataKey="freeCashFlowPerShare" 
+                    fill={cashFlowSingleConfig.freeCashFlowPerShare?.color || 'hsl(271, 81%, 56%)'} 
+                    name={getMetricDisplayName('freeCashFlowPerShare')} 
+                  />
+                )}
+                {activeMetric.cashFlow === 'freeCashFlowYield' && (
+                  <Bar 
+                    dataKey="freeCashFlowYield" 
+                    fill={cashFlowSingleConfig.freeCashFlowYield?.color || 'hsl(38, 92%, 50%)'} 
+                    name={getMetricDisplayName('freeCashFlowYield')} 
+                  />
+                )}
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
         );
 
       case 'expenses':
-        const expenseMetrics = [
-          { key: 'rdExpenses', name: 'R&D', color: '#ef4444' },
-          { key: 'sgaExpenses', name: 'Sales & Marketing', color: '#f59e0b' },
-          { key: 'operatingExpenses', name: 'Operating Expenses', color: '#8b5cf6' }
-        ];
-        const visibleExpenseKeys = expenseMetrics.filter(metric => visibleSegments[metric.key] !== false);
+        const visibleExpenseKeys = ['rdExpenses', 'sgaExpenses', 'operatingExpenses'].filter(key => visibleSegments[key] !== false);
+        const expenseConfig = generateChartConfig(data, activeMetric.expenses, visibleSegments);
         
         return (
           <div className="space-y-4">
-            {renderMetricLegend(expenseMetrics)}
-            <ChartContainer config={{}} className="h-[400px] w-full">
+            {renderMetricLegend([
+              { key: 'rdExpenses', name: 'R&D', color: expenseConfig.rdExpenses?.color || 'hsl(0, 84%, 60%)' },
+              { key: 'sgaExpenses', name: 'Sales & Marketing', color: expenseConfig.sgaExpenses?.color || 'hsl(38, 92%, 50%)' },
+              { key: 'operatingExpenses', name: 'Operating Expenses', color: expenseConfig.operatingExpenses?.color || 'hsl(271, 81%, 56%)' }
+            ])}
+            <ChartContainer config={expenseConfig} className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                   <XAxis dataKey="year" stroke="#6b7280" />
                   <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                  <ChartTooltip content={<CustomTooltip />} />
-                  {visibleExpenseKeys.map((metric) => (
+                  <ChartTooltip content={<CustomTooltipContent />} />
+                  {visibleExpenseKeys.map((key) => (
                     <Bar 
-                      key={metric.key}
-                      dataKey={metric.key} 
-                      fill={metric.color} 
-                      name={metric.name}
+                      key={key}
+                      dataKey={key} 
+                      fill={expenseConfig[key]?.color || 'hsl(0, 84%, 60%)'} 
+                      name={getMetricDisplayName(key)}
                     />
                   ))}
                 </BarChart>
@@ -814,28 +961,28 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         );
 
       case 'cashDebt':
-        const cashDebtMetrics = [
-          { key: 'totalCash', name: 'Total Cash', color: '#22c55e' },
-          { key: 'totalDebt', name: 'Total Debt', color: '#ef4444' }
-        ];
-        const visibleCashDebtKeys = cashDebtMetrics.filter(metric => visibleSegments[metric.key] !== false);
+        const visibleCashDebtKeys = ['totalCash', 'totalDebt'].filter(key => visibleSegments[key] !== false);
+        const cashDebtConfig = generateChartConfig(data, activeMetric.cashDebt, visibleSegments);
         
         return (
           <div className="space-y-4">
-            {renderMetricLegend(cashDebtMetrics)}
-            <ChartContainer config={{}} className="h-[400px] w-full">
+            {renderMetricLegend([
+              { key: 'totalCash', name: 'Total Cash', color: cashDebtConfig.totalCash?.color || 'hsl(142, 76%, 36%)' },
+              { key: 'totalDebt', name: 'Total Debt', color: cashDebtConfig.totalDebt?.color || 'hsl(0, 84%, 60%)' }
+            ])}
+            <ChartContainer config={cashDebtConfig} className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                   <XAxis dataKey="year" stroke="#6b7280" />
                   <YAxis tickFormatter={formatYAxis} stroke="#6b7280" />
-                  <ChartTooltip content={<CustomTooltip />} />
-                  {visibleCashDebtKeys.map((metric) => (
+                  <ChartTooltip content={<CustomTooltipContent />} />
+                  {visibleCashDebtKeys.map((key) => (
                     <Bar 
-                      key={metric.key}
-                      dataKey={metric.key} 
-                      fill={metric.color} 
-                      name={metric.name}
+                      key={key}
+                      dataKey={key} 
+                      fill={cashDebtConfig[key]?.color || 'hsl(142, 76%, 36%)'} 
+                      name={getMetricDisplayName(key)}
                     />
                   ))}
                 </BarChart>
@@ -845,26 +992,60 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
         );
 
       case 'margins':
+        const marginsConfig = generateChartConfig(data, activeMetric.margins);
         return (
-          <ChartContainer config={{}} className="h-[400px] w-full">
+          <ChartContainer config={marginsConfig} className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
                 <XAxis dataKey="year" stroke="#6b7280" />
                 <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} stroke="#6b7280" />
-                <ChartTooltip content={<CustomTooltip />} />
-                {activeMetric.margins === 'grossMargin' && <Line type="monotone" dataKey="grossMargin" stroke="#22c55e" strokeWidth={2} name="Gross Margin (%)" />}
-                {activeMetric.margins === 'operatingMargin' && <Line type="monotone" dataKey="operatingMargin" stroke="#3b82f6" strokeWidth={2} name="Operating Margin (%)" />}
-                {activeMetric.margins === 'netMargin' && <Line type="monotone" dataKey="netMargin" stroke="#8b5cf6" strokeWidth={2} name="Net Margin (%)" />}
-                {activeMetric.margins === 'ebitdaMargin' && <Line type="monotone" dataKey="ebitdaMargin" stroke="#f59e0b" strokeWidth={2} name="EBITDA Margin (%)" />}
+                <ChartTooltip content={<CustomTooltipContent />} />
+                {activeMetric.margins === 'grossMargin' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="grossMargin" 
+                    stroke={marginsConfig.grossMargin?.color || 'hsl(142, 76%, 36%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('grossMargin')} 
+                  />
+                )}
+                {activeMetric.margins === 'operatingMargin' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="operatingMargin" 
+                    stroke={marginsConfig.operatingMargin?.color || 'hsl(221, 83%, 53%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('operatingMargin')} 
+                  />
+                )}
+                {activeMetric.margins === 'netMargin' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="netMargin" 
+                    stroke={marginsConfig.netMargin?.color || 'hsl(271, 81%, 56%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('netMargin')} 
+                  />
+                )}
+                {activeMetric.margins === 'ebitdaMargin' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="ebitdaMargin" 
+                    stroke={marginsConfig.ebitdaMargin?.color || 'hsl(38, 92%, 50%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('ebitdaMargin')} 
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </ChartContainer>
         );
 
       case 'ratios':
+        const ratiosConfig = generateChartConfig(ratiosData, activeMetric.ratios);
         return (
-          <ChartContainer config={{}} className="h-[400px] w-full">
+          <ChartContainer config={ratiosConfig} className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={ratiosData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
@@ -877,13 +1058,61 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                   } 
                   stroke="#6b7280" 
                 />
-                <ChartTooltip content={<CustomTooltip />} />
-                {activeMetric.ratios === 'pe' && <Line type="monotone" dataKey="pe" stroke="#3b82f6" strokeWidth={2} name="P/E Ratio" />}
-                {activeMetric.ratios === 'ps' && <Line type="monotone" dataKey="ps" stroke="#22c55e" strokeWidth={2} name="P/S Ratio" />}
-                {activeMetric.ratios === 'pfcf' && <Line type="monotone" dataKey="pfcf" stroke="#f59e0b" strokeWidth={2} name="P/FCF Ratio" />}
-                {activeMetric.ratios === 'pocf' && <Line type="monotone" dataKey="pocf" stroke="#8b5cf6" strokeWidth={2} name="P/OCF Ratio" />}
-                {activeMetric.ratios === 'roe' && <Line type="monotone" dataKey="roe" stroke="#ef4444" strokeWidth={2} name="ROE (%)" />}
-                {activeMetric.ratios === 'roic' && <Line type="monotone" dataKey="roic" stroke="#06b6d4" strokeWidth={2} name="ROIC (%)" />}
+                <ChartTooltip content={<CustomTooltipContent />} />
+                {activeMetric.ratios === 'pe' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="pe" 
+                    stroke={ratiosConfig.pe?.color || 'hsl(221, 83%, 53%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('pe')} 
+                  />
+                )}
+                {activeMetric.ratios === 'ps' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="ps" 
+                    stroke={ratiosConfig.ps?.color || 'hsl(142, 76%, 36%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('ps')} 
+                  />
+                )}
+                {activeMetric.ratios === 'pfcf' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="pfcf" 
+                    stroke={ratiosConfig.pfcf?.color || 'hsl(38, 92%, 50%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('pfcf')} 
+                  />
+                )}
+                {activeMetric.ratios === 'pocf' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="pocf" 
+                    stroke={ratiosConfig.pocf?.color || 'hsl(271, 81%, 56%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('pocf')} 
+                  />
+                )}
+                {activeMetric.ratios === 'roe' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="roe" 
+                    stroke={ratiosConfig.roe?.color || 'hsl(0, 84%, 60%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('roe')} 
+                  />
+                )}
+                {activeMetric.ratios === 'roic' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="roic" 
+                    stroke={ratiosConfig.roic?.color || 'hsl(197, 71%, 73%)'} 
+                    strokeWidth={2} 
+                    name={getMetricDisplayName('roic')} 
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </ChartContainer>
