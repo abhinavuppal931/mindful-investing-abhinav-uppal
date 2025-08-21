@@ -118,14 +118,42 @@ const FIXED_METRIC_COLORS: { [key: string]: string } = {
   'volume': 'hsl(221, 83%, 53%)',
   // Revenue
   'revenue': 'hsl(142, 76%, 36%)',
+  // Product Segments - Tesla
   'Automotive': 'hsl(142, 76%, 36%)',
   'Energy Generation And Storage Segment': 'hsl(221, 83%, 53%)',
   'Services And Other': 'hsl(38, 92%, 50%)',
+  // Product Segments - Amazon 
+  'North America': 'hsl(142, 76%, 36%)',
+  'International': 'hsl(221, 83%, 53%)',
+  'AWS': 'hsl(38, 92%, 50%)',
+  'Amazon Web Services': 'hsl(38, 92%, 50%)',
+  'Advertising Services': 'hsl(262, 83%, 58%)',
+  // Product Segments - Apple
+  'iPhone': 'hsl(142, 76%, 36%)',
+  'Mac': 'hsl(221, 83%, 53%)',
+  'iPad': 'hsl(38, 92%, 50%)',
+  'Wearables Home and Accessories': 'hsl(262, 83%, 58%)',
+  'Services': 'hsl(346, 77%, 49%)',
+  // Product Segments - Google/Alphabet
+  'Google Search & Other': 'hsl(142, 76%, 36%)',
+  'YouTube Ads': 'hsl(221, 83%, 53%)',
+  'Google Network': 'hsl(38, 92%, 50%)',
+  'Google Cloud': 'hsl(262, 83%, 58%)',
+  'Other Bets': 'hsl(346, 77%, 49%)',
+  // Geographic Segments
   'Americas Segment': 'hsl(142, 76%, 36%)',
   'Europe Segment': 'hsl(221, 83%, 53%)',
   'Greater China Segment': 'hsl(38, 92%, 50%)',
-  'Japan Segment': 'hsl(0, 84%, 60%)',
-  'Rest of Asia Pacific Segment': 'hsl(271, 81%, 56%)',
+  'Japan Segment': 'hsl(262, 83%, 58%)',
+  'Rest of Asia Pacific Segment': 'hsl(346, 77%, 49%)',
+  'Asia Pacific Segment': 'hsl(346, 77%, 49%)',
+  // Additional geographic variations
+  'United States': 'hsl(142, 76%, 36%)',
+  'China': 'hsl(221, 83%, 53%)',
+  'Europe': 'hsl(38, 92%, 50%)',
+  'Asia': 'hsl(262, 83%, 58%)',
+  'International Segments': 'hsl(346, 77%, 49%)',
+  'Other Countries': 'hsl(24, 95%, 53%)',
   // Profitability
   'netIncome': 'hsl(142, 76%, 36%)',
   'ebitda': 'hsl(221, 83%, 53%)',
@@ -163,17 +191,39 @@ const generateChartConfig = (data: any[], activeMetric?: string, visibleSegments
   if (!data || data.length === 0) return {};
   
   const config: any = {};
-  const sampleData = data[0] || {};
   
-  Object.keys(sampleData).forEach(key => {
-    if (key !== 'year' && key !== 'date') {
-      // Always add to config for consistent color mapping regardless of visibility
-      const metricName = getMetricDisplayName(key);
-      config[key] = {
-        label: metricName,
-        color: FIXED_METRIC_COLORS[key] || 'hsl(142, 76%, 36%)' // fallback color
-      };
+  // Get all possible segment keys from all data points to ensure consistent mapping
+  const allKeys = new Set<string>();
+  data.forEach(item => {
+    Object.keys(item).forEach(key => {
+      if (key !== 'year' && key !== 'date') {
+        allKeys.add(key);
+      }
+    });
+  });
+  
+  // Generate color palette for segments that don't have fixed colors
+  const defaultColors = [
+    'hsl(142, 76%, 36%)', 'hsl(221, 83%, 53%)', 'hsl(38, 92%, 50%)', 
+    'hsl(262, 83%, 58%)', 'hsl(346, 77%, 49%)', 'hsl(24, 95%, 53%)',
+    'hsl(191, 95%, 53%)', 'hsl(301, 95%, 53%)', 'hsl(60, 95%, 53%)'
+  ];
+  
+  let colorIndex = 0;
+  Array.from(allKeys).sort().forEach(key => {
+    const metricName = getMetricDisplayName(key);
+    let color = FIXED_METRIC_COLORS[key];
+    
+    // Assign default color if not in fixed mapping
+    if (!color) {
+      color = defaultColors[colorIndex % defaultColors.length];
+      colorIndex++;
     }
+    
+    config[key] = {
+      label: metricName,
+      color: color
+    };
   });
   
   return config;
@@ -190,11 +240,38 @@ const getMetricDisplayName = (key: string): string => {
     'Automotive': 'Automotive',
     'Energy Generation And Storage Segment': 'Energy & Storage',
     'Services And Other': 'Services',
+    // Product Segments - Amazon
+    'North America': 'North America',
+    'International': 'International', 
+    'AWS': 'AWS',
+    'Amazon Web Services': 'AWS',
+    'Advertising Services': 'Advertising',
+    // Product Segments - Apple
+    'iPhone': 'iPhone',
+    'Mac': 'Mac',
+    'iPad': 'iPad',
+    'Wearables Home and Accessories': 'Wearables & Accessories',
+    'Services': 'Services',
+    // Product Segments - Google/Alphabet
+    'Google Search & Other': 'Search & Other',
+    'YouTube Ads': 'YouTube Ads',
+    'Google Network': 'Network',
+    'Google Cloud': 'Cloud',
+    'Other Bets': 'Other Bets',
+    // Geographic Segments
     'Americas Segment': 'Americas',
     'Europe Segment': 'Europe',
     'Greater China Segment': 'China',
     'Japan Segment': 'Japan',
     'Rest of Asia Pacific Segment': 'Asia Pacific',
+    'Asia Pacific Segment': 'Asia Pacific',
+    // Additional geographic variations
+    'United States': 'United States',
+    'China': 'China',
+    'Europe': 'Europe', 
+    'Asia': 'Asia',
+    'International Segments': 'International',
+    'Other Countries': 'Other Countries',
     // Profitability
     'netIncome': 'Net Income',
     'ebitda': 'EBITDA',
@@ -444,9 +521,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             console.log('Product segmentation response:', segmentData);
             
             if (segmentData && Array.isArray(segmentData) && segmentData.length > 0) {
-              // Process the correct stable API response format
-              const latestData = segmentData.slice(0, limit);
-              data = latestData.map((item: any) => {
+              // Process all available data, not limited to `limit` for complete historical coverage
+              const allData = segmentData; // Use all data to avoid missing years
+              data = allData.map((item: any) => {
                 const result: any = { 
                   year: item.date ? new Date(item.date).getFullYear() : 'N/A'
                 };
@@ -467,15 +544,21 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                     }
                   });
                 } else if (typeof item === 'object') {
-                  // Handle alternative formats
+                  // Handle alternative formats - includes direct segment properties
                   Object.keys(item).forEach(key => {
-                    if (key !== 'date' && key !== 'year' && typeof item[key] === 'number') {
+                    if (key !== 'date' && key !== 'year' && typeof item[key] === 'number' && item[key] > 0) {
                       result[key] = item[key];
                     }
                   });
                 }
-                return result;
-              }).reverse();
+                
+                // Filter out years with no segment data
+                const hasSegmentData = Object.keys(result).some(key => 
+                  key !== 'year' && typeof result[key] === 'number' && result[key] > 0
+                );
+                
+                return hasSegmentData ? result : null;
+              }).filter(item => item !== null).reverse().slice(0, limit);
               
               console.log('Processed product segmentation data:', data);
               setRevenueSegmentData(data);
@@ -499,8 +582,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
             console.log('Geographic segmentation response:', geoData);
             
             if (geoData && Array.isArray(geoData) && geoData.length > 0) {
-              const latestData = geoData.slice(0, limit);
-              data = latestData.map((item: any) => {
+              // Process all available data, not limited for complete historical coverage
+              const allData = geoData; // Use all data to avoid missing years
+              data = allData.map((item: any) => {
                 const result: any = { 
                   year: item.date ? new Date(item.date).getFullYear() : 'N/A'
                 };
@@ -521,14 +605,21 @@ const StockDetail: React.FC<StockDetailProps> = ({ ticker, companyName }) => {
                     }
                   });
                 } else if (typeof item === 'object') {
+                  // Handle alternative formats - includes direct segment properties
                   Object.keys(item).forEach(key => {
-                    if (key !== 'date' && key !== 'year' && typeof item[key] === 'number') {
+                    if (key !== 'date' && key !== 'year' && typeof item[key] === 'number' && item[key] > 0) {
                       result[key] = item[key];
                     }
                   });
                 }
-                return result;
-              }).reverse();
+                
+                // Filter out years with no segment data
+                const hasSegmentData = Object.keys(result).some(key => 
+                  key !== 'year' && typeof result[key] === 'number' && result[key] > 0
+                );
+                
+                return hasSegmentData ? result : null;
+              }).filter(item => item !== null).reverse().slice(0, limit);
               
               console.log('Processed geographic segmentation data:', data);
               setRevenueSegmentData(data);
