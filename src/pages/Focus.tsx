@@ -302,7 +302,17 @@ const Focus = () => {
             </>
           ) : (
             <>
-              <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'} className="bg-glass-background backdrop-blur-sm">
+              <Badge 
+                className={`
+                  liquid-glass px-3 py-1 text-xs font-medium border
+                  ${newsItem.sentiment === 'positive' 
+                    ? 'bg-emerald-500/20 text-emerald-700 border-emerald-300/30 dark:text-emerald-400 dark:border-emerald-600/30' 
+                    : newsItem.sentiment === 'negative' 
+                    ? 'bg-red-500/20 text-red-700 border-red-300/30 dark:text-red-400 dark:border-red-600/30'
+                    : 'bg-slate-500/20 text-slate-700 border-slate-300/30 dark:text-slate-400 dark:border-slate-600/30'
+                  }
+                `}
+              >
                 {newsItem.sentiment === 'positive' ? (
                   <ThumbsUp className="h-3 w-3 mr-1" />
                 ) : newsItem.sentiment === 'negative' ? (
@@ -312,7 +322,15 @@ const Focus = () => {
                 )}
                 {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
               </Badge>
-              <Badge variant={newsItem.relevance === 'high' ? 'default' : 'outline'} className={newsItem.relevance === 'high' ? 'bg-glass-background backdrop-blur-sm text-green-800 border-green-200' : 'bg-glass-background backdrop-blur-sm'}>
+              <Badge 
+                className={`
+                  liquid-glass px-3 py-1 text-xs font-medium border
+                  ${newsItem.relevance === 'high' 
+                    ? 'bg-green-600/20 text-green-800 border-green-400/30 dark:text-green-300 dark:border-green-500/30' 
+                    : 'bg-gray-500/20 text-gray-700 border-gray-300/30 dark:text-gray-400 dark:border-gray-600/30'
+                  }
+                `}
+              >
                 {newsItem.relevance === 'high' ? 'High Relevance' : 'Low Relevance'}
               </Badge>
             </>
@@ -370,9 +388,9 @@ const Focus = () => {
             <Switch 
               id="high-relevance" 
               checked={showHighRelevanceOnly}
-              onCheckedChange={setShowHighRelevanceOnly}
+              onCheckedChange={(checked) => setShowHighRelevanceOnly(checked)}
             />
-            <Label htmlFor="high-relevance" className="glass-body">Show High Relevance Only</Label>
+            <Label htmlFor="high-relevance" className="glass-body cursor-pointer">Show High Relevance Only</Label>
           </div>
         </div>
         
@@ -397,13 +415,13 @@ const Focus = () => {
                   
                   <DateRangePicker
                     value={dateRange}
-                    onChange={setDateRange}
+                    onChange={(range) => setDateRange(range)}
                     className="flex-1"
                   />
                 </div>
               </div>
               
-              <Tabs defaultValue="all" className="liquid-glass p-4 rounded-lg">
+              <Tabs value={sentimentFilter} onValueChange={setSentimentFilter} className="liquid-glass p-4 rounded-lg">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                   <TabsList className="bg-glass-background backdrop-blur-sm border-glass-border">
                     <TabsTrigger value="all" className="glass-body">All News</TabsTrigger>
@@ -483,8 +501,130 @@ const Focus = () => {
                         )}
                       </>
                     ) : (
-                      <div className="liquid-glass text-center py-12 rounded-lg">
-                        <p className="glass-body">No news items match your current filters</p>
+                      <div className="liquid-glass p-8 rounded-lg text-center">
+                        <p className="glass-body">No articles found matching your filters.</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="positive" className="mt-0">
+                  <div className="space-y-4">
+                    {paginatedNews.length > 0 ? (
+                      <>
+                        {paginatedNews.map(newsItem => (
+                          <NewsItemCard key={newsItem.id} newsItem={newsItem} />
+                        ))}
+                        
+                        {totalPages > 1 && (
+                          <Pagination className="mt-6">
+                            <PaginationContent>
+                              <PaginationItem>
+                                <PaginationPrevious 
+                                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                                  className={`${currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} bg-glass-background backdrop-blur-sm hover:bg-foreground/10`}
+                                />
+                              </PaginationItem>
+                              
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = currentPage - 2 + i;
+                                }
+                                
+                                return (
+                                  <PaginationItem key={pageNum}>
+                                    <PaginationLink
+                                      onClick={() => handlePageChange(pageNum)}
+                                      isActive={currentPage === pageNum}
+                                      className="cursor-pointer bg-glass-background backdrop-blur-sm hover:bg-foreground/10"
+                                    >
+                                      {pageNum}
+                                    </PaginationLink>
+                                  </PaginationItem>
+                                );
+                              })}
+                              
+                              <PaginationItem>
+                                <PaginationNext 
+                                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                                  className={`${currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"} bg-glass-background backdrop-blur-sm hover:bg-foreground/10`}
+                                />
+                              </PaginationItem>
+                            </PaginationContent>
+                          </Pagination>
+                        )}
+                      </>
+                    ) : (
+                      <div className="liquid-glass p-8 rounded-lg text-center">
+                        <p className="glass-body">No positive articles found matching your filters.</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="negative" className="mt-0">
+                  <div className="space-y-4">
+                    {paginatedNews.length > 0 ? (
+                      <>
+                        {paginatedNews.map(newsItem => (
+                          <NewsItemCard key={newsItem.id} newsItem={newsItem} />
+                        ))}
+                        
+                        {totalPages > 1 && (
+                          <Pagination className="mt-6">
+                            <PaginationContent>
+                              <PaginationItem>
+                                <PaginationPrevious 
+                                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                                  className={`${currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} bg-glass-background backdrop-blur-sm hover:bg-foreground/10`}
+                                />
+                              </PaginationItem>
+                              
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = currentPage - 2 + i;
+                                }
+                                
+                                return (
+                                  <PaginationItem key={pageNum}>
+                                    <PaginationLink
+                                      onClick={() => handlePageChange(pageNum)}
+                                      isActive={currentPage === pageNum}
+                                      className="cursor-pointer bg-glass-background backdrop-blur-sm hover:bg-foreground/10"
+                                    >
+                                      {pageNum}
+                                    </PaginationLink>
+                                  </PaginationItem>
+                                );
+                              })}
+                              
+                              <PaginationItem>
+                                <PaginationNext 
+                                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                                  className={`${currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"} bg-glass-background backdrop-blur-sm hover:bg-foreground/10`}
+                                />
+                              </PaginationItem>
+                            </PaginationContent>
+                          </Pagination>
+                        )}
+                      </>
+                    ) : (
+                      <div className="liquid-glass p-8 rounded-lg text-center">
+                        <p className="glass-body">No negative articles found matching your filters.</p>
                         <Button 
                           variant="ghost" 
                           className="glass-body bg-glass-background backdrop-blur-sm hover:bg-foreground/10 mt-2"
@@ -503,22 +643,6 @@ const Focus = () => {
                         </Button>
                       </div>
                     )}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="positive" className="mt-0">
-                  <div className="space-y-4">
-                    {filteredNews.filter(newsItem => newsItem.sentiment === 'positive').map(newsItem => (
-                      <NewsItemCard key={newsItem.id} newsItem={newsItem} />
-                    ))}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="negative" className="mt-0">
-                  <div className="space-y-4">
-                    {filteredNews.filter(newsItem => newsItem.sentiment === 'negative').map(newsItem => (
-                      <NewsItemCard key={newsItem.id} newsItem={newsItem} />
-                    ))}
                   </div>
                 </TabsContent>
               </Tabs>
