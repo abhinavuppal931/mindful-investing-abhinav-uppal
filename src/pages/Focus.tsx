@@ -51,6 +51,7 @@ const Focus = () => {
   const [error, setError] = useState<string | null>(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
   const [processingArticleIds, setProcessingArticleIds] = useState<Set<string>>(new Set());
+  const [analyzedArticles, setAnalyzedArticles] = useState<Set<string>>(new Set());
 
   // Debounce ticker filter to avoid excessive API calls
   const debouncedTickerFilter = useDebounce(tickerFilter, 2000);
@@ -166,57 +167,6 @@ const Focus = () => {
     }
   };
 
-  // Run AI analysis on current page articles with enhanced OpenAI relevance
-  useEffect(() => {
-    const runAIAnalysis = async () => {
-      if (paginatedNews.length === 0) return;
-
-      // Check if any articles need AI analysis
-      const articlesNeedingAnalysis = paginatedNews.filter(
-        item => item.sentiment === 'neutral' && item.relevance === 'low'
-      );
-
-      if (articlesNeedingAnalysis.length === 0) return;
-
-      setAiAnalysisLoading(true);
-      setProcessingArticleIds(new Set(articlesNeedingAnalysis.map(item => item.id)));
-
-      try {
-        const articlesForAnalysis = articlesNeedingAnalysis.map(item => ({
-          id: item.id,
-          title: item.title,
-          content: item.content,
-          ticker: item.ticker,
-          source: item.provider
-        }));
-        
-        const analysisResults = await aiNewsAnalysis.analyzeArticles(articlesForAnalysis);
-        
-        // Update the news items with AI analysis results
-        setAllNews(prevNews => 
-          prevNews.map(newsItem => {
-            const analysis = analysisResults.find(result => result.id === newsItem.id);
-            if (analysis) {
-              return {
-                ...newsItem,
-                sentiment: analysis.sentiment,
-                relevance: analysis.relevance
-              };
-            }
-            return newsItem;
-          })
-        );
-      } catch (aiError) {
-        console.warn('AI Analysis error:', aiError);
-      } finally {
-        setAiAnalysisLoading(false);
-        setProcessingArticleIds(new Set());
-      }
-    };
-
-    runAIAnalysis();
-  }, [currentPage, allNews.length]);
-
   // Filter news based on current filters
   const filteredNews = allNews.filter(item => {
     if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
@@ -244,6 +194,74 @@ const Focus = () => {
   const totalPages = Math.ceil(filteredNews.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedNews = filteredNews.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Optimized individual article analysis with persistent caching
+  useEffect(() => {
+    const processArticleAnalysis = async () => {
+      if (paginatedNews.length === 0) return;
+
+      // Process articles individually for better performance
+      const unanalyzedArticles = paginatedNews.filter(
+        item => !analyzedArticles.has(item.id) && 
+               item.sentiment === 'neutral' && 
+               item.relevance === 'low'
+      );
+
+      if (unanalyzedArticles.length === 0) return;
+
+      // Process articles one by one to show progress
+      for (const article of unanalyzedArticles) {
+        // Skip if already processing
+        if (processingArticleIds.has(article.id)) continue;
+
+        setProcessingArticleIds(prev => new Set([...prev, article.id]));
+
+        try {
+          const analysisResults = await aiNewsAnalysis.analyzeArticles([{
+            id: article.id,
+            title: article.title,
+            content: article.content,
+            ticker: article.ticker,
+            source: article.provider
+          }]);
+
+          if (analysisResults.length > 0) {
+            const analysis = analysisResults[0];
+            
+            // Update the specific article immediately
+            setAllNews(prevNews => 
+              prevNews.map(newsItem => {
+                if (newsItem.id === article.id) {
+                  return {
+                    ...newsItem,
+                    sentiment: analysis.sentiment,
+                    relevance: analysis.relevance
+                  };
+                }
+                return newsItem;
+              })
+            );
+
+            // Mark as analyzed
+            setAnalyzedArticles(prev => new Set([...prev, article.id]));
+          }
+        } catch (error) {
+          console.warn(`Analysis error for article ${article.id}:`, error);
+        } finally {
+          setProcessingArticleIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(article.id);
+            return newSet;
+          });
+        }
+
+        // Small delay between articles to prevent overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    };
+
+    processArticleAnalysis();
+  }, [paginatedNews, analyzedArticles]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -413,11 +431,13 @@ const Focus = () => {
                     className="flex-1"
                   />
                   
-                  <DateRangePicker
-                    value={dateRange}
-                    onChange={(range) => setDateRange(range)}
-                    className="flex-1"
-                  />
+                  <div className="flex-1 relative z-50">
+                    <DateRangePicker
+                      value={dateRange}
+                      onChange={(range) => setDateRange(range)}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
               
@@ -440,10 +460,12 @@ const Focus = () => {
                   </div>
                 </div>
                 
-                {aiAnalysisLoading && (
+                {processingArticleIds.size > 0 && (
                   <div className="liquid-glass flex items-center justify-center p-4 rounded-lg mb-4">
                     <Loader className="h-5 w-5 animate-spin mr-2 glass-accent" />
-                    <span className="glass-body">Running OpenAI relevance analysis on news articles...</span>
+                    <span className="glass-body">
+                      Analyzing {processingArticleIds.size} article{processingArticleIds.size > 1 ? 's' : ''}...
+                    </span>
                   </div>
                 )}
                 

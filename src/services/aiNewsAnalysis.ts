@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { openaiCache } from '@/utils/openaiCache';
 
 interface NewsArticle {
   id: string;
@@ -15,12 +16,17 @@ interface AnalysisResult {
   relevance: 'high' | 'low';
 }
 
-// In-memory cache for analysis results (session-level caching)
-const sessionCache = new Map<string, AnalysisResult>();
+interface CachedAnalysisData {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  relevance: 'high' | 'low';
+}
 
-// Generate cache key for article (session-level)
-function getSessionCacheKey(article: NewsArticle): string {
-  return `${article.title}_${article.content.substring(0, 100)}_${article.ticker || ''}`.replace(/\s+/g, '_');
+// In-memory cache for analysis results (session-level caching)
+const sessionCache = new Map<string, CachedAnalysisData>();
+
+// Generate cache key for article (session-level and persistent)
+function getCacheKey(article: NewsArticle): string {
+  return `news_analysis_${article.title.substring(0, 50)}_${article.content.substring(0, 100)}_${article.ticker || 'general'}`.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
 }
 
 // Fallback keyword-based analysis
@@ -71,13 +77,25 @@ function getFallbackAnalysis(articles: NewsArticle[]): AnalysisResult[] {
 export const aiNewsAnalysis = {
   analyzeArticles: async (articles: NewsArticle[]): Promise<AnalysisResult[]> => {
     try {
-      // Check session cache first
+      // Check both persistent and session cache
       const cachedResults: AnalysisResult[] = [];
       const uncachedArticles: NewsArticle[] = [];
       
       articles.forEach(article => {
-        const cacheKey = getSessionCacheKey(article);
-        const cached = sessionCache.get(cacheKey);
+        const cacheKey = getCacheKey(article);
+        
+        // Check session cache first
+        let cached = sessionCache.get(cacheKey);
+        
+        // If not in session cache, check persistent cache
+        if (!cached) {
+          cached = openaiCache.get(cacheKey);
+          if (cached) {
+            // Restore to session cache for faster subsequent access
+            sessionCache.set(cacheKey, cached);
+          }
+        }
+        
         if (cached) {
           cachedResults.push({ ...cached, id: article.id });
         } else {
@@ -85,7 +103,7 @@ export const aiNewsAnalysis = {
         }
       });
       
-      console.log(`Session cache: ${cachedResults.length} cached, ${uncachedArticles.length} uncached`);
+      console.log(`Cache: ${cachedResults.length} cached (${sessionCache.size} session, persistent), ${uncachedArticles.length} uncached`);
       
       if (uncachedArticles.length === 0) {
         return cachedResults;
@@ -111,12 +129,19 @@ export const aiNewsAnalysis = {
       if (data && data.results && Array.isArray(data.results)) {
         console.log(`Received AI analysis results for ${data.results.length} articles (with OpenAI relevance)`);
         
-        // Cache the new results in session cache
+        // Cache the new results in both session and persistent cache
         data.results.forEach((result: AnalysisResult) => {
           const article = uncachedArticles.find(a => a.id === result.id);
           if (article) {
-            const cacheKey = getSessionCacheKey(article);
-            sessionCache.set(cacheKey, result);
+            const cacheKey = getCacheKey(article);
+            const cacheData: CachedAnalysisData = {
+              sentiment: result.sentiment,
+              relevance: result.relevance
+            };
+            
+            // Store in both caches
+            sessionCache.set(cacheKey, cacheData);
+            openaiCache.set(cacheKey, cacheData, 24 * 60 * 60 * 1000); // 24 hours
           }
         });
         
@@ -134,18 +159,55 @@ export const aiNewsAnalysis = {
       } else {
         console.warn('Invalid AI analysis response format, using fallback');
         const fallbackResults = getFallbackAnalysis(uncachedArticles);
+        
+        // Cache fallback results too
+        fallbackResults.forEach(result => {
+          const article = uncachedArticles.find(a => a.id === result.id);
+          if (article) {
+            const cacheKey = getCacheKey(article);
+            const cacheData: CachedAnalysisData = {
+              sentiment: result.sentiment,
+              relevance: result.relevance
+            };
+            sessionCache.set(cacheKey, cacheData);
+            openaiCache.set(cacheKey, cacheData, 6 * 60 * 60 * 1000); // 6 hours for fallback
+          }
+        });
+        
         return [...cachedResults, ...fallbackResults];
       }
     } catch (error) {
       console.error('AI News Analysis error:', error);
       console.log('Using fallback keyword-based analysis');
-      return getFallbackAnalysis(articles);
+      const fallbackResults = getFallbackAnalysis(articles);
+      
+      // Cache fallback results
+      fallbackResults.forEach(result => {
+        const article = articles.find(a => a.id === result.id);
+        if (article) {
+          const cacheKey = getCacheKey(article);
+          const cacheData: CachedAnalysisData = {
+            sentiment: result.sentiment,
+            relevance: result.relevance
+          };
+          sessionCache.set(cacheKey, cacheData);
+          openaiCache.set(cacheKey, cacheData, 2 * 60 * 60 * 1000); // 2 hours for error fallback
+        }
+      });
+      
+      return fallbackResults;
     }
   },
 
-  // Method to clear session cache if needed
+  // Method to clear both caches if needed
   clearSessionCache: () => {
     sessionCache.clear();
     console.log('Session cache cleared');
+  },
+
+  // Method to clear persistent cache
+  clearPersistentCache: () => {
+    openaiCache.clear();
+    console.log('Persistent cache cleared');
   }
 };
