@@ -4,84 +4,86 @@
 @tailwind utilities;
 
 @layer base {
+  /* Liquid Glass Design System - CSS Variables */
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 210 100% 50%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 210 50% 98%;
-    --sidebar-foreground: 223 47% 11%;
-    --sidebar-primary: 210 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 212 92% 60%;
+    /* Dark theme (default) */
+    --background: 220 13% 9%;
+    --foreground: 220 9% 98%;
+    --card: 220 13% 11%;
+    --card-foreground: 220 9% 98%;
+    --popover: 220 13% 11%;
+    --popover-foreground: 220 9% 98%;
+    --primary: 220 9% 98%;
+    --primary-foreground: 220 13% 9%;
+    --secondary: 220 13% 15%;
+    --secondary-foreground: 220 9% 98%;
+    --muted: 220 13% 15%;
+    --muted-foreground: 220 9% 63%;
+    --accent: 220 13% 15%;
+    --accent-foreground: 220 9% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 220 9% 98%;
+    --border: 220 13% 15%;
+    --input: 220 13% 15%;
+    --ring: 220 9% 98%;
+    --radius: 0.75rem;
+    
+    /* Glass morphism variables */
+    --glass-background: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --glass-blur: blur(16px);
+    --prismatic-gradient: linear-gradient(135deg, 
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(128, 208, 199, 0.12) 25%,
+      rgba(161, 196, 253, 0.12) 50%,
+      rgba(194, 233, 251, 0.12) 75%,
+      rgba(255, 255, 255, 0.1) 100%);
+    
+    --sidebar-background: 220 13% 11%;
+    --sidebar-foreground: 220 9% 98%;
+    --sidebar-primary: 220 9% 98%;
+    --sidebar-primary-foreground: 220 13% 9%;
+    --sidebar-accent: 220 13% 15%;
+    --sidebar-accent-foreground: 220 9% 98%;
+    --sidebar-border: 220 13% 15%;
+    --sidebar-ring: 220 9% 98%;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 100% 50%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-
-    --sidebar-background: 222.2 84% 4.9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 212.7 26.8% 83.9%;
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 220 13% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 9%;
+    --primary: 220 13% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 13% 96%;
+    --secondary-foreground: 220 13% 9%;
+    --muted: 220 13% 96%;
+    --muted-foreground: 220 13% 45%;
+    --accent: 220 13% 96%;
+    --accent-foreground: 220 13% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 13% 9%;
+    
+    /* Light mode glass variables */
+    --glass-background: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 13% 9%;
+    --sidebar-primary: 220 13% 9%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 13% 96%;
+    --sidebar-accent-foreground: 220 13% 9%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 220 13% 9%;
   }
 }
 
@@ -93,6 +95,18 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Liquid Glass Typography */
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.025em;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
   }
 }
 
@@ -130,6 +144,79 @@
   .sidebar-collapsed .sidebar-item-text {
     opacity: 0;
     transform: translateX(1rem);
+  }
+
+  /* Liquid Glass Typography */
+  .glass-heading {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, 
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(128, 208, 199, 0.8) 25%,
+      rgba(161, 196, 253, 0.8) 50%,
+      rgba(194, 233, 251, 0.8) 75%,
+      rgba(255, 255, 255, 0.9) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass-subheading {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    color: hsl(var(--foreground) / 0.85);
+  }
+
+  .glass-body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .glass-accent {
+    background: linear-gradient(90deg, 
+      rgba(128, 208, 199, 1) 0%,
+      rgba(161, 196, 253, 1) 50%,
+      rgba(194, 233, 251, 1) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 400;
+  }
+
+  /* Liquid Glass Effects */
+  .liquid-glass {
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--prismatic-gradient);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .liquid-glass:hover::before {
+    opacity: 1;
+  }
+
+  /* Disable all animations for liquid glass */
+  *, *::before, *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.1s !important;
   }
 }
 

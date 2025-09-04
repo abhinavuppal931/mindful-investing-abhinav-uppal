@@ -67,6 +67,11 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
+				glass: {
+					background: 'var(--glass-background)',
+					border: 'var(--glass-border)',
+					shadow: 'var(--glass-shadow)'
+				},
 				// Custom colors for Mindful Investing with dark mode support
 				mindful: {
 					50: '#f0f7ff',   // Lightest blue (light mode)
