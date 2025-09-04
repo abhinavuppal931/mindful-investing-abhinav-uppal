@@ -251,20 +251,20 @@ const Focus = () => {
 
   // Component for rendering news item with image
   const NewsItemCard = ({ newsItem }: { newsItem: NewsItem }) => (
-    <Card key={newsItem.id}>
+    <Card key={newsItem.id} className="liquid-glass">
       <CardHeader className="pb-2">
         <div className="flex justify-between">
           <div className="space-y-1 flex-1">
-            <CardTitle className="text-lg">{newsItem.title}</CardTitle>
-            <CardDescription>
+            <CardTitle className="glass-subheading text-lg font-light">{newsItem.title}</CardTitle>
+            <CardDescription className="glass-body">
               {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
-              <span className="text-xs ml-1 px-1.5 py-0.5 bg-gray-100 rounded">
+              <span className="text-xs ml-1 px-1.5 py-0.5 bg-glass-background backdrop-blur-sm rounded">
                 {newsItem.provider.toUpperCase()}
               </span>
             </CardDescription>
           </div>
           {newsItem.ticker && (
-            <Badge variant="outline" className="h-fit ml-2">
+            <Badge variant="outline" className="h-fit ml-2 bg-glass-background backdrop-blur-sm">
               {newsItem.ticker}
             </Badge>
           )}
@@ -284,25 +284,25 @@ const Focus = () => {
               />
             </div>
           )}
-          <p className="text-gray-700 flex-1">{newsItem.content}</p>
+          <p className="glass-body flex-1">{newsItem.content}</p>
         </div>
       </CardContent>
       <CardFooter className="flex justify-between pt-2">
         <div className="flex space-x-2">
           {processingArticleIds.has(newsItem.id) ? (
             <>
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="bg-glass-background backdrop-blur-sm">
                 <Loader className="h-3 w-3 mr-1 animate-spin" />
                 Analyzing...
               </Badge>
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="bg-glass-background backdrop-blur-sm">
                 <Loader className="h-3 w-3 mr-1 animate-spin" />
                 Analyzing...
               </Badge>
             </>
           ) : (
             <>
-              <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'}>
+              <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'} className="bg-glass-background backdrop-blur-sm">
                 {newsItem.sentiment === 'positive' ? (
                   <ThumbsUp className="h-3 w-3 mr-1" />
                 ) : newsItem.sentiment === 'negative' ? (
@@ -312,13 +312,13 @@ const Focus = () => {
                 )}
                 {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
               </Badge>
-              <Badge variant={newsItem.relevance === 'high' ? 'default' : 'outline'} className={newsItem.relevance === 'high' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
+              <Badge variant={newsItem.relevance === 'high' ? 'default' : 'outline'} className={newsItem.relevance === 'high' ? 'bg-glass-background backdrop-blur-sm text-green-800 border-green-200' : 'bg-glass-background backdrop-blur-sm'}>
                 {newsItem.relevance === 'high' ? 'High Relevance' : 'Low Relevance'}
               </Badge>
             </>
           )}
         </div>
-        <Button variant="ghost" size="sm" className="text-xs" asChild>
+        <Button variant="ghost" size="sm" className="glass-body text-xs bg-glass-background backdrop-blur-sm hover:bg-foreground/10" asChild>
           <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
             Read More
             <ArrowUpRight className="h-3 w-3 ml-1" />
@@ -331,8 +331,11 @@ const Focus = () => {
   if (loading) {
     return (
       <MainLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-mindful-600"></div>
+        <div className="liquid-glass flex justify-center items-center h-64 rounded-xl">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-glass-border"></div>
+            <p className="glass-body">Loading news articles...</p>
+          </div>
         </div>
       </MainLayout>
     );
@@ -341,9 +344,9 @@ const Focus = () => {
   if (error) {
     return (
       <MainLayout>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h3 className="text-red-800 font-medium">Error loading news</h3>
-          <p className="text-red-600">{error}</p>
+        <div className="liquid-glass p-6 rounded-xl border-destructive">
+          <h3 className="glass-subheading font-medium text-destructive mb-2">Error loading news</h3>
+          <p className="glass-body text-destructive">{error}</p>
         </div>
       </MainLayout>
     );
@@ -354,33 +357,34 @@ const Focus = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center">
-              <BrainCircuit className="mr-2 h-8 w-8 text-mindful-600" />
+            <h1 className="glass-heading text-4xl font-light flex items-center">
+              <BrainCircuit className="mr-3 h-10 w-10 glass-accent" />
               Focus Mode
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="glass-subheading mt-2">
               Filter out the noise and focus on what matters for your investments
             </p>
           </div>
           
-          <div className="flex items-center space-x-2">
+          <div className="liquid-glass flex items-center space-x-3 p-4 rounded-lg">
             <Switch 
               id="high-relevance" 
               checked={showHighRelevanceOnly}
               onCheckedChange={setShowHighRelevanceOnly}
             />
-            <Label htmlFor="high-relevance">Show High Relevance Only</Label>
+            <Label htmlFor="high-relevance" className="glass-body">Show High Relevance Only</Label>
           </div>
         </div>
         
-        <div className="focus-mode">
+        <div className="liquid-glass p-6 rounded-xl">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <div className="space-y-4 mb-4">
+              <div className="space-y-4 mb-6">
                 <Input
                   placeholder="Search news content..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-glass-background backdrop-blur-md border-glass-border"
                 />
                 
                 <div className="flex flex-col md:flex-row gap-4">
@@ -399,15 +403,15 @@ const Focus = () => {
                 </div>
               </div>
               
-              <Tabs defaultValue="all">
-                <div className="flex justify-between items-center mb-4">
-                  <TabsList>
-                    <TabsTrigger value="all">All News</TabsTrigger>
-                    <TabsTrigger value="positive">Positive</TabsTrigger>
-                    <TabsTrigger value="negative">Negative</TabsTrigger>
+              <Tabs defaultValue="all" className="liquid-glass p-4 rounded-lg">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                  <TabsList className="bg-glass-background backdrop-blur-sm border-glass-border">
+                    <TabsTrigger value="all" className="glass-body">All News</TabsTrigger>
+                    <TabsTrigger value="positive" className="glass-body">Positive</TabsTrigger>
+                    <TabsTrigger value="negative" className="glass-body">Negative</TabsTrigger>
                   </TabsList>
                   
-                  <div className="flex items-center text-sm text-gray-500">
+                  <div className="flex items-center glass-body text-sm">
                     <Calendar className="h-4 w-4 mr-1" />
                     <span>
                       {filteredNews.length} articles • Page {currentPage} of {totalPages}
@@ -419,9 +423,9 @@ const Focus = () => {
                 </div>
                 
                 {aiAnalysisLoading && (
-                  <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg mb-4">
-                    <Loader className="h-5 w-5 animate-spin mr-2 text-blue-600" />
-                    <span className="text-blue-600">Running OpenAI relevance analysis on news articles...</span>
+                  <div className="liquid-glass flex items-center justify-center p-4 rounded-lg mb-4">
+                    <Loader className="h-5 w-5 animate-spin mr-2 glass-accent" />
+                    <span className="glass-body">Running OpenAI relevance analysis on news articles...</span>
                   </div>
                 )}
                 
@@ -439,7 +443,7 @@ const Focus = () => {
                               <PaginationItem>
                                 <PaginationPrevious 
                                   onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                  className={`${currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} bg-glass-background backdrop-blur-sm hover:bg-foreground/10`}
                                 />
                               </PaginationItem>
                               
@@ -460,7 +464,7 @@ const Focus = () => {
                                     <PaginationLink
                                       onClick={() => handlePageChange(pageNum)}
                                       isActive={currentPage === pageNum}
-                                      className="cursor-pointer"
+                                      className="cursor-pointer bg-glass-background backdrop-blur-sm hover:bg-foreground/10"
                                     >
                                       {pageNum}
                                     </PaginationLink>
@@ -471,7 +475,7 @@ const Focus = () => {
                               <PaginationItem>
                                 <PaginationNext 
                                   onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                  className={`${currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"} bg-glass-background backdrop-blur-sm hover:bg-foreground/10`}
                                 />
                               </PaginationItem>
                             </PaginationContent>
@@ -479,10 +483,11 @@ const Focus = () => {
                         )}
                       </>
                     ) : (
-                      <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
-                        <p className="text-gray-500">No news items match your current filters</p>
+                      <div className="liquid-glass text-center py-12 rounded-lg">
+                        <p className="glass-body">No news items match your current filters</p>
                         <Button 
-                          variant="link" 
+                          variant="ghost" 
+                          className="glass-body bg-glass-background backdrop-blur-sm hover:bg-foreground/10 mt-2"
                           onClick={() => {
                             setSearchQuery('');
                             setTickerFilter('');
@@ -520,35 +525,35 @@ const Focus = () => {
             </div>
             
             <div className="space-y-6">
-              <Card>
+              <Card className="liquid-glass">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <Filter className="h-5 w-5 mr-2 text-mindful-600" />
+                  <CardTitle className="glass-subheading text-lg flex items-center">
+                    <Filter className="h-5 w-5 mr-2 glass-accent" />
                     Filter Options
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sentiment-filter">Sentiment</Label>
+                    <Label htmlFor="sentiment-filter" className="glass-body">Sentiment</Label>
                     <Select 
                       value={sentimentFilter} 
                       onValueChange={setSentimentFilter}
                     >
-                      <SelectTrigger id="sentiment-filter">
+                      <SelectTrigger id="sentiment-filter" className="bg-glass-background backdrop-blur-sm border-glass-border">
                         <SelectValue placeholder="All Sentiments" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Sentiments</SelectItem>
-                        <SelectItem value="positive">Positive</SelectItem>
-                        <SelectItem value="neutral">Neutral</SelectItem>
-                        <SelectItem value="negative">Negative</SelectItem>
+                      <SelectContent className="bg-glass-background backdrop-blur-md border-glass-border">
+                        <SelectItem value="all" className="glass-body">All Sentiments</SelectItem>
+                        <SelectItem value="positive" className="glass-body">Positive</SelectItem>
+                        <SelectItem value="neutral" className="glass-body">Neutral</SelectItem>
+                        <SelectItem value="negative" className="glass-body">Negative</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <Button 
                     variant="outline" 
-                    className="w-full mt-2"
+                    className="w-full mt-2 glass-body bg-glass-background backdrop-blur-sm border-glass-border hover:bg-foreground/10"
                     onClick={() => {
                       setSearchQuery('');
                       setTickerFilter('');
@@ -565,29 +570,29 @@ const Focus = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-mindful-50 border-mindful-100">
+              <Card className="liquid-glass">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <BrainCircuit className="h-5 w-5 mr-2 text-mindful-600" />
+                  <CardTitle className="glass-subheading text-lg flex items-center">
+                    <BrainCircuit className="h-5 w-5 mr-2 glass-accent" />
                     Focus Mode Benefits
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2 text-sm">
+                  <ul className="space-y-2 glass-body text-sm">
                     <li className="flex items-start">
-                      <div className="h-5 w-5 rounded-full bg-mindful-100 flex items-center justify-center text-mindful-600 mr-2 flex-shrink-0 mt-0.5">1</div>
+                      <div className="h-5 w-5 rounded-full bg-glass-background backdrop-blur-sm flex items-center justify-center glass-accent mr-2 flex-shrink-0 mt-0.5 text-xs">1</div>
                       <span>Filter out market noise to focus on relevant information</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="h-5 w-5 rounded-full bg-mindful-100 flex items-center justify-center text-mindful-600 mr-2 flex-shrink-0 mt-0.5">2</div>
+                      <div className="h-5 w-5 rounded-full bg-glass-background backdrop-blur-sm flex items-center justify-center glass-accent mr-2 flex-shrink-0 mt-0.5 text-xs">2</div>
                       <span>Reduce recency bias by viewing historical context</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="h-5 w-5 rounded-full bg-mindful-100 flex items-center justify-center text-mindful-600 mr-2 flex-shrink-0 mt-0.5">3</div>
+                      <div className="h-5 w-5 rounded-full bg-glass-background backdrop-blur-sm flex items-center justify-center glass-accent mr-2 flex-shrink-0 mt-0.5 text-xs">3</div>
                       <span>Identify sentiment trends across different news sources</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="h-5 w-5 rounded-full bg-mindful-100 flex items-center justify-center text-mindful-600 mr-2 flex-shrink-0 mt-0.5">4</div>
+                      <div className="h-5 w-5 rounded-full bg-glass-background backdrop-blur-sm flex items-center justify-center glass-accent mr-2 flex-shrink-0 mt-0.5 text-xs">4</div>
                       <span>Make more rational, data-driven investment decisions</span>
                     </li>
                   </ul>
