@@ -212,11 +212,9 @@
     opacity: 1;
   }
 
-  /* Disable all animations for liquid glass */
-  *, *::before, *::after {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    transition-duration: 0.1s !important;
+  /* Optimized transitions for liquid glass only */
+  .liquid-glass * {
+    transition-duration: 0.2s;
   }
 }
 
