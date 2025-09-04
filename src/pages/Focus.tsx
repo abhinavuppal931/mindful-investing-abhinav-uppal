@@ -214,13 +214,8 @@ const Focus = () => {
       }
     };
 
-    // Only run analysis when page changes, not when allNews updates
-    const timeoutId = setTimeout(() => {
-      runAIAnalysis();
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [currentPage]);
+    runAIAnalysis();
+  }, [currentPage, allNews.length]);
 
   // Filter news based on current filters
   const filteredNews = allNews.filter(item => {
@@ -296,26 +291,18 @@ const Focus = () => {
         <div className="flex space-x-2">
           {processingArticleIds.has(newsItem.id) ? (
             <>
-              <Badge className="liquid-glass border-0 text-muted-foreground">
+              <Badge variant="secondary" className="bg-glass-background backdrop-blur-sm">
                 <Loader className="h-3 w-3 mr-1 animate-spin" />
                 Analyzing...
               </Badge>
-              <Badge className="liquid-glass border-0 text-muted-foreground">
+              <Badge variant="secondary" className="bg-glass-background backdrop-blur-sm">
                 <Loader className="h-3 w-3 mr-1 animate-spin" />
                 Analyzing...
               </Badge>
             </>
           ) : (
             <>
-              <Badge 
-                className={`liquid-glass border-0 font-medium ${
-                  newsItem.sentiment === 'positive' 
-                    ? 'bg-green-500/20 text-green-200 border-green-500/30' 
-                    : newsItem.sentiment === 'negative' 
-                    ? 'bg-red-500/20 text-red-200 border-red-500/30' 
-                    : 'bg-blue-500/20 text-blue-200 border-blue-500/30'
-                }`}
-              >
+              <Badge variant={newsItem.sentiment === 'positive' ? 'default' : newsItem.sentiment === 'negative' ? 'destructive' : 'secondary'} className="bg-glass-background backdrop-blur-sm">
                 {newsItem.sentiment === 'positive' ? (
                   <ThumbsUp className="h-3 w-3 mr-1" />
                 ) : newsItem.sentiment === 'negative' ? (
@@ -325,13 +312,7 @@ const Focus = () => {
                 )}
                 {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
               </Badge>
-              <Badge 
-                className={`liquid-glass border-0 font-medium ${
-                  newsItem.relevance === 'high' 
-                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30' 
-                    : 'bg-slate-500/20 text-slate-300 border-slate-500/30'
-                }`}
-              >
+              <Badge variant={newsItem.relevance === 'high' ? 'default' : 'outline'} className={newsItem.relevance === 'high' ? 'bg-glass-background backdrop-blur-sm text-green-800 border-green-200' : 'bg-glass-background backdrop-blur-sm'}>
                 {newsItem.relevance === 'high' ? 'High Relevance' : 'Low Relevance'}
               </Badge>
             </>
