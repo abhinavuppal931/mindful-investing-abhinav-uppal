@@ -160,17 +160,17 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
       {analysisCards.map((card) => (
         <div 
           key={card.key} 
-          className={`rounded-2xl border border-border/30 dark:border-white/20 bg-border/10 dark:bg-white/10 backdrop-blur-md text-card-foreground shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl ${card.hoverColor}`}
+          className={`liquid-glass shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl ${card.hoverColor}`}
         >
           <Collapsible 
             open={openSections[card.key]} 
             onOpenChange={() => toggleSection(card.key)}
           >
             <CollapsibleTrigger asChild>
-              <div className="flex flex-col space-y-1.5 p-6 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-2xl">
+              <div className="flex flex-col space-y-1.5 p-6 cursor-pointer hover:bg-foreground/5 transition-colors rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-2xl font-inter font-normal leading-none tracking-tighter flex items-center">
+                    <h3 className="glass-subheading text-xl leading-none flex items-center">
                       <card.icon 
                         className={`w-5 h-5 mr-2 ${card.iconColor}`}
                         style={{ 
@@ -179,11 +179,11 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
                       />
                       {card.title}
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1.5">
+                    <p className="glass-body text-sm mt-1.5">
                       {card.description}
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="glass" size="sm">
                     {openSections[card.key] ? (
                       <ChevronUp className="h-4 w-4" />
                     ) : (
@@ -201,11 +201,11 @@ const AIAnalysisGrid: React.FC<AIAnalysisGridProps> = ({ ticker, financialData, 
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
                 ) : analyses[card.key as keyof typeof analyses] ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 glass-body">
                     {formatAIContent(analyses[card.key as keyof typeof analyses] || '')}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground italic text-sm">
+                  <p className="glass-body italic text-sm">
                     Analysis will load when you expand this section
                   </p>
                 )}

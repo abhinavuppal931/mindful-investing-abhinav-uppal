@@ -25,17 +25,17 @@ const StockCard: React.FC<StockCardProps> = ({
   const isPositive = change >= 0;
 
   return (
-    <div className="stock-card group">
+    <div className="liquid-glass group cursor-pointer hover:scale-105 transition-all duration-300">
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center space-x-2">
           <StockLogo ticker={ticker} size={32} className="flex-shrink-0" />
           <div className="min-w-0">
-            <h3 className="text-lg font-bold">{ticker}</h3>
-            <p className="text-sm text-gray-500 truncate max-w-[150px]">{companyName}</p>
+            <h3 className="text-lg font-light tracking-tight">{ticker}</h3>
+            <p className="text-sm text-muted-foreground font-light truncate max-w-[150px]">{companyName}</p>
           </div>
         </div>
         <Button 
-          variant="ghost" 
+          variant="glass" 
           size="icon" 
           className="opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={onClick}
@@ -45,14 +45,14 @@ const StockCard: React.FC<StockCardProps> = ({
       </div>
       
       <div className="mt-4">
-        <div className="text-2xl font-bold">{formatCurrency(price)}</div>
+        <div className="text-2xl font-light tracking-tight">{formatCurrency(price)}</div>
         <div className={`flex items-center mt-1 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
           {isPositive ? (
             <ArrowUpRight className="h-4 w-4 mr-1" />
           ) : (
             <ArrowDownRight className="h-4 w-4 mr-1" />
           )}
-          <span className="text-sm font-medium">
+          <span className="text-sm font-light">
             {isPositive ? '+' : ''}{formatNumber(change)} ({isPositive ? '+' : ''}{formatNumber(changePercent)}%)
           </span>
         </div>

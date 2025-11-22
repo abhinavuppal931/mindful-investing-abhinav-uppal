@@ -58,11 +58,11 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
 
   if (loading) {
     return (
-      <Card>
+      <Card className="liquid-glass">
         <CardContent className="py-6">
           <div className="flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
-            <span className="text-muted-foreground">Analyzing today's price drivers...</span>
+            <span className="glass-body">Analyzing today's price drivers...</span>
           </div>
         </CardContent>
       </Card>
@@ -71,9 +71,9 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
 
   if (error) {
     return (
-      <Card>
+      <Card className="liquid-glass">
         <CardContent className="py-6">
-          <div className="text-center text-muted-foreground">
+          <div className="text-center glass-body">
             {error}
           </div>
         </CardContent>
@@ -82,15 +82,15 @@ const TodaysPriceDriver: React.FC<TodaysPriceDriverProps> = ({ ticker, financial
   }
 
   return (
-    <Card className="mb-6">
+    <Card className="liquid-glass mb-6">
       <CardHeader>
-        <CardTitle className="flex items-center text-lg">
+        <CardTitle className="glass-subheading flex items-center text-lg">
           <TrendingUp className="h-5 w-5 mr-2 text-blue-600" />
           Today's Price Driver
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-foreground leading-relaxed text-sm">
+        <p className="glass-body leading-relaxed text-sm">
           {insight || 'No analysis available'}
         </p>
       </CardContent>

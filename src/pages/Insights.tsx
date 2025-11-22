@@ -203,17 +203,17 @@ const Insights = () => {
   return (
     <MainLayout>
       <div className="space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Stock Insights</h1>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <h1 className="glass-heading text-4xl">Stock Insights</h1>
           <MarketIndices />
         </div>
 
         {/* Search Bar - moved to top */}
-        <div className="relative">
+        <div className="relative liquid-glass">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
           <Input
             placeholder="Search stocks by ticker or company name..."
-            className="pl-10 bg-background border-input"
+            className="pl-10 bg-transparent border-none font-light"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -226,9 +226,9 @@ const Insights = () => {
 
         {/* Search Results */}
         {showSearchResults && searchQuery.length >= 2 && (
-          <Card>
+          <Card className="liquid-glass">
             <CardHeader>
-              <CardTitle>Search Results for "{searchQuery}"</CardTitle>
+              <CardTitle className="glass-subheading">Search Results for "{searchQuery}"</CardTitle>
             </CardHeader>
             <CardContent>
               {searchResults.length > 0 ? (
@@ -245,7 +245,7 @@ const Insights = () => {
                       />
                       {user && (
                         <Button
-                          variant="ghost"
+                          variant="glass"
                           size="icon"
                           className="absolute top-2 right-2 h-6 w-6"
                           onClick={(e) => {
@@ -256,7 +256,7 @@ const Insights = () => {
                           {isInWatchlist(stock.ticker) ? (
                             <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
                           ) : (
-                            <StarOff className="h-4 w-4 text-gray-400" />
+                            <StarOff className="h-4 w-4 text-muted-foreground" />
                           )}
                         </Button>
                       )}
@@ -264,7 +264,7 @@ const Insights = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-4">
+                <p className="glass-body text-center py-4">
                   No stocks found matching "{searchQuery}"
                 </p>
               )}
@@ -281,17 +281,17 @@ const Insights = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-mindful-50 dark:bg-mindful-950 rounded-xl p-6 border border-mindful-100 dark:border-mindful-800">
-              <h2 className="text-xl font-semibold mb-2 text-foreground">Welcome to Stock Insights</h2>
-              <p className="text-muted-foreground">
+            <div className="liquid-glass p-6">
+              <h2 className="glass-heading text-2xl mb-2">Welcome to Stock Insights</h2>
+              <p className="glass-body">
                 Search for any stock by ticker or company name, or select from the popular stocks below to view detailed financial metrics and interactive charts.
               </p>
             </div>
 
             {user && watchlistStocks.length > 0 && (
-              <Card>
+              <Card className="liquid-glass">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="glass-subheading flex items-center">
                     <Star className="h-5 w-5 mr-2 text-yellow-500" />
                     Your Watchlist
                   </CardTitle>
@@ -312,7 +312,7 @@ const Insights = () => {
                           onClick={() => handleStockSelect(stock)}
                         />
                         <Button
-                          variant="ghost"
+                          variant="glass"
                           size="icon"
                           className="absolute top-2 right-2 h-6 w-6"
                           onClick={(e) => {
@@ -343,7 +343,7 @@ const Insights = () => {
                   />
                   {user && (
                     <Button
-                      variant="ghost"
+                      variant="glass"
                       size="icon"
                       className="absolute top-2 right-2 h-6 w-6"
                       onClick={(e) => {
@@ -354,7 +354,7 @@ const Insights = () => {
                       {isInWatchlist(stock.ticker) ? (
                         <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
                       ) : (
-                        <StarOff className="h-4 w-4 text-gray-400" />
+                        <StarOff className="h-4 w-4 text-muted-foreground" />
                       )}
                     </Button>
                   )}

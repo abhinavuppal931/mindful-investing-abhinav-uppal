@@ -62,8 +62,8 @@ function CircularDial({ percent, label }: { percent: number; label: string }) {
       />
       <foreignObject x="20" y="30" width="80" height="60">
         <div className="h-full w-full flex flex-col items-center justify-center">
-          <div className="text-2xl font-semibold">{Math.round(percent)}%</div>
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
+          <div className="text-2xl font-light tracking-tight">{Math.round(percent)}%</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wide font-light">{label}</div>
         </div>
       </foreignObject>
     </svg>
@@ -74,10 +74,10 @@ function RatingBar({ label, count, percent, variant }: { label: string; count: n
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="tabular-nums">{count}</span>
+        <span className="text-muted-foreground font-light">{label}</span>
+        <span className="tabular-nums font-light">{count}</span>
       </div>
-      <div className="h-3 rounded-full bg-muted/30 overflow-hidden">
+      <div className="h-3 rounded-full bg-glass-background backdrop-blur-sm overflow-hidden border border-glass-border">
         <div
           className={cn('h-full bg-gradient-to-r', gradients[variant])}
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
@@ -89,23 +89,23 @@ function RatingBar({ label, count, percent, variant }: { label: string; count: n
 
 function RatingsCard({ data }: { data: RatingsConsensusItem | null }) {
   if (!data) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Analyst Ratings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-6">
-            <Skeleton className="h-28 w-28 rounded-full" />
-            <div className="flex-1 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-4 w-full" />
-              ))}
-            </div>
+  return (
+    <Card className="liquid-glass">
+      <CardHeader>
+        <CardTitle className="glass-subheading">Analyst Ratings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-6">
+          <Skeleton className="h-28 w-28 rounded-full" />
+          <div className="flex-1 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-full" />
+            ))}
           </div>
-        </CardContent>
-      </Card>
-    );
+        </div>
+      </CardContent>
+    </Card>
+  );
   }
 
   const totals = {
@@ -137,9 +137,9 @@ function RatingsCard({ data }: { data: RatingsConsensusItem | null }) {
   ];
 
   return (
-    <Card>
+    <Card className="liquid-glass">
       <CardHeader>
-        <CardTitle>Analyst Ratings</CardTitle>
+        <CardTitle className="glass-subheading">Analyst Ratings</CardTitle>
       </CardHeader>
       <CardContent className="pb-6 lg:pb-8 lg:pb-16">
         <div className="flex flex-col sm:flex-row gap-8 items-center">
@@ -166,16 +166,16 @@ function RatingsCard({ data }: { data: RatingsConsensusItem | null }) {
 
 function PriceTargetCard({ data, currentPrice }: { data: PriceTargetConsensusItem | null; currentPrice: number | null }) {
   if (!data) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Analyst Price Targets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-28 w-full rounded-lg" />
-        </CardContent>
-      </Card>
-    );
+  return (
+    <Card className="liquid-glass">
+      <CardHeader>
+        <CardTitle className="glass-subheading">Analyst Price Targets</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-28 w-full rounded-lg" />
+      </CardContent>
+    </Card>
+  );
   }
 
   // Extract values (median intentionally ignored)
@@ -202,15 +202,15 @@ function PriceTargetCard({ data, currentPrice }: { data: PriceTargetConsensusIte
     : null;
 
   return (
-    <Card>
+    <Card className="liquid-glass">
       <CardHeader>
-        <CardTitle>Analyst Price Targets</CardTitle>
+        <CardTitle className="glass-subheading">Analyst Price Targets</CardTitle>
       </CardHeader>
       <CardContent>
         {/* Current price banner */}
-        <div className="mb-5 rounded-xl border border-border/50 bg-gradient-to-r from-[hsl(var(--muted))] to-[hsl(var(--accent))] p-4 text-center">
-          <div className="text-xs text-muted-foreground">Current Price</div>
-          <div className="text-3xl font-semibold tabular-nums">{current !== null ? `$${current.toFixed(2)}` : '-'}</div>
+        <div className="mb-5 rounded-xl border border-glass-border bg-glass-background backdrop-blur-md p-4 text-center">
+          <div className="text-xs text-muted-foreground font-light">Current Price</div>
+          <div className="text-3xl font-light tracking-tight tabular-nums">{current !== null ? `$${current.toFixed(2)}` : '-'}</div>
         </div>
 
         {/* Scale slider */}
@@ -247,33 +247,33 @@ function PriceTargetCard({ data, currentPrice }: { data: PriceTargetConsensusIte
 
         {/* Labels under the bar */}
         <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-          <div className="rounded-lg border border-border/50 bg-muted/40 p-3 shadow-sm">
-            <div className="text-xs uppercase text-muted-foreground tracking-wide">Low Target</div>
-            <div className="font-semibold tabular-nums text-[hsl(0,84%,60%)]">{isFiniteNum(low) ? `$${low.toFixed(2)}` : '-'}</div>
+          <div className="rounded-lg border border-glass-border bg-glass-background backdrop-blur-sm p-3 shadow-sm">
+            <div className="text-xs uppercase text-muted-foreground tracking-wide font-light">Low Target</div>
+            <div className="font-light tracking-tight tabular-nums text-[hsl(0,84%,60%)]">{isFiniteNum(low) ? `$${low.toFixed(2)}` : '-'}</div>
           </div>
-          <div className="rounded-lg border border-border/50 bg-muted/40 p-3 shadow-sm">
-            <div className="text-xs uppercase text-muted-foreground tracking-wide">Consensus</div>
-            <div className="font-semibold tabular-nums text-[hsl(45,93%,47%)]">{isFiniteNum(consensus) ? `$${consensus.toFixed(2)}` : '-'}</div>
+          <div className="rounded-lg border border-glass-border bg-glass-background backdrop-blur-sm p-3 shadow-sm">
+            <div className="text-xs uppercase text-muted-foreground tracking-wide font-light">Consensus</div>
+            <div className="font-light tracking-tight tabular-nums text-[hsl(45,93%,47%)]">{isFiniteNum(consensus) ? `$${consensus.toFixed(2)}` : '-'}</div>
           </div>
-          <div className="rounded-lg border border-border/50 bg-muted/40 p-3 shadow-sm">
-            <div className="text-xs uppercase text-muted-foreground tracking-wide">High Target</div>
-            <div className="font-semibold tabular-nums text-[hsl(142,76%,36%)]">{isFiniteNum(high) ? `$${high.toFixed(2)}` : '-'}</div>
+          <div className="rounded-lg border border-glass-border bg-glass-background backdrop-blur-sm p-3 shadow-sm">
+            <div className="text-xs uppercase text-muted-foreground tracking-wide font-light">High Target</div>
+            <div className="font-light tracking-tight tabular-nums text-[hsl(142,76%,36%)]">{isFiniteNum(high) ? `$${high.toFixed(2)}` : '-'}</div>
           </div>
         </div>
 
         {/* Upside potential */}
         <div
           className={cn(
-            'mt-6 rounded-xl p-4 text-center border',
+            'mt-6 rounded-xl p-4 text-center border backdrop-blur-sm',
             upsidePct === null
-              ? 'bg-muted/30 text-muted-foreground border-border/50'
+              ? 'bg-glass-background text-muted-foreground border-glass-border'
               : upsidePct >= 0
-              ? 'bg-[hsl(142,76%,36%)]/10 text-[hsl(142,76%,36%)] border-transparent'
-              : 'bg-[hsl(0,84%,60%)]/10 text-[hsl(0,84%,60%)] border-transparent'
+              ? 'bg-[hsl(142,76%,36%)]/10 text-[hsl(142,76%,36%)] border-[hsl(142,76%,36%)]/20'
+              : 'bg-[hsl(0,84%,60%)]/10 text-[hsl(0,84%,60%)] border-[hsl(0,84%,60%)]/20'
           )}
         >
-          <div className="text-sm">Consensus Upside Potential</div>
-          <div className="text-2xl font-semibold tabular-nums">
+          <div className="text-sm font-light">Consensus Upside Potential</div>
+          <div className="text-2xl font-light tracking-tight tabular-nums">
             {upsidePct !== null ? `${upsidePct >= 0 ? '+' : ''}${upsidePct.toFixed(1)}%` : '-'}
           </div>
         </div>
@@ -317,8 +317,8 @@ const Analyst: React.FC<AnalystProps> = ({ ticker }) => {
   if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle>Analyst Ratings</CardTitle></CardHeader>
+        <Card className="liquid-glass">
+          <CardHeader><CardTitle className="glass-subheading">Analyst Ratings</CardTitle></CardHeader>
           <CardContent className="flex gap-6 items-center">
             <Skeleton className="h-28 w-28 rounded-full" />
             <div className="flex-1 space-y-3 w-full">
@@ -328,8 +328,8 @@ const Analyst: React.FC<AnalystProps> = ({ ticker }) => {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader><CardTitle>Analyst Price Targets</CardTitle></CardHeader>
+        <Card className="liquid-glass">
+          <CardHeader><CardTitle className="glass-subheading">Analyst Price Targets</CardTitle></CardHeader>
           <CardContent>
             <Skeleton className="h-28 w-full rounded-lg" />
           </CardContent>
