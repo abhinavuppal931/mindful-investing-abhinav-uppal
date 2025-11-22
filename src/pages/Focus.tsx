@@ -195,206 +195,174 @@ const Focus = () => {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedNews = filteredNews.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  // Optimized individual article analysis with persistent caching and better state management
+  // Optimized individual article analysis with persistent caching
   useEffect(() => {
     const processArticleAnalysis = async () => {
       if (paginatedNews.length === 0) return;
 
-      // Get all unanalyzed articles that need processing
+      // Process articles individually for better performance
       const unanalyzedArticles = paginatedNews.filter(
         item => !analyzedArticles.has(item.id) && 
-               !processingArticleIds.has(item.id) &&
                item.sentiment === 'neutral' && 
                item.relevance === 'low'
       );
 
       if (unanalyzedArticles.length === 0) return;
 
-      console.log(`Starting analysis for ${unanalyzedArticles.length} articles`);
+      // Process articles one by one to show progress
+      for (const article of unanalyzedArticles) {
+        // Skip if already processing
+        if (processingArticleIds.has(article.id)) continue;
 
-      // Mark articles as processing before starting
-      setProcessingArticleIds(prev => {
-        const newSet = new Set(prev);
-        unanalyzedArticles.forEach(article => newSet.add(article.id));
-        return newSet;
-      });
+        setProcessingArticleIds(prev => new Set([...prev, article.id]));
 
-      // Process articles with proper error handling and state consistency
-      try {
-        for (const article of unanalyzedArticles) {
-          try {
-            const analysisResults = await aiNewsAnalysis.analyzeArticles([{
-              id: article.id,
-              title: article.title,
-              content: article.content,
-              ticker: article.ticker,
-              source: article.provider
-            }]);
+        try {
+          const analysisResults = await aiNewsAnalysis.analyzeArticles([{
+            id: article.id,
+            title: article.title,
+            content: article.content,
+            ticker: article.ticker,
+            source: article.provider
+          }]);
 
-            if (analysisResults && analysisResults.length > 0) {
-              const analysis = analysisResults[0];
-              
-              console.log(`Analysis complete for ${article.id}: sentiment=${analysis.sentiment}, relevance=${analysis.relevance}`);
-              
-              // Update the article with analysis results immediately
-              setAllNews(prevNews => {
-                return prevNews.map(newsItem => {
-                  if (newsItem.id === article.id) {
-                    return {
-                      ...newsItem,
-                      sentiment: analysis.sentiment,
-                      relevance: analysis.relevance
-                    };
-                  }
-                  return newsItem;
-                });
-              });
+          if (analysisResults.length > 0) {
+            const analysis = analysisResults[0];
+            
+            // Update the specific article immediately
+            setAllNews(prevNews => 
+              prevNews.map(newsItem => {
+                if (newsItem.id === article.id) {
+                  return {
+                    ...newsItem,
+                    sentiment: analysis.sentiment,
+                    relevance: analysis.relevance
+                  };
+                }
+                return newsItem;
+              })
+            );
 
-              // Mark as analyzed in separate state update
-              setAnalyzedArticles(prev => new Set([...prev, article.id]));
-            }
-          } catch (error) {
-            console.error(`Analysis error for article ${article.id}:`, error);
+            // Mark as analyzed
+            setAnalyzedArticles(prev => new Set([...prev, article.id]));
           }
-
-          // Remove from processing set after completion
+        } catch (error) {
+          console.warn(`Analysis error for article ${article.id}:`, error);
+        } finally {
           setProcessingArticleIds(prev => {
             const newSet = new Set(prev);
             newSet.delete(article.id);
             return newSet;
           });
-
-          // Small delay between articles to prevent API overwhelming
-          if (unanalyzedArticles.indexOf(article) < unanalyzedArticles.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
         }
-      } catch (error) {
-        console.error('Error in article analysis process:', error);
-        // Clear processing state on error
-        setProcessingArticleIds(prev => {
-          const newSet = new Set(prev);
-          unanalyzedArticles.forEach(article => newSet.delete(article.id));
-          return newSet;
-        });
+
+        // Small delay between articles to prevent overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     };
 
     processArticleAnalysis();
-  }, [paginatedNews.map(item => item.id).join(','), analyzedArticles.size]);
+  }, [paginatedNews, analyzedArticles]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // Component for rendering news item with image - enhanced with loading states
-  const NewsItemCard = ({ newsItem }: { newsItem: NewsItem }) => {
-    const [imageLoaded, setImageLoaded] = useState(false);
-    const [imageError, setImageError] = useState(false);
-    
-    return (
-      <Card key={newsItem.id} className="liquid-glass">
-        <CardHeader className="pb-2">
-          <div className="flex flex-col sm:flex-row justify-between gap-2">
-            <div className="space-y-1 flex-1">
-              <CardTitle className="glass-subheading text-lg font-light leading-tight">{newsItem.title}</CardTitle>
-              <CardDescription className="glass-body text-sm">
-                {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
-                <span className="text-xs ml-1 px-1.5 py-0.5 bg-glass-background backdrop-blur-sm rounded">
-                  {newsItem.provider.toUpperCase()}
-                </span>
-              </CardDescription>
+  // Component for rendering news item with image
+  const NewsItemCard = ({ newsItem }: { newsItem: NewsItem }) => (
+    <Card key={newsItem.id} className="liquid-glass">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between">
+          <div className="space-y-1 flex-1">
+            <CardTitle className="glass-subheading text-lg font-light">{newsItem.title}</CardTitle>
+            <CardDescription className="glass-body">
+              {newsItem.source} • {formatDisplayDate(newsItem.date)} • 
+              <span className="text-xs ml-1 px-1.5 py-0.5 bg-glass-background backdrop-blur-sm rounded">
+                {newsItem.provider.toUpperCase()}
+              </span>
+            </CardDescription>
+          </div>
+          {newsItem.ticker && (
+            <Badge variant="outline" className="h-fit ml-2 bg-glass-background backdrop-blur-sm">
+              {newsItem.ticker}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-4">
+          {newsItem.image && (
+            <div className="flex-shrink-0">
+              <img 
+                src={newsItem.image} 
+                alt={newsItem.title}
+                className="w-24 h-24 object-cover rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             </div>
-            {newsItem.ticker && (
-              <Badge variant="outline" className="h-fit ml-0 sm:ml-2 w-fit bg-glass-background backdrop-blur-sm">
-                {newsItem.ticker}
+          )}
+          <p className="glass-body flex-1">{newsItem.content}</p>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between pt-2">
+        <div className="flex space-x-2">
+          {processingArticleIds.has(newsItem.id) ? (
+            <>
+              <Badge variant="secondary" className="bg-glass-background backdrop-blur-sm">
+                <Loader className="h-3 w-3 mr-1 animate-spin" />
+                Analyzing...
               </Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            {newsItem.image && !imageError && (
-              <div className="flex-shrink-0">
-                {!imageLoaded && (
-                  <div className="w-24 h-24 bg-glass-background backdrop-blur-sm rounded-lg animate-pulse flex items-center justify-center">
-                    <Loader className="h-4 w-4 animate-spin glass-accent" />
-                  </div>
+              <Badge variant="secondary" className="bg-glass-background backdrop-blur-sm">
+                <Loader className="h-3 w-3 mr-1 animate-spin" />
+                Analyzing...
+              </Badge>
+            </>
+          ) : (
+            <>
+              <Badge 
+                className={`
+                  liquid-glass px-3 py-1 text-xs font-medium border
+                  ${newsItem.sentiment === 'positive' 
+                    ? 'bg-emerald-500/20 text-emerald-700 border-emerald-300/30 dark:text-emerald-400 dark:border-emerald-600/30' 
+                    : newsItem.sentiment === 'negative' 
+                    ? 'bg-red-500/20 text-red-700 border-red-300/30 dark:text-red-400 dark:border-red-600/30'
+                    : 'bg-slate-500/20 text-slate-700 border-slate-300/30 dark:text-slate-400 dark:border-slate-600/30'
+                  }
+                `}
+              >
+                {newsItem.sentiment === 'positive' ? (
+                  <ThumbsUp className="h-3 w-3 mr-1" />
+                ) : newsItem.sentiment === 'negative' ? (
+                  <ThumbsDown className="h-3 w-3 mr-1" />
+                ) : (
+                  <Info className="h-3 w-3 mr-1" />
                 )}
-                <img 
-                  src={newsItem.image} 
-                  alt={newsItem.title}
-                  className={`w-24 h-24 object-cover rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
-                  onLoad={() => setImageLoaded(true)}
-                  onError={() => {
-                    setImageError(true);
-                    setImageLoaded(false);
-                  }}
-                />
-              </div>
-            )}
-            <p className="glass-body flex-1 text-sm leading-relaxed">{newsItem.content}</p>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col sm:flex-row justify-between pt-2 gap-3">
-          <div className="flex flex-wrap gap-2">
-            {processingArticleIds.has(newsItem.id) ? (
-              <>
-                <Badge variant="secondary" className="bg-glass-background backdrop-blur-sm">
-                  <Loader className="h-3 w-3 mr-1 animate-spin" />
-                  Analyzing...
-                </Badge>
-                <Badge variant="secondary" className="bg-glass-background backdrop-blur-sm">
-                  <Loader className="h-3 w-3 mr-1 animate-spin" />
-                  Analyzing...
-                </Badge>
-              </>
-            ) : (
-              <>
-                <Badge 
-                  className={`
-                    liquid-glass px-3 py-1 text-xs font-medium border
-                    ${newsItem.sentiment === 'positive' 
-                      ? 'bg-emerald-500/20 text-emerald-700 border-emerald-300/30 dark:text-emerald-400 dark:border-emerald-600/30' 
-                      : newsItem.sentiment === 'negative' 
-                      ? 'bg-red-500/20 text-red-700 border-red-300/30 dark:text-red-400 dark:border-red-600/30'
-                      : 'bg-slate-500/20 text-slate-700 border-slate-300/30 dark:text-slate-400 dark:border-slate-600/30'
-                    }
-                  `}
-                >
-                  {newsItem.sentiment === 'positive' ? (
-                    <ThumbsUp className="h-3 w-3 mr-1" />
-                  ) : newsItem.sentiment === 'negative' ? (
-                    <ThumbsDown className="h-3 w-3 mr-1" />
-                  ) : (
-                    <Info className="h-3 w-3 mr-1" />
-                  )}
-                  {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
-                </Badge>
-                <Badge 
-                  className={`
-                    liquid-glass px-3 py-1 text-xs font-medium border
-                    ${newsItem.relevance === 'high' 
-                      ? 'bg-green-600/20 text-green-800 border-green-400/30 dark:text-green-300 dark:border-green-500/30' 
-                      : 'bg-gray-500/20 text-gray-700 border-gray-300/30 dark:text-gray-400 dark:border-gray-600/30'
-                    }
-                  `}
-                >
-                  {newsItem.relevance === 'high' ? 'High Relevance' : 'Low Relevance'}
-                </Badge>
-              </>
-            )}
-          </div>
-          <Button variant="ghost" size="sm" className="glass-body text-xs bg-glass-background backdrop-blur-sm hover:bg-foreground/10 w-full sm:w-auto" asChild>
-            <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
-              Read More
-              <ArrowUpRight className="h-3 w-3 ml-1" />
-            </a>
-          </Button>
-        </CardFooter>
-      </Card>
-    );
-  };
+                {newsItem.sentiment.charAt(0).toUpperCase() + newsItem.sentiment.slice(1)}
+              </Badge>
+              <Badge 
+                className={`
+                  liquid-glass px-3 py-1 text-xs font-medium border
+                  ${newsItem.relevance === 'high' 
+                    ? 'bg-green-600/20 text-green-800 border-green-400/30 dark:text-green-300 dark:border-green-500/30' 
+                    : 'bg-gray-500/20 text-gray-700 border-gray-300/30 dark:text-gray-400 dark:border-gray-600/30'
+                  }
+                `}
+              >
+                {newsItem.relevance === 'high' ? 'High Relevance' : 'Low Relevance'}
+              </Badge>
+            </>
+          )}
+        </div>
+        <Button variant="ghost" size="sm" className="glass-body text-xs bg-glass-background backdrop-blur-sm hover:bg-foreground/10" asChild>
+          <a href={newsItem.url} target="_blank" rel="noopener noreferrer">
+            Read More
+            <ArrowUpRight className="h-3 w-3 ml-1" />
+          </a>
+        </Button>
+      </CardFooter>
+    </Card>
+  );
 
   if (loading) {
     return (
@@ -423,33 +391,29 @@ const Focus = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex-1">
-            <h1 className="glass-heading text-2xl sm:text-3xl lg:text-4xl font-light flex items-center">
-              <BrainCircuit className="mr-2 lg:mr-3 h-8 w-8 lg:h-10 lg:w-10 glass-accent" />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="glass-heading text-4xl font-light flex items-center">
+              <BrainCircuit className="mr-3 h-10 w-10 glass-accent" />
               Focus Mode
             </h1>
-            <p className="glass-subheading mt-2 text-sm lg:text-base">
+            <p className="glass-subheading mt-2">
               Filter out the noise and focus on what matters for your investments
             </p>
           </div>
           
-          <div className="liquid-glass flex items-center space-x-3 p-3 lg:p-4 rounded-lg w-full lg:w-auto">
+          <div className="liquid-glass flex items-center space-x-3 p-4 rounded-lg">
             <Switch 
               id="high-relevance" 
               checked={showHighRelevanceOnly}
-              onCheckedChange={(checked) => {
-                console.log('Toggle changed:', checked);
-                setShowHighRelevanceOnly(checked);
-              }}
-              className="data-[state=checked]:bg-primary"
+              onCheckedChange={(checked) => setShowHighRelevanceOnly(checked)}
             />
-            <Label htmlFor="high-relevance" className="glass-body cursor-pointer text-sm lg:text-base">Show High Relevance Only</Label>
+            <Label htmlFor="high-relevance" className="glass-body cursor-pointer">Show High Relevance Only</Label>
           </div>
         </div>
         
-        <div className="liquid-glass p-4 sm:p-6 rounded-xl">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="liquid-glass p-6 rounded-xl">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <div className="space-y-4 mb-6">
                 <Input
@@ -459,7 +423,7 @@ const Focus = () => {
                   className="bg-glass-background backdrop-blur-md border-glass-border"
                 />
                 
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col md:flex-row gap-4">
                   <StockSearch
                     value={tickerFilter}
                     onChange={setTickerFilter}
@@ -467,34 +431,30 @@ const Focus = () => {
                     className="flex-1"
                   />
                   
-                  <div className="flex-1 relative">
-                    <div className="relative z-[60]">
-                      <DateRangePicker
-                        value={dateRange}
-                        onChange={(range) => setDateRange(range)}
-                        className="w-full"
-                      />
-                    </div>
+                  <div className="flex-1 relative z-50">
+                    <DateRangePicker
+                      value={dateRange}
+                      onChange={(range) => setDateRange(range)}
+                      className="w-full"
+                    />
                   </div>
                 </div>
               </div>
               
-              <Tabs value={sentimentFilter} onValueChange={setSentimentFilter} className="liquid-glass p-3 sm:p-4 rounded-lg">
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
-                  <TabsList className="bg-glass-background backdrop-blur-sm border-glass-border w-full lg:w-auto">
-                    <TabsTrigger value="all" className="glass-body flex-1 lg:flex-none">All News</TabsTrigger>
-                    <TabsTrigger value="positive" className="glass-body flex-1 lg:flex-none">Positive</TabsTrigger>
-                    <TabsTrigger value="negative" className="glass-body flex-1 lg:flex-none">Negative</TabsTrigger>
+              <Tabs value={sentimentFilter} onValueChange={setSentimentFilter} className="liquid-glass p-4 rounded-lg">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                  <TabsList className="bg-glass-background backdrop-blur-sm border-glass-border">
+                    <TabsTrigger value="all" className="glass-body">All News</TabsTrigger>
+                    <TabsTrigger value="positive" className="glass-body">Positive</TabsTrigger>
+                    <TabsTrigger value="negative" className="glass-body">Negative</TabsTrigger>
                   </TabsList>
                   
-                  <div className="flex items-center glass-body text-xs lg:text-sm">
-                    <Calendar className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
-                    <span className="truncate">
+                  <div className="flex items-center glass-body text-sm">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    <span>
                       {filteredNews.length} articles • Page {currentPage} of {totalPages}
                       {dateRange?.from && dateRange?.to && (
-                        <span className="hidden sm:inline">
-                          {` • ${formatDisplayDate(dateRange.from.toISOString())} - ${formatDisplayDate(dateRange.to.toISOString())}`}
-                        </span>
+                        ` • ${formatDisplayDate(dateRange.from.toISOString())} - ${formatDisplayDate(dateRange.to.toISOString())}`
                       )}
                     </span>
                   </div>
@@ -710,17 +670,17 @@ const Focus = () => {
               </Tabs>
             </div>
             
-            <div className="space-y-4 lg:space-y-6">
+            <div className="space-y-6">
               <Card className="liquid-glass">
                 <CardHeader>
-                  <CardTitle className="glass-subheading text-base lg:text-lg flex items-center">
-                    <Filter className="h-4 w-4 lg:h-5 lg:w-5 mr-2 glass-accent" />
+                  <CardTitle className="glass-subheading text-lg flex items-center">
+                    <Filter className="h-5 w-5 mr-2 glass-accent" />
                     Filter Options
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sentiment-filter" className="glass-body text-sm">Sentiment</Label>
+                    <Label htmlFor="sentiment-filter" className="glass-body">Sentiment</Label>
                     <Select 
                       value={sentimentFilter} 
                       onValueChange={setSentimentFilter}
@@ -739,7 +699,7 @@ const Focus = () => {
                   
                   <Button 
                     variant="outline" 
-                    className="w-full mt-2 glass-body text-sm bg-glass-background backdrop-blur-sm border-glass-border hover:bg-foreground/10"
+                    className="w-full mt-2 glass-body bg-glass-background backdrop-blur-sm border-glass-border hover:bg-foreground/10"
                     onClick={() => {
                       setSearchQuery('');
                       setTickerFilter('');
@@ -756,7 +716,7 @@ const Focus = () => {
                 </CardContent>
               </Card>
               
-              <Card className="liquid-glass hidden lg:block">
+              <Card className="liquid-glass">
                 <CardHeader>
                   <CardTitle className="glass-subheading text-lg flex items-center">
                     <BrainCircuit className="h-5 w-5 mr-2 glass-accent" />
@@ -764,7 +724,7 @@ const Focus = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-3 glass-body text-sm">
+                  <ul className="space-y-2 glass-body text-sm">
                     <li className="flex items-start">
                       <div className="h-5 w-5 rounded-full bg-glass-background backdrop-blur-sm flex items-center justify-center glass-accent mr-2 flex-shrink-0 mt-0.5 text-xs">1</div>
                       <span>Filter out market noise to focus on relevant information</span>
